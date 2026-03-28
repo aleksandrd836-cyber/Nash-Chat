@@ -22,19 +22,47 @@ const ICE_SERVERS = [
 ];
 
 export function useVoice() {
-  const [activeChannelId, setActiveChannelId] = useState(null);   // текущий голосовой канал
-  const [participants, setParticipants]        = useState([]);     // список участников
+  const [activeChannelId, setActiveChannelId]  = useState(null);   // текущий голосовой канал
+  const [participants, setParticipants]        = useState([]);     // список участников (текущий канал)
+  const [allParticipants, setAllParticipants]  = useState({});     // глобальный список: кто в каком канале
   const [isMuted, setIsMuted]                  = useState(false);
   const [isConnecting, setIsConnecting]        = useState(false);
 
   const localStream      = useRef(null);
+  const globalPresence   = useRef(null);
   const peerConns        = useRef({});   // { [userId]: RTCPeerConnection }
   const audioElements    = useRef({});   // { [userId]: HTMLAudioElement }
   const realtimeChannel  = useRef(null);
   const currentUserRef   = useRef(null);
 
-  // Очищаем ресурсы при размонтировании
-  useEffect(() => () => { cleanupAll(); }, []);
+  // Инициализируем глобальный канал присутствия для боковой панели
+  useEffect(() => {
+    const channel = supabase.channel('global_voice_presence');
+    
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      const newAll = {};
+      Object.values(state).flat().forEach(p => {
+        if (p.channelId && p.userId && p.username) {
+          if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
+          newAll[p.channelId].set(p.userId, { userId: p.userId, username: p.username });
+        }
+      });
+      const finalAll = {};
+      Object.keys(newAll).forEach(chId => {
+        finalAll[chId] = Array.from(newAll[chId].values());
+      });
+      setAllParticipants(finalAll);
+    });
+
+    channel.subscribe();
+    globalPresence.current = channel;
+
+    return () => {
+      cleanupAll();
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   /** Создать RTCPeerConnection до конкретного собеседника */
   const createPeerConnection = useCallback((remoteUserId) => {
@@ -98,6 +126,9 @@ export function useVoice() {
       try { await realtimeChannel.current.untrack(); } catch {}
       await supabase.removeChannel(realtimeChannel.current);
       realtimeChannel.current = null;
+    }
+    if (globalPresence.current) {
+      try { await globalPresence.current.untrack(); } catch {} // удаляем себя из всех списков
     }
     setActiveChannelId(null);
     setParticipants([]);
@@ -202,6 +233,9 @@ export function useVoice() {
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({ userId: user.id, username });
+        if (globalPresence.current) {
+          await globalPresence.current.track({ channelId, userId: user.id, username });
+        }
         setActiveChannelId(channelId);
         setIsConnecting(false);
       }
@@ -226,6 +260,7 @@ export function useVoice() {
   return {
     activeChannelId,
     participants,
+    allParticipants,
     isMuted,
     isConnecting,
     joinVoiceChannel,

@@ -10,7 +10,7 @@ export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut,
   const [channels, setChannels] = useState([]);
   const [loading, setLoading]   = useState(true);
 
-  const { activeChannelId, participants } = voice;
+  const { activeChannelId, allParticipants } = voice;
 
   useEffect(() => {
     supabase
@@ -71,8 +71,8 @@ export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut,
                 Голосовые каналы
               </p>
               {voiceChannels.map(ch => {
-                const isActive      = activeChannelId === ch.id;
-                const chParticipants = isActive ? participants : [];
+                const isActive       = activeChannelId === ch.id;
+                const chParticipants = allParticipants[ch.id] || [];
 
                 return (
                   <div key={ch.id}>
@@ -89,15 +89,15 @@ export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut,
                         <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                       </svg>
                       <span className="truncate flex-1 text-left">{ch.name}</span>
-                      {isActive && (
-                        <span className="text-[10px] text-ds-green font-semibold ml-auto">
+                      {chParticipants.length > 0 && (
+                        <span className={`text-[10px] font-semibold ml-auto ${isActive ? 'text-ds-green' : 'text-ds-muted'}`}>
                           {chParticipants.length}
                         </span>
                       )}
                     </button>
 
-                    {/* Показываем участников голосового канала */}
-                    {isActive && chParticipants.length > 0 && (
+                    {/* Показываем участников голосового канала всем */}
+                    {chParticipants.length > 0 && (
                       <div className="ml-6 mt-0.5 space-y-0.5">
                         {chParticipants.map(p => (
                           <div key={p.userId} className="flex items-center gap-1.5 px-2 py-0.5">
