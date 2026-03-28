@@ -1,0 +1,3 @@
+#!/bin/sh
+# Git pre-commit hook — автоматически инкрементирует patch-версию
+node scripts/bump-version.js

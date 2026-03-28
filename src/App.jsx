@@ -94,6 +94,13 @@ export default function App() {
           onUsernameChange={(newName) => setLocalUsername(newName)}
         />
       )}
+
+      {/* Version badge */}
+      <div className="fixed bottom-2 right-3 z-50 pointer-events-none select-none">
+        <span className="text-[10px] text-ds-muted/50 font-mono tracking-wide">
+          v{APP_VERSION}
+        </span>
+      </div>
     </div>
   );
 }
