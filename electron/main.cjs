@@ -1,7 +1,7 @@
 const { app, BrowserWindow, shell, Menu } = require('electron');
 const path = require('path');
 
-const APP_URL = 'https://solitary-cloud-a126.aleksandrd836.workers.dev/';
+const APP_URL = 'https://nash-chat1.pages.dev/';
 
 let mainWindow;
 let splashWindow;
