@@ -133,63 +133,61 @@ export default function App() {
         />
       )}
 
-      {/* Version + Update widget (only in Electron) */}
-      {isElectron && (
-        <div className="fixed bottom-2 right-3 z-50 flex items-center gap-2">
-          {/* Версия */}
-          <span className="text-[10px] text-ds-muted/50 font-mono">
-            v{window.electronAPI.version}
+      {/* Version + Update widget */}
+      <div className="fixed bottom-2 right-3 z-50 flex items-center gap-2">
+        {/* Версия — видна всегда */}
+        <span className="text-[10px] text-ds-muted/50 font-mono">
+          v{isElectron ? window.electronAPI.version : APP_VERSION}
+        </span>
+
+        {/* Кнопка обновления — только в Electron */}
+        {isElectron && updateStatus === 'idle' && (
+          <button
+            onClick={handleCheckUpdate}
+            title="Проверить обновления"
+            className="text-[10px] text-ds-muted/40 hover:text-ds-accent transition-colors cursor-pointer"
+          >
+            ↑ обновления
+          </button>
+        )}
+
+        {isElectron && updateStatus === 'checking' && (
+          <span className="text-[10px] text-ds-muted animate-pulse">проверка...</span>
+        )}
+
+        {isElectron && updateStatus === 'available' && (
+          <button
+            onClick={handleDownload}
+            className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity"
+          >
+            ↓ v{updateInfo?.version}
+          </button>
+        )}
+
+        {isElectron && updateStatus === 'downloading' && (
+          <span className="text-[10px] text-ds-accent animate-pulse">
+            ↓ {updateProgress}%
           </span>
+        )}
 
-          {/* Кнопка / индикатор обновления */}
-          {updateStatus === 'idle' && (
-            <button
-              onClick={handleCheckUpdate}
-              title="Проверить обновления"
-              className="text-[10px] text-ds-muted/40 hover:text-ds-accent transition-colors cursor-pointer"
-            >
-              ↑ обновления
-            </button>
-          )}
+        {isElectron && updateStatus === 'ready' && (
+          <button
+            onClick={handleInstall}
+            className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity animate-pulse"
+          >
+            ↻ перезапустить
+          </button>
+        )}
 
-          {updateStatus === 'checking' && (
-            <span className="text-[10px] text-ds-muted animate-pulse">проверка...</span>
-          )}
-
-          {updateStatus === 'available' && (
-            <button
-              onClick={handleDownload}
-              className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity"
-            >
-              ↓ v{updateInfo?.version}
-            </button>
-          )}
-
-          {updateStatus === 'downloading' && (
-            <span className="text-[10px] text-ds-accent animate-pulse">
-              ↓ {updateProgress}%
-            </span>
-          )}
-
-          {updateStatus === 'ready' && (
-            <button
-              onClick={handleInstall}
-              className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity animate-pulse"
-            >
-              ↻ перезапустить
-            </button>
-          )}
-
-          {updateStatus === 'error' && (
-            <button
-              onClick={handleCheckUpdate}
-              className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors"
-            >
-              ошибка, повторить
-            </button>
-          )}
-        </div>
-      )}
+        {isElectron && updateStatus === 'error' && (
+          <button
+            onClick={handleCheckUpdate}
+            className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors"
+          >
+            ошибка, повторить
+          </button>
+        )}
+      </div>
     </div>
   );
 }
