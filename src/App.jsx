@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useVoice } from './hooks/useVoice';
 import { AuthPage } from './components/AuthPage';
@@ -13,8 +13,46 @@ export default function App() {
 
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [settingsOpen, setSettingsOpen]       = useState(false);
-  // Храним ник локально, чтобы он обновлялся сразу после сохранения в настройках
   const [localUsername, setLocalUsername]     = useState(null);
+
+  // Состояние обновления: idle | checking | available | downloading | ready | error
+  const [updateStatus,   setUpdateStatus]   = useState('idle');
+  const [updateInfo,     setUpdateInfo]     = useState(null);   // { version }
+  const [updateProgress, setUpdateProgress] = useState(0);      // 0-100
+
+  const isElectron = !!window.electronAPI;
+
+  useEffect(() => {
+    if (!isElectron) return;
+    const api = window.electronAPI;
+
+    api.onUpdateAvailable((info) => {
+      setUpdateInfo(info);
+      setUpdateStatus('available');
+    });
+    api.onUpdateProgress((p) => {
+      setUpdateProgress(Math.round(p.percent));
+      setUpdateStatus('downloading');
+    });
+    api.onUpdateDownloaded(() => setUpdateStatus('ready'));
+    api.onUpdateError((msg) => {
+      console.error('Update error:', msg);
+      setUpdateStatus('error');
+    });
+  }, [isElectron]);
+
+  const handleCheckUpdate = async () => {
+    setUpdateStatus('checking');
+    try { await window.electronAPI.checkForUpdates(); }
+    catch { setUpdateStatus('error'); }
+  };
+
+  const handleDownload = async () => {
+    setUpdateStatus('downloading');
+    await window.electronAPI.downloadUpdate();
+  };
+
+  const handleInstall = () => window.electronAPI.installUpdate();
 
   const displayUsername = localUsername ?? auth.username;
 
@@ -95,12 +133,63 @@ export default function App() {
         />
       )}
 
-      {/* Version badge */}
-      <div className="fixed bottom-2 right-3 z-50 pointer-events-none select-none">
-        <span className="text-[10px] text-ds-muted/50 font-mono tracking-wide">
-          v{APP_VERSION}
-        </span>
-      </div>
+      {/* Version + Update widget (only in Electron) */}
+      {isElectron && (
+        <div className="fixed bottom-2 right-3 z-50 flex items-center gap-2">
+          {/* Версия */}
+          <span className="text-[10px] text-ds-muted/50 font-mono">
+            v{window.electronAPI.version}
+          </span>
+
+          {/* Кнопка / индикатор обновления */}
+          {updateStatus === 'idle' && (
+            <button
+              onClick={handleCheckUpdate}
+              title="Проверить обновления"
+              className="text-[10px] text-ds-muted/40 hover:text-ds-accent transition-colors cursor-pointer"
+            >
+              ↑ обновления
+            </button>
+          )}
+
+          {updateStatus === 'checking' && (
+            <span className="text-[10px] text-ds-muted animate-pulse">проверка...</span>
+          )}
+
+          {updateStatus === 'available' && (
+            <button
+              onClick={handleDownload}
+              className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity"
+            >
+              ↓ v{updateInfo?.version}
+            </button>
+          )}
+
+          {updateStatus === 'downloading' && (
+            <span className="text-[10px] text-ds-accent animate-pulse">
+              ↓ {updateProgress}%
+            </span>
+          )}
+
+          {updateStatus === 'ready' && (
+            <button
+              onClick={handleInstall}
+              className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity animate-pulse"
+            >
+              ↻ перезапустить
+            </button>
+          )}
+
+          {updateStatus === 'error' && (
+            <button
+              onClick={handleCheckUpdate}
+              className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors"
+            >
+              ошибка, повторить
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

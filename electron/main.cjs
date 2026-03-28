@@ -1,5 +1,6 @@
-const { app, BrowserWindow, shell, Menu } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 
 const APP_URL = 'https://nash-chat1.pages.dev/';
 
@@ -139,6 +140,31 @@ Menu.setApplicationMenu(null);
 app.whenReady().then(() => {
   createSplash();   // мгновенно
   createWindow();   // грузим в фоне
+
+  // ── Автообновление ──
+  autoUpdater.autoDownload = false;   // скачиваем только по запросу пользователя
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update-available', info);
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update-progress', progress);
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents.send('update-downloaded');
+  });
+
+  autoUpdater.on('error', (err) => {
+    mainWindow?.webContents.send('update-error', err.message);
+  });
+
+  // IPC — команды от рендерера
+  ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
+  ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
+  ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
 });
 
 app.on('window-all-closed', () => { app.quit(); });

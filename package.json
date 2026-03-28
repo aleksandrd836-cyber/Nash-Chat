@@ -1,7 +1,7 @@
 {
   "name": "nashchat",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -16,6 +16,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "date-fns": "^3.0.0",
+    "electron-updater": "^6.1.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -38,6 +39,12 @@
       "electron/**/*"
     ],
     "extraResources": [],
+    "publish": {
+      "provider": "github",
+      "owner": "aleksandrd836-cyber",
+      "repo": "Nash-Chat",
+      "releaseType": "release"
+    },
     "win": {
       "target": [
         {
