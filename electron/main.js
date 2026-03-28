@@ -11,7 +11,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    title: 'FriendChat',
+    title: 'NashChat',
     backgroundColor: '#1e1f22',
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {

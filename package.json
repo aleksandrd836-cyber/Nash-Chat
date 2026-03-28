@@ -1,5 +1,5 @@
 {
-  "name": "friendchat",
+  "name": "nashchat",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -27,8 +27,8 @@
     "vite": "^5.0.8"
   },
   "build": {
-    "appId": "com.friendchat.app",
-    "productName": "FriendChat",
+    "appId": "com.nashchat.app",
+    "productName": "NashChat",
     "directories": {
       "output": "dist-electron"
     },
@@ -51,7 +51,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "FriendChat"
+      "shortcutName": "NashChat"
     }
   }
 }
