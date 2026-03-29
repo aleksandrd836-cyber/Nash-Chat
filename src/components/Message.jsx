@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 
 /** Компонент для отображения изображения с увеличением по клику */

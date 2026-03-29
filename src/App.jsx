@@ -105,6 +105,7 @@ export default function App() {
       <Sidebar
         username={displayUsername}
         userColor={displayColor}
+        currentUserId={auth.user?.id}
         selectedChannel={selectedChannel}
         onSelectChannel={handleSelectChannel}
         onSignOut={auth.signOut}
