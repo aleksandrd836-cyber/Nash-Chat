@@ -1,5 +1,5 @@
 -- ============================================================
--- FriendChat — Supabase Schema
+-- Vibe — Supabase Schema
 -- Запусти этот SQL в Supabase Dashboard → SQL Editor
 -- ============================================================
 
