@@ -15,11 +15,10 @@ export default function App() {
   const [settingsOpen, setSettingsOpen]       = useState(false);
   const [localUsername, setLocalUsername]     = useState(null);
 
-  // Состояние обновления: idle | checking | available | downloading | ready | error
-  const [updateStatus,   setUpdateStatus]   = useState('idle');
-  const [updateInfo,     setUpdateInfo]     = useState(null);
-  const [updateProgress, setUpdateProgress] = useState(0);
-  const [updateError,    setUpdateError]    = useState('');
+  // Состояние обновления: idle | checking | available | error
+  const [updateStatus, setUpdateStatus] = useState('idle');
+  const [updateInfo,   setUpdateInfo]   = useState(null);   // { version, downloadUrl }
+  const [updateError,  setUpdateError]  = useState('');
 
   const isElectron = !!window.electronAPI;
 
@@ -31,13 +30,7 @@ export default function App() {
       setUpdateInfo(info);
       setUpdateStatus('available');
     });
-    api.onUpdateProgress((p) => {
-      setUpdateProgress(Math.round(p.percent));
-      setUpdateStatus('downloading');
-    });
-    api.onUpdateDownloaded(() => setUpdateStatus('ready'));
-    api.onUpdateError((msg) => {
-      console.error('Update error:', msg);
+    api.onUpdateError?.((msg) => {
       setUpdateError(msg);
       setUpdateStatus('error');
     });
@@ -48,14 +41,15 @@ export default function App() {
     setUpdateError('');
     try { await window.electronAPI.checkForUpdates(); }
     catch (e) { setUpdateError(e?.message || String(e)); setUpdateStatus('error'); }
+    // Если нет новой версии — вернуться в idle через 3с
+    setTimeout(() => setUpdateStatus(s => s === 'checking' ? 'idle' : s), 3000);
   };
 
-  const handleDownload = async () => {
-    setUpdateStatus('downloading');
-    await window.electronAPI.downloadUpdate();
+  // Открывает браузер для скачивания
+  const handleDownload = () => {
+    window.electronAPI.downloadUpdate(updateInfo?.downloadUrl);
+    setUpdateStatus('idle');
   };
-
-  const handleInstall = () => window.electronAPI.installUpdate();
 
   const displayUsername = localUsername ?? auth.username;
 
@@ -163,22 +157,7 @@ export default function App() {
             onClick={handleDownload}
             className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity"
           >
-            ↓ v{updateInfo?.version}
-          </button>
-        )}
-
-        {isElectron && updateStatus === 'downloading' && (
-          <span className="text-[10px] text-ds-accent animate-pulse">
-            ↓ {updateProgress}%
-          </span>
-        )}
-
-        {isElectron && updateStatus === 'ready' && (
-          <button
-            onClick={handleInstall}
-            className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity animate-pulse"
-          >
-            ↻ перезапустить
+            ↓ скачать v{updateInfo?.version}
           </button>
         )}
 
@@ -186,9 +165,9 @@ export default function App() {
           <button
             onClick={handleCheckUpdate}
             title={updateError || 'Неизвестная ошибка'}
-            className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors max-w-[200px] truncate"
+            className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors"
           >
-            ⚠ {updateError ? updateError.slice(0, 40) : 'ошибка'} — повторить
+            ошибка, повторить
           </button>
         )}
       </div>

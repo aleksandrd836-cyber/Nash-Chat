@@ -1,6 +1,6 @@
 const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('path');
-const { autoUpdater } = require('electron-updater');
+const https = require('https');
 
 const APP_URL = 'https://nash-chat1.pages.dev/';
 
@@ -144,38 +144,53 @@ ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
 });
 
+// ── Проверка обновлений через Cloudflare (без GitHub API) ──
+const VERSION_URL = 'https://nash-chat1.pages.dev/version.json';
+
+function fetchLatestVersion() {
+  return new Promise((resolve, reject) => {
+    https.get(VERSION_URL, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
+
+function isNewer(current, latest) {
+  const c = current.split('.').map(Number);
+  const l = latest.split('.').map(Number);
+  for (let i = 0; i < Math.max(c.length, l.length); i++) {
+    if ((l[i] || 0) > (c[i] || 0)) return true;
+    if ((l[i] || 0) < (c[i] || 0)) return false;
+  }
+  return false;
+}
+
+ipcMain.handle('check-for-updates', async () => {
+  const data   = await fetchLatestVersion();
+  const latest  = data.version;
+  const current = app.getVersion();
+  if (isNewer(current, latest)) {
+    mainWindow?.webContents.send('update-available', {
+      version:     latest,
+      downloadUrl: data.downloadUrl,
+    });
+  }
+  return { current, latest };
+});
+
+// Открываем браузер для скачивания
+ipcMain.handle('download-update', (_, url) => {
+  shell.openExternal(url || 'https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest');
+});
+
 app.whenReady().then(() => {
-  createSplash();   // мгновенно
-  createWindow();   // грузим в фоне
-
-  // ── Автообновление ──
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
-  // Токен для доступа к приватному репозиторию
-  autoUpdater.requestHeaders = {
-    Authorization: `token ${process.env.GH_TOKEN || ''}`,
-  };
-
-  autoUpdater.on('update-available', (info) => {
-    mainWindow?.webContents.send('update-available', info);
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    mainWindow?.webContents.send('update-progress', progress);
-  });
-
-  autoUpdater.on('update-downloaded', () => {
-    mainWindow?.webContents.send('update-downloaded');
-  });
-
-  autoUpdater.on('error', (err) => {
-    mainWindow?.webContents.send('update-error', err.message);
-  });
-
-  // IPC — команды от рендерера
-  ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
-  ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
-  ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
+  createSplash();
+  createWindow();
 });
 
 app.on('window-all-closed', () => { app.quit(); });
