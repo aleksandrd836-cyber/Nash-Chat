@@ -275,6 +275,8 @@ export function useVoice() {
     }
     // Сохраняем в localStorage
     localStorage.setItem(`vol_${userId}`, String(volumePct));
+    // Оповещаем другие компоненты об изменении громкости
+    window.dispatchEvent(new CustomEvent('volumeChanged', { detail: { userId, volumePct } }));
   }, []);
 
   return {

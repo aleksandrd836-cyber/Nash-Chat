@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useVoice } from './hooks/useVoice';
 import { useMembers } from './hooks/useMembers';
+import { useUnreadDMs } from './hooks/useUnreadDMs';
 import { AuthPage } from './components/AuthPage';
 import { Sidebar } from './components/Sidebar';
 import { TextChannel } from './components/TextChannel';
@@ -85,6 +86,7 @@ export default function App() {
   function handleOpenDM(member) {
     setActiveDM(member);
     setSelectedChannel(null);  // сбрасываем выбранный канал
+    markAsRead(member.id);     // помечаем как прочитанные
   }
 
   function handleCloseDM() {
@@ -93,6 +95,9 @@ export default function App() {
 
   // Загрузка зарегистрированных пользователей
   const { members } = useMembers(auth.user);
+  
+  // Получаем непрочитанные ЛС
+  const { unreadCounts, markAsRead } = useUnreadDMs(auth.user?.id, activeDM?.id);
 
   // Загрузка сессии
   if (auth.loading) {
@@ -184,6 +189,7 @@ export default function App() {
         loading={false}
         currentUserId={auth.user?.id}
         onOpenDM={handleOpenDM}
+        unreadCounts={unreadCounts}
       />
 
       {/* Settings Modal */}

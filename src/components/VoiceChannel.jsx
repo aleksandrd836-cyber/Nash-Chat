@@ -36,7 +36,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
     return () => window.removeEventListener('mousedown', handleClick);
   }, [ctxMenu]);
 
-  // Инициализировать громкость из localStorage при подключении участников
+  // Инициализировать громкость из localStorage и следить за изменениями
   useEffect(() => {
     const saved = {};
     participants.forEach(p => {
@@ -44,6 +44,12 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
       saved[p.userId] = stored !== null ? Number(stored) : 100;
     });
     setVolumes(prev => ({ ...prev, ...saved }));
+
+    const handleVolChange = (e) => {
+      setVolumes(prev => ({ ...prev, [e.detail.userId]: e.detail.volumePct }));
+    };
+    window.addEventListener('volumeChanged', handleVolChange);
+    return () => window.removeEventListener('volumeChanged', handleVolChange);
   }, [participants]);
 
   const handleContextMenu = useCallback((e, participant) => {

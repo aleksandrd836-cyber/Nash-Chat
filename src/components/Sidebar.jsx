@@ -57,7 +57,7 @@ export function Sidebar({
     if (editingId && editInputRef.current) editInputRef.current.focus();
   }, [editingId]);
 
-  // Восстановить громкость из localStorage
+  // Восстановить громкость из localStorage и следить за изменениями
   useEffect(() => {
     const all = Object.values(allParticipants).flat();
     const saved = {};
@@ -66,6 +66,12 @@ export function Sidebar({
       if (stored !== null) saved[p.userId] = Number(stored);
     });
     setVolumes(prev => ({ ...saved, ...prev }));
+
+    const handleVolChange = (e) => {
+      setVolumes(prev => ({ ...prev, [e.detail.userId]: e.detail.volumePct }));
+    };
+    window.addEventListener('volumeChanged', handleVolChange);
+    return () => window.removeEventListener('volumeChanged', handleVolChange);
   }, [allParticipants]);
 
   // ── CRUD каналов ──

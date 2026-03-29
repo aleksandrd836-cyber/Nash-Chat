@@ -5,7 +5,7 @@ import { getUserAvatar } from '../lib/avatar';
  * Правая боковая панель — список всех участников сервера.
  * Показывает онлайн/оффлайн статус и кнопку написать в ЛС.
  */
-export function MembersPanel({ members, loading, currentUserId, onOpenDM }) {
+export function MembersPanel({ members, loading, currentUserId, onOpenDM, unreadCounts = {} }) {
   const online  = members.filter(m => m.isOnline);
   const offline = members.filter(m => !m.isOnline);
 
@@ -43,6 +43,7 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM }) {
                       isOnline={true}
                       isSelf={m.id === currentUserId}
                       onOpenDM={onOpenDM}
+                      unreadCount={unreadCounts[m.id] || 0}
                     />
                   ))}
                 </div>
@@ -63,6 +64,7 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM }) {
                       isOnline={false}
                       isSelf={m.id === currentUserId}
                       onOpenDM={onOpenDM}
+                      unreadCount={unreadCounts[m.id] || 0}
                     />
                   ))}
                 </div>
@@ -81,7 +83,7 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM }) {
   );
 }
 
-function MemberRow({ member, isOnline, isSelf, onOpenDM }) {
+function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
   const { imageUrl } = getUserAvatar(member.username);
 
   return (
@@ -122,8 +124,12 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM }) {
         </p>
       </div>
 
-      {/* DM button (hover) */}
-      {!isSelf && (
+      {/* DM button (hover) or Unread Badge */}
+      {!isSelf && unreadCount > 0 ? (
+        <span className="flex-shrink-0 bg-ds-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-lg shadow-ds-red/30 animate-pulse-soft">
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      ) : !isSelf && (
         <button
           className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-ds-muted hover:text-ds-accent hover:bg-ds-bg"
           onClick={e => { e.stopPropagation(); onOpenDM?.(member); }}
