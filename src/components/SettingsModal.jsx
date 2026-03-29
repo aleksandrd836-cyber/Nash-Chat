@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-
-const AVATAR_COLORS = [
-  '#5865F2', '#57F287', '#FEE75C', '#EB459E',
-  '#ED4245', '#3BA55C', '#FAA81A', '#00AFF4',
-  '#B9BBBE', '#9B59B6',
-];
+import { getUserAvatar } from '../lib/avatar';
 
 /**
  * Модальное окно настроек пользователя.
- * - Смена аватарки (цвет + инициал)
+ * - Привязанная аватарка-смайлик
  * - Смена ника
  * - Выбор микрофона
  * - Тест микрофона (слышишь себя)
@@ -19,11 +14,6 @@ export function SettingsModal({ user, username: initialUsername, onClose, onUser
   const [username, setUsername]   = useState(initialUsername ?? '');
   const [savingNick, setSavingNick] = useState(false);
   const [nickMsg, setNickMsg]      = useState(null); // { type: 'ok'|'err', text }
-
-  // ── Аватар ──
-  const [avatarColor, setAvatarColor] = useState(() => {
-    return localStorage.getItem('avatarColor') ?? AVATAR_COLORS[0];
-  });
 
   // ── Микрофон ──
   const [devices, setDevices]         = useState([]);  // список микрофонов
@@ -50,11 +40,6 @@ export function SettingsModal({ user, username: initialUsername, onClose, onUser
     }
     loadDevices();
   }, []);
-
-  // Сохраняем цвет аватара в localStorage
-  useEffect(() => {
-    localStorage.setItem('avatarColor', avatarColor);
-  }, [avatarColor]);
 
   // Сохраняем выбранный микрофон в localStorage
   useEffect(() => {
@@ -143,7 +128,7 @@ export function SettingsModal({ user, username: initialUsername, onClose, onUser
     }
   }
 
-  const initial = (username?.[0] ?? '?').toUpperCase();
+  const { imageUrl, color } = getUserAvatar(username);
 
   return (
     // Backdrop
@@ -170,31 +155,19 @@ export function SettingsModal({ user, username: initialUsername, onClose, onUser
 
           {/* ── Аватар ── */}
           <section>
-            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Аватар</h3>
+            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Привязанный Аватар</h3>
             <div className="flex items-center gap-5">
               {/* Preview */}
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-lg transition-all duration-300"
-                style={{ backgroundColor: avatarColor }}
-              >
-                {initial}
+              <div className="w-[96px] h-[96px] rounded-full flex-shrink-0 bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
+                <img
+                  src={imageUrl}
+                  alt="Аватар профиля"
+                  className="w-[144px] h-[144px] max-w-none select-none"
+                />
               </div>
-              {/* Color picker */}
-              <div className="flex flex-wrap gap-2">
-                {AVATAR_COLORS.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setAvatarColor(color)}
-                    className="w-8 h-8 rounded-full transition-all duration-150 hover:scale-110 flex-shrink-0"
-                    style={{
-                      backgroundColor: color,
-                      outline: avatarColor === color ? `3px solid white` : '3px solid transparent',
-                      outlineOffset: '2px',
-                    }}
-                    title={color}
-                  />
-                ))}
-              </div>
+              <p className="text-xs text-ds-muted max-w-[200px] leading-relaxed">
+                Твоя уникальная вылитая 3D-аватарка генерируется на основе имени.
+              </p>
             </div>
           </section>
 

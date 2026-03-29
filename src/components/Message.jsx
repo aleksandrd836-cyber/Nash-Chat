@@ -1,21 +1,5 @@
-import React, { useState } from 'react';
-
-const COLORS = [
-  '#5865F2','#57F287','#FEE75C','#EB459E',
-  '#ED4245','#9B59B6','#E67E22','#1ABC9C',
-];
-
-/** Стабильный цвет аватара по имени */
-function nameToColor(name = '') {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return COLORS[Math.abs(hash) % COLORS.length];
-}
-
-/** Инициал для аватара */
-function initial(name = '') {
-  return (name[0] ?? '?').toUpperCase();
-}
+import React from 'react';
+import { getUserAvatar } from '../lib/avatar';
 
 /** Компонент для отображения изображения с увеличением по клику */
 function ImageAttachment({ url }) {
@@ -67,12 +51,14 @@ export function Message({ msg, prevMsg }) {
     minute: '2-digit',
   });
   const fullTime = new Date(msg.created_at).toLocaleString('ru-RU');
+  
+  const { imageUrl, color } = getUserAvatar(msg.username);
 
   if (isSameAuthor) {
     return (
       <div className="group flex items-start gap-3 px-4 py-0.5 hover:bg-ds-hover/30 rounded transition-colors">
         {/* Вместо аватара — время при наведении */}
-        <div className="w-10 flex-shrink-0 flex items-center justify-end">
+        <div className="w-[60px] flex-shrink-0 flex items-center justify-end">
           <span className="text-[10px] text-ds-muted hidden group-hover:block">{time}</span>
         </div>
         <div className="flex-1 min-w-0">
@@ -88,11 +74,12 @@ export function Message({ msg, prevMsg }) {
   return (
     <div className="group flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in">
       {/* Аватар */}
-      <div
-        className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-sm select-none"
-        style={{ background: nameToColor(msg.username) }}
-      >
-        {initial(msg.username)}
+      <div className="w-[60px] h-[60px] rounded-full flex-shrink-0 bg-ds-bg shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
+        <img
+          src={imageUrl}
+          alt={msg.username}
+          className="w-[90px] h-[90px] max-w-none select-none"
+        />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -100,7 +87,7 @@ export function Message({ msg, prevMsg }) {
         <div className="flex items-baseline gap-2">
           <span
             className="font-semibold text-sm"
-            style={{ color: nameToColor(msg.username) }}
+            style={{ color: color }}
           >
             {msg.username}
           </span>

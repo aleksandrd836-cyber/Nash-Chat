@@ -1,4 +1,5 @@
 import React from 'react';
+import { getUserAvatar } from '../lib/avatar';
 
 /**
  * Панель голосового канала.
@@ -63,18 +64,22 @@ export function VoiceChannel({ channel, user, username, voice }) {
         {/* Participants grid */}
         {isInThisChannel && participants.length > 0 && (
           <div className="flex flex-wrap gap-4 justify-center max-w-md">
-            {participants.map((p) => (
+            {participants.map((p) => {
+              const { imageUrl, color } = getUserAvatar(p.username);
+              return (
               <div key={p.userId} className="flex flex-col items-center gap-2 animate-fade-in">
-                <div className="w-16 h-16 rounded-full bg-ds-green/20 border-2 border-ds-green/50 flex items-center justify-center">
-                  <span className="text-ds-green font-bold text-xl">
-                    {(p.username?.[0] ?? '?').toUpperCase()}
-                  </span>
+                <div className="w-[96px] h-[96px] rounded-full bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
+                  <img
+                    src={imageUrl}
+                    alt={p.username}
+                    className="w-[144px] h-[144px] max-w-none select-none"
+                  />
                 </div>
                 <span className="text-ds-text text-xs font-medium truncate max-w-[72px]">
                   {p.username ?? 'Аноним'}
                 </span>
               </div>
-            ))}
+            )})}
           </div>
         )}
 

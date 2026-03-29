@@ -1,4 +1,5 @@
 import React from 'react';
+import { getUserAvatar } from '../lib/avatar';
 
 /**
  * Нижняя панель пользователя (слева в сайдбаре).
@@ -6,21 +7,21 @@ import React from 'react';
  */
 export function UserPanel({ username, onSignOut, voice, onOpenSettings }) {
   const { activeChannelId, isMuted, toggleMute, leaveVoiceChannel } = voice;
-  const initial     = (username?.[0] ?? '?').toUpperCase();
-  const avatarColor = localStorage.getItem('avatarColor') ?? '#5865F2';
+  const { imageUrl, color } = getUserAvatar(username);
 
   return (
     <div className="h-14 bg-ds-servers flex-shrink-0 flex items-center px-2 gap-2 border-t border-ds-divider/30">
       {/* Avatar */}
-      <div className="relative flex-shrink-0">
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm select-none"
-          style={{ backgroundColor: avatarColor }}
-        >
-          {initial}
+      <div className="relative flex-shrink-0 w-12 h-12 rounded-full bg-ds-bg shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] flex items-center justify-center">
+        <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
+          <img
+            src={imageUrl}
+            alt={username}
+            className="w-[72px] h-[72px] max-w-none select-none"
+          />
         </div>
         {/* Online dot */}
-        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-ds-green border-2 border-ds-servers" />
+        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-ds-green border-2 border-ds-servers z-10" />
       </div>
 
       {/* Username */}

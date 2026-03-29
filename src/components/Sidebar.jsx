@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserPanel } from './UserPanel';
+import { getUserAvatar } from '../lib/avatar';
 
 /**
  * Боковая панель со списком каналов.
@@ -99,16 +100,20 @@ export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut,
                     {/* Показываем участников голосового канала всем */}
                     {chParticipants.length > 0 && (
                       <div className="ml-6 mt-0.5 space-y-0.5">
-                        {chParticipants.map(p => (
+                        {chParticipants.map(p => {
+                          const { imageUrl, color } = getUserAvatar(p.username);
+                          return (
                           <div key={p.userId} className="flex items-center gap-1.5 px-2 py-0.5">
-                            <div className="w-5 h-5 rounded-full bg-ds-green/20 border border-ds-green/40 flex items-center justify-center">
-                              <span className="text-[9px] text-ds-green font-bold">
-                                {(p.username?.[0] ?? '?').toUpperCase()}
-                              </span>
+                            <div className="w-[30px] h-[30px] rounded-full bg-ds-bg shadow-[inset_0_0_5px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
+                              <img
+                                src={imageUrl}
+                                alt={p.username}
+                                className="w-[45px] h-[45px] max-w-none select-none"
+                              />
                             </div>
                             <span className="text-[11px] text-ds-muted truncate">{p.username}</span>
                           </div>
-                        ))}
+                        )})}
                       </div>
                     )}
                   </div>
