@@ -2,7 +2,7 @@ const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
-const APP_URL = 'https://nash-chat1.pages.dev/';
+const APP_URL = 'https://vbchat.ru/';
 
 let mainWindow;
 let splashWindow;
