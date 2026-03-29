@@ -57,13 +57,34 @@ export function useVoice() {
     
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
-      const newAll = {};
+      
+      // Дедубликация: 
+      // Если у пользователя зависла старая сессия (призрак), мы оставляем только ту, где joined_at новее.
+      const latestUserPresence = new Map();
+
       Object.values(state).flat().forEach(p => {
-        if (p.channelId && p.userId && p.username) {
-          if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
-          newAll[p.channelId].set(p.userId, { userId: p.userId, username: p.username, color: p.color, isScreenSharing: p.isScreenSharing });
+        if (!p.channelId || !p.userId || !p.username) return;
+        
+        const existing = latestUserPresence.get(p.userId);
+        if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
+          latestUserPresence.set(p.userId, p);
+        } else if (!existing && !p.joined_at) {
+          // Фолбэк на старые форматы, если они есть
+          latestUserPresence.set(p.userId, p);
         }
       });
+
+      const newAll = {};
+      latestUserPresence.forEach(p => {
+        if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
+        newAll[p.channelId].set(p.userId, { 
+          userId: p.userId, 
+          username: p.username, 
+          color: p.color, 
+          isScreenSharing: p.isScreenSharing 
+        });
+      });
+
       const finalAll = {};
       Object.keys(newAll).forEach(chId => {
         finalAll[chId] = Array.from(newAll[chId].values());
@@ -409,7 +430,7 @@ export function useVoice() {
       if (status === 'SUBSCRIBED') {
         await channel.track({ userId: user.id, username, color });
         if (globalPresence.current) {
-          await globalPresence.current.track({ channelId, userId: user.id, username, color });
+          await globalPresence.current.track({ channelId, userId: user.id, username, color, joined_at: Date.now() });
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
