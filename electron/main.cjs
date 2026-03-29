@@ -149,8 +149,12 @@ app.whenReady().then(() => {
   createWindow();   // грузим в фоне
 
   // ── Автообновление ──
-  autoUpdater.autoDownload = false;   // скачиваем только по запросу пользователя
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
+  // Токен для доступа к приватному репозиторию
+  autoUpdater.requestHeaders = {
+    Authorization: `token ${process.env.GH_TOKEN || ''}`,
+  };
 
   autoUpdater.on('update-available', (info) => {
     mainWindow?.webContents.send('update-available', info);
