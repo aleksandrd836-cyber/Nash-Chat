@@ -1,6 +1,50 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 
+
+function ScreenPlayer({ participant, stream }) {
+  const videoRef = useRef(null);
+  const [vol, setVol] = useState(1);
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      // 0..1 range
+      videoRef.current.volume = vol;
+    }
+  }, [vol]);
+
+  return (
+    <div className="relative w-full max-w-4xl bg-black rounded-xl overflow-hidden shadow-2xl ring-2 ring-ds-divider group animate-fade-in mx-auto flex-shrink-0">
+      <video ref={videoRef} autoPlay className="w-full h-auto max-h-[70vh] object-contain" />
+      
+      {/* Overlay UI */}
+      <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-ds-red animate-pulse" />
+          <span className="text-white text-sm font-semibold">{participant.username} транслирует</span>
+        </div>
+        
+        <div className="flex items-center gap-2 ml-auto">
+          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+          <input 
+            type="range" min="0" max="1" step="0.05" value={vol} 
+            onChange={e => setVol(Number(e.target.value))}
+            className="w-24 h-1 rounded-full accent-ds-accent cursor-pointer"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Панель голосового канала.
  * Отображается вместо TextChannel, когда выбран voice-канал.
@@ -10,12 +54,18 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
   const {
     activeChannelId,
     participants,
+    allParticipants,
     isMuted,
     isConnecting,
+    isScreenSharing,
+    remoteScreens,
     joinVoiceChannel,
     leaveVoiceChannel,
     toggleMute,
     setParticipantVolume,
+    startScreenShare,
+    stopScreenShare,
+    requestScreenView,
   } = voice;
 
   const isInThisChannel = activeChannelId === channel?.id;
@@ -23,6 +73,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
   // ── Контекстное меню ──
   const [ctxMenu, setCtxMenu] = useState(null); // { participant, x, y }
   const [volumes, setVolumes] = useState({});    // { [userId]: number 0-200 }
+  const [quality, setQuality] = useState('720p'); // качество стрима
   const menuRef = useRef(null);
 
   // Закрыть меню при клике вне его
@@ -111,11 +162,18 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
 
         {/* Participants grid */}
         {isInThisChannel && participants.length > 0 && (
-          <div className="flex flex-wrap gap-6 justify-center max-w-lg">
+          <div className="flex flex-wrap gap-6 justify-center w-full max-w-6xl">
             {participants.map((p) => {
               const { imageUrl } = getUserAvatar(p.username);
               const isMe = p.userId === user?.id;
               const vol = volumes[p.userId] ?? 100;
+              const stream = remoteScreens[p.userId];
+
+              // Если есть видеопоток — рендерим плеер
+              if (stream) {
+                return <ScreenPlayer key={`screen-${p.userId}`} participant={p} stream={stream} />;
+              }
+
               return (
                 <div
                   key={p.userId}
@@ -154,7 +212,22 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
                   </p>
                   {/* Маленький индикатор громкости под именем */}
                   {!isMe && vol !== 100 && (
-                    <p className="text-[10px] text-ds-muted -mt-1">{vol}%</p>
+                    <p className="text-[10px] text-ds-muted -mt-1 w-full text-center">{vol}%</p>
+                  )}
+                  {/* Кнопка запроса стрима */}
+                  {p.isScreenSharing && !isMe && !stream && (
+                    <button 
+                      onClick={() => requestScreenView(p.userId)}
+                      className="mt-1 bg-ds-accent text-white px-3 py-1 rounded-full text-[10px] uppercase font-bold hover:bg-ds-accent/90 shadow-lg shadow-ds-accent/20 animate-pulse-soft"
+                    >
+                      Смотреть стрим
+                    </button>
+                  )}
+                  {/* Индикатор для самого стримера */}
+                  {isMe && isScreenSharing && (
+                    <span className="mt-1 text-ds-green text-[10px] uppercase font-bold animate-pulse-soft">
+                      Идет трансляция
+                    </span>
                   )}
                 </div>
               );
@@ -189,45 +262,82 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
               )}
             </button>
           ) : (
-            <div className="flex gap-3 w-full">
-              {/* Mute toggle */}
-              <button
-                id="mute-btn"
-                onClick={toggleMute}
-                className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-150 flex items-center justify-center gap-2
-                  ${isMuted
-                    ? 'bg-ds-red/20 border border-ds-red/50 text-ds-red hover:bg-ds-red/30'
-                    : 'bg-ds-input hover:bg-ds-hover text-ds-text border border-ds-divider/30'
-                  }`}
-              >
-                {isMuted ? (
-                  <>
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
-                    </svg>
-                    Включить
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 15c1.66 0 2.99-1.34 2.99-3L15 6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 15 6.7 12H5c0 3.42 2.72 6.23 6 6.72V22h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
-                    </svg>
-                    Микрофон вкл.
-                  </>
-                )}
-              </button>
+            <div className="flex flex-col gap-3 w-full">
+              <div className="flex gap-3 w-full">
+                {/* Mute toggle */}
+                <button
+                  id="mute-btn"
+                  onClick={toggleMute}
+                  className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-150 flex items-center justify-center gap-2
+                    ${isMuted
+                      ? 'bg-ds-red/20 border border-ds-red/50 text-ds-red hover:bg-ds-red/30'
+                      : 'bg-ds-input hover:bg-ds-hover text-ds-text border border-ds-divider/30'
+                    }`}
+                >
+                  {isMuted ? (
+                    <>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
+                      </svg>
+                      Включить
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 15c1.66 0 2.99-1.34 2.99-3L15 6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 15 6.7 12H5c0 3.42 2.72 6.23 6 6.72V22h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+                      </svg>
+                      Микрофон вкл.
+                    </>
+                  )}
+                </button>
+  
+                {/* Leave */}
+                <button
+                  id="leave-voice-btn"
+                  onClick={leaveVoiceChannel}
+                  className="py-3 px-4 rounded-xl bg-ds-red/15 hover:bg-ds-red/25 text-ds-red border border-ds-red/30 font-semibold transition-all duration-150 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M10.9 15.6L9.4 17c-.99-.63-1.88-1.42-2.58-2.34l1.59-1.59c.55.73 1.22 1.37 2.49 2.53zm7.42-7.23c-.68-.7-1.5-1.3-2.43-1.76l-1.59 1.59c.89.59 1.66 1.34 2.18 2.12l1.84-1.95zM21 1l-3 3c-.9-.52-1.87-.91-2.91-1.14L14 6c1.08.17 2.09.55 3 1.13L15.13 9H21v5.86L17 17v4l-3-3-.68.68L2.75 8l-.75.75 3 3v.11c0 3.63 1.78 6.84 4.5 8.82l2.05-2.05C9.77 17.46 9 15.79 9 14v-.13l1.9 1.9L12 14.13V21h-2L7 24l4-4v-2h5.86L19 16v6l4-4-3-3V3l1-2z"/>
+                  </svg>
+                  Выйти
+                </button>
+              </div>
 
-              {/* Leave */}
-              <button
-                id="leave-voice-btn"
-                onClick={leaveVoiceChannel}
-                className="py-3 px-4 rounded-xl bg-ds-red/15 hover:bg-ds-red/25 text-ds-red border border-ds-red/30 font-semibold transition-all duration-150 flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M10.9 15.6L9.4 17c-.99-.63-1.88-1.42-2.58-2.34l1.59-1.59c.55.73 1.22 1.37 2.49 2.53zm7.42-7.23c-.68-.7-1.5-1.3-2.43-1.76l-1.59 1.59c.89.59 1.66 1.34 2.18 2.12l1.84-1.95zM21 1l-3 3c-.9-.52-1.87-.91-2.91-1.14L14 6c1.08.17 2.09.55 3 1.13L15.13 9H21v5.86L17 17v4l-3-3-.68.68L2.75 8l-.75.75 3 3v.11c0 3.63 1.78 6.84 4.5 8.82l2.05-2.05C9.77 17.46 9 15.79 9 14v-.13l1.9 1.9L12 14.13V21h-2L7 24l4-4v-2h5.86L19 16v6l4-4-3-3V3l1-2z"/>
-                </svg>
-                Выйти
-              </button>
+              {/* Share screen connection */}
+              {!isScreenSharing ? (
+                <div className="flex gap-2 w-full mt-2">
+                  <select 
+                    value={quality} 
+                    onChange={e => setQuality(e.target.value)}
+                    className="bg-ds-bg text-ds-text text-xs rounded-lg border border-ds-divider/30 px-2 outline-none focus:border-ds-accent cursor-pointer"
+                  >
+                    <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
+                    <option value="480p">480p</option>
+                    <option value="360p">360p</option>
+                  </select>
+                  <button 
+                    onClick={() => startScreenShare(quality, user)}
+                    className="flex-1 py-2.5 rounded-xl bg-ds-accent/10 hover:bg-ds-accent/20 text-ds-accent border border-ds-accent/30 font-semibold transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M21 3H3c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.11-.9-2-2-2zm0 14H3V5h18v12z"/>
+                    </svg>
+                    Демонстрация
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => stopScreenShare(user)}
+                  className="w-full mt-2 py-2.5 rounded-xl bg-ds-red hover:bg-ds-red/90 text-white font-semibold transition-colors flex items-center justify-center gap-2 text-sm shadow-lg shadow-ds-red/30 animate-pulse-soft"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 3H3c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.11-.9-2-2-2zM9.5 13.5l1.41-1.41L12.5 13.5l1.41-1.41-1.59-1.59 1.59-1.59-1.41-1.41L12.5 9.09l-1.59-1.59-1.41 1.41L11.09 10.5l-1.59 1.59 1.41 1.41z"/>
+                  </svg>
+                  Остановить трансляцию
+                </button>
+              )}
             </div>
           )}
 

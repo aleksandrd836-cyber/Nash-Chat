@@ -27,6 +27,11 @@ export function useVoice() {
   const [allParticipants, setAllParticipants]  = useState({});     // глобальный список: кто в каком канале
   const [isMuted, setIsMuted]                  = useState(false);
   const [isConnecting, setIsConnecting]        = useState(false);
+  
+  const [isScreenSharing, setIsScreenSharing]  = useState(false);
+  const [remoteScreens, setRemoteScreens]      = useState({}); // { [userId]: MediaStream }
+
+  const screenStreamRef  = useRef(null);
 
   const localStream      = useRef(null);
   const globalPresence   = useRef(null);
@@ -45,7 +50,7 @@ export function useVoice() {
       Object.values(state).flat().forEach(p => {
         if (p.channelId && p.userId && p.username) {
           if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
-          newAll[p.channelId].set(p.userId, { userId: p.userId, username: p.username, color: p.color });
+          newAll[p.channelId].set(p.userId, { userId: p.userId, username: p.username, color: p.color, isScreenSharing: p.isScreenSharing });
         }
       });
       const finalAll = {};
@@ -75,20 +80,48 @@ export function useVoice() {
       pc.addTrack(track, localStream.current);
     });
 
-    // Получаем аудио от собеседника
-    pc.ontrack = (event) => {
-      if (!audioElements.current[remoteUserId]) {
-        const audio = new Audio();
-        audio.autoplay = true;
-        // Применяем выбранное пользователем устройство вывода (если поддерживается)
-        const outputDeviceId = localStorage.getItem('outputDeviceId');
-        if (outputDeviceId && typeof audio.setSinkId === 'function') {
-          audio.setSinkId(outputDeviceId).catch(() => {});
+    // Обработка renegotiation (необходима для добавления видеопотоков на лету)
+    pc.onnegotiationneeded = async () => {
+      try {
+        if (pc.signalingState !== 'stable') return;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        if (realtimeChannel.current && currentUserRef.current) {
+          realtimeChannel.current.send({
+            type: 'broadcast',
+            event: 'offer',
+            payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: offer },
+          });
         }
-        audioElements.current[remoteUserId] = audio;
+      } catch (err) {
+        console.error('onnegotiationneeded error', err);
       }
-      audioElements.current[remoteUserId].srcObject = event.streams[0];
-      audioElements.current[remoteUserId].play().catch(() => {});
+    };
+
+    // Получаем аудио/видео от собеседника
+    pc.ontrack = (event) => {
+      const stream = event.streams[0];
+      
+      // Логика разграничения: если у нас уже создан аудио-плеер для голоса, 
+      // и приходит поток с ДРУГИМ ID, значит это стрим демонстрации экрана.
+      // (т.к. голос всегда подключается первым).
+      if (audioElements.current[remoteUserId] && audioElements.current[remoteUserId].srcObject?.id !== stream.id) {
+        setRemoteScreens(prev => ({ ...prev, [remoteUserId]: stream }));
+      } else {
+        // Это голосовой поток
+        if (!audioElements.current[remoteUserId]) {
+          const audio = new Audio();
+          audio.autoplay = true;
+          // Применяем выбранное пользователем устройство вывода (если поддерживается)
+          const outputDeviceId = localStorage.getItem('outputDeviceId');
+          if (outputDeviceId && typeof audio.setSinkId === 'function') {
+            audio.setSinkId(outputDeviceId).catch(() => {});
+          }
+          audioElements.current[remoteUserId] = audio;
+        }
+        audioElements.current[remoteUserId].srcObject = event.streams[0];
+        audioElements.current[remoteUserId].play().catch(() => {});
+      }
     };
 
     // Шлём ICE-кандидатов через Supabase Broadcast
@@ -135,20 +168,24 @@ export function useVoice() {
     if (globalPresence.current) {
       try { await globalPresence.current.untrack(); } catch {} // удаляем себя из всех списков
     }
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(t => t.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+    setRemoteScreens({});
     setActiveChannelId(null);
     setParticipants([]);
     setIsMuted(false);
     currentUserRef.current = null;
   }, [closePeer]);
 
-  /** Обновить список участников из Presence-состояния (с дедупликацией) */
+  /** Обновить список участников из Presence-состояния */
   const syncParticipants = useCallback((channel) => {
     const state = channel.presenceState();
-    // flat() — у одного ключа может быть несколько presence-записей (реконнект)
-    // Дедупликация по userId — берём последнюю запись для каждого
     const seen = new Map();
     Object.values(state).flat().forEach((p) => {
-      seen.set(p.userId, { userId: p.userId, username: p.username, color: p.color });
+      seen.set(p.userId, { userId: p.userId, username: p.username, color: p.color, isScreenSharing: p.isScreenSharing });
     });
     setParticipants(Array.from(seen.values()));
   }, []);
@@ -184,17 +221,10 @@ export function useVoice() {
     });
 
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
-      // Существующие пользователи инициируют оффер новому участнику
-      newPresences.forEach(async (p) => {
-        if (p.userId === user.id) return; // не соединяться с самим собой
-        const pc    = createPeerConnection(p.userId);
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        channel.send({
-          type: 'broadcast',
-          event: 'offer',
-          payload: { from: user.id, to: p.userId, sdp: offer },
-        });
+      // Существующие пользователи создают PeerConnection (onnegotiationneeded сам создаст offer)
+      newPresences.forEach((p) => {
+        if (p.userId === user.id) return;
+        createPeerConnection(p.userId);
       });
       syncParticipants(channel);
     });
@@ -234,6 +264,24 @@ export function useVoice() {
       }
     });
 
+    // Обработка запроса на трансляцию
+    channel.on('broadcast', { event: 'request-stream' }, async ({ payload }) => {
+      if (payload.to !== user.id) return;
+      if (!screenStreamRef.current) return;
+      
+      const pc = peerConns.current[payload.from];
+      if (pc) {
+        // Добавляем дорожки экрана. Это триггернет onnegotiationneeded (renegotiation)
+        screenStreamRef.current.getTracks().forEach(track => {
+          // Проверяем, не добавлены ли уже
+          const senders = pc.getSenders();
+          if (!senders.some(s => s.track === track)) {
+            pc.addTrack(track, screenStreamRef.current);
+          }
+        });
+      }
+    });
+
     // Подписываемся и публикуем своё присутствие
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
@@ -263,6 +311,75 @@ export function useVoice() {
   }, []);
 
   /**
+   * Трансляция экрана
+   */
+  const RESOLUTIONS = {
+    '1080p': { width: 1920, height: 1080 },
+    '720p':  { width: 1280, height: 720 },
+    '480p':  { width: 854,  height: 480 },
+    '360p':  { width: 640,  height: 360 },
+  };
+
+  const startScreenShare = useCallback(async (quality = '720p', currentUser) => {
+    try {
+      const res = RESOLUTIONS[quality] || RESOLUTIONS['720p'];
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { width: { ideal: res.width }, height: { ideal: res.height }, frameRate: { ideal: 30 } },
+        audio: true, // Системный звук трансляции
+      });
+      
+      screenStreamRef.current = stream;
+      setIsScreenSharing(true);
+      
+      // Обновляем статус в Presence, чтобы появилась кнопка у других
+      if (realtimeChannel.current && currentUser.id) {
+        const state = realtimeChannel.current.presenceState()[currentUser.id]?.[0] || {};
+        await realtimeChannel.current.track({ ...state, isScreenSharing: true });
+      }
+
+      // Если закрыли доступ на уровне браузера
+      stream.getVideoTracks()[0].onended = () => {
+        stopScreenShare(currentUser);
+      };
+    } catch (err) {
+      console.error('Screen sharing error', err);
+    }
+  }, []);
+
+  const stopScreenShare = useCallback(async (currentUser) => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(t => t.stop());
+      
+      // Удаляем треки у всех слушателей
+      Object.values(peerConns.current).forEach(pc => {
+        pc.getSenders().forEach(sender => {
+          if (sender.track && screenStreamRef.current.getTracks().includes(sender.track)) {
+            pc.removeTrack(sender);
+          }
+        });
+      });
+      
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+    
+    if (realtimeChannel.current && currentUser?.id) {
+      const state = realtimeChannel.current.presenceState()[currentUser.id]?.[0] || {};
+      await realtimeChannel.current.track({ ...state, isScreenSharing: false });
+    }
+  }, []);
+
+  const requestScreenView = useCallback((targetUserId) => {
+    if (realtimeChannel.current && currentUserRef.current) {
+      realtimeChannel.current.send({
+        type: 'broadcast',
+        event: 'request-stream',
+        payload: { from: currentUserRef.current.id, to: targetUserId },
+      });
+    }
+  }, []);
+
+  /**
    * Установить громкость конкретного участника (0–200).
    * 100 = нормальная, 200 = максимальная, 0 = заглушить.
    * Применяется прямо к HTMLAudioElement.volume (0..2 через GainNode невозможен без Web Audio).
@@ -285,9 +402,14 @@ export function useVoice() {
     allParticipants,
     isMuted,
     isConnecting,
+    isScreenSharing,
+    remoteScreens,
     joinVoiceChannel,
     leaveVoiceChannel,
     toggleMute,
     setParticipantVolume,
+    startScreenShare,
+    stopScreenShare,
+    requestScreenView,
   };
 }
