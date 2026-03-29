@@ -17,9 +17,44 @@ function initial(name = '') {
   return (name[0] ?? '?').toUpperCase();
 }
 
+/** Компонент для отображения изображения с увеличением по клику */
+function ImageAttachment({ url }) {
+  const [fullscreen, setFullscreen] = useState(false);
+  return (
+    <>
+      <img
+        src={url}
+        alt="Вложение"
+        onClick={() => setFullscreen(true)}
+        className="mt-2 max-w-sm max-h-72 rounded-xl object-cover cursor-pointer hover:opacity-95 transition-opacity border border-ds-divider/30"
+      />
+      {fullscreen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setFullscreen(false)}
+        >
+          <img
+            src={url}
+            alt="Вложение (полный размер)"
+            className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+          />
+          <button
+            className="absolute top-4 right-4 w-9 h-9 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+            onClick={() => setFullscreen(false)}
+          >
+            <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 /**
  * Компонент одного сообщения.
- * Поддерживает compact-режим (компактный показ если тот же автор и < 5 мин)
+ * Поддерживает compact-режим и отображение прикреплённых изображений.
  */
 export function Message({ msg, prevMsg }) {
   const isSameAuthor =
@@ -40,7 +75,12 @@ export function Message({ msg, prevMsg }) {
         <div className="w-10 flex-shrink-0 flex items-center justify-end">
           <span className="text-[10px] text-ds-muted hidden group-hover:block">{time}</span>
         </div>
-        <p className="text-ds-text text-sm leading-relaxed break-words flex-1">{msg.content}</p>
+        <div className="flex-1 min-w-0">
+          {msg.content && (
+            <p className="text-ds-text text-sm leading-relaxed break-words">{msg.content}</p>
+          )}
+          {msg.image_url && <ImageAttachment url={msg.image_url} />}
+        </div>
       </div>
     );
   }
@@ -68,7 +108,12 @@ export function Message({ msg, prevMsg }) {
         </div>
 
         {/* Текст */}
-        <p className="text-ds-text text-sm leading-relaxed break-words">{msg.content}</p>
+        {msg.content && (
+          <p className="text-ds-text text-sm leading-relaxed break-words">{msg.content}</p>
+        )}
+
+        {/* Изображение */}
+        {msg.image_url && <ImageAttachment url={msg.image_url} />}
       </div>
     </div>
   );

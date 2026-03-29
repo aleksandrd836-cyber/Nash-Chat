@@ -54,19 +54,33 @@ export function useMessages(channelId) {
     };
   }, [channelId]);
 
-  /** Отправить сообщение */
-  const sendMessage = useCallback(async (content, userId, username) => {
-    if (!content.trim() || !channelId) return;
+  /** Загрузить файл в Supabase Storage, вернуть публичный URL */
+  const uploadFile = useCallback(async (file) => {
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage
+      .from('chat-images')
+      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+    return data.publicUrl;
+  }, []);
+
+  /** Отправить сообщение (text и/или image_url) */
+  const sendMessage = useCallback(async (content, userId, username, imageUrl = null) => {
+    if (!content.trim() && !imageUrl) return;
+    if (!channelId) return;
     setSending(true);
     const { error } = await supabase.from('messages').insert({
       channel_id: channelId,
       user_id: userId,
       username,
       content: content.trim(),
+      image_url: imageUrl ?? null,
     });
     setSending(false);
     if (error) console.error('Ошибка отправки:', error);
   }, [channelId]);
 
-  return { messages, loading, sending, sendMessage };
+  return { messages, loading, sending, sendMessage, uploadFile };
 }
