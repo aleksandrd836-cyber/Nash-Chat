@@ -17,8 +17,9 @@ export default function App() {
 
   // Состояние обновления: idle | checking | available | downloading | ready | error
   const [updateStatus,   setUpdateStatus]   = useState('idle');
-  const [updateInfo,     setUpdateInfo]     = useState(null);   // { version }
-  const [updateProgress, setUpdateProgress] = useState(0);      // 0-100
+  const [updateInfo,     setUpdateInfo]     = useState(null);
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateError,    setUpdateError]    = useState('');
 
   const isElectron = !!window.electronAPI;
 
@@ -37,14 +38,16 @@ export default function App() {
     api.onUpdateDownloaded(() => setUpdateStatus('ready'));
     api.onUpdateError((msg) => {
       console.error('Update error:', msg);
+      setUpdateError(msg);
       setUpdateStatus('error');
     });
   }, [isElectron]);
 
   const handleCheckUpdate = async () => {
     setUpdateStatus('checking');
+    setUpdateError('');
     try { await window.electronAPI.checkForUpdates(); }
-    catch { setUpdateStatus('error'); }
+    catch (e) { setUpdateError(e?.message || String(e)); setUpdateStatus('error'); }
   };
 
   const handleDownload = async () => {
@@ -182,9 +185,10 @@ export default function App() {
         {isElectron && updateStatus === 'error' && (
           <button
             onClick={handleCheckUpdate}
-            className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors"
+            title={updateError || 'Неизвестная ошибка'}
+            className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors max-w-[200px] truncate"
           >
-            ошибка, повторить
+            ⚠ {updateError ? updateError.slice(0, 40) : 'ошибка'} — повторить
           </button>
         )}
       </div>
