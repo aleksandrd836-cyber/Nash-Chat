@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useVoice } from './hooks/useVoice';
+import { useMembers } from './hooks/useMembers';
 import { AuthPage } from './components/AuthPage';
 import { Sidebar } from './components/Sidebar';
 import { TextChannel } from './components/TextChannel';
 import { VoiceChannel } from './components/VoiceChannel';
 import { SettingsModal } from './components/SettingsModal';
+import { MembersPanel } from './components/MembersPanel';
+import { DirectMessagePanel } from './components/DirectMessagePanel';
 
 export default function App() {
   const auth  = useAuth();
@@ -15,6 +18,9 @@ export default function App() {
   const [settingsOpen, setSettingsOpen]       = useState(false);
   const [localUsername, setLocalUsername]     = useState(null);
   const [localColor, setLocalColor]           = useState(null);
+
+  // DM: открытый диалог с участником
+  const [activeDM, setActiveDM] = useState(null);  // member object | null
 
   // Инициализируем localColor из user_metadata при первом получении данных пользователя
   useEffect(() => {
@@ -72,8 +78,21 @@ export default function App() {
   const displayColor    = localColor || null;
 
   function handleSelectChannel(channel) {
+    setActiveDM(null);   // закрываем DM при переходе в канал
     setSelectedChannel(channel);
   }
+
+  function handleOpenDM(member) {
+    setActiveDM(member);
+    setSelectedChannel(null);  // сбрасываем выбранный канал
+  }
+
+  function handleCloseDM() {
+    setActiveDM(null);
+  }
+
+  // Загрузка зарегистрированных пользователей
+  const { members } = useMembers(auth.user);
 
   // Загрузка сессии
   if (auth.loading) {
@@ -111,10 +130,27 @@ export default function App() {
         onSignOut={auth.signOut}
         voice={voice}
         onOpenSettings={() => setSettingsOpen(true)}
+        updateStatus={updateStatus}
+        updateInfo={updateInfo}
+        updateProgress={updateProgress}
+        updateError={updateError}
+        isElectron={isElectron}
+        onCheckUpdate={handleCheckUpdate}
+        onDownload={handleDownload}
+        onInstall={handleInstall}
+        appVersion={typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''}
       />
 
       <main className="flex-1 flex min-w-0 overflow-hidden">
-        {!selectedChannel ? (
+        {activeDM ? (
+          <DirectMessagePanel
+            currentUser={auth.user}
+            username={displayUsername}
+            userColor={displayColor}
+            targetMember={members.find(m => m.id === activeDM.id) ?? activeDM}
+            onClose={handleCloseDM}
+          />
+        ) : !selectedChannel ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
             <div className="w-20 h-20 rounded-full bg-ds-sidebar flex items-center justify-center">
               <span className="text-4xl">👋</span>
@@ -142,6 +178,14 @@ export default function App() {
         )}
       </main>
 
+      {/* Right members panel */}
+      <MembersPanel
+        members={members}
+        loading={false}
+        currentUserId={auth.user?.id}
+        onOpenDM={handleOpenDM}
+      />
+
       {/* Settings Modal */}
       {settingsOpen && (
         <SettingsModal
@@ -157,67 +201,6 @@ export default function App() {
           }}
         />
       )}
-
-      {/* Version + Update widget */}
-      <div className="fixed bottom-2 right-3 z-50 flex items-center gap-2">
-        {/* Версия — видна всегда */}
-        <span className="text-[10px] text-ds-muted/50 font-mono">
-          v{isElectron ? window.electronAPI.version : APP_VERSION}
-        </span>
-
-        {/* Кнопка обновления — только в Electron */}
-        {isElectron && updateStatus === 'idle' && (
-          <button
-            onClick={handleCheckUpdate}
-            title="Проверить обновления"
-            className="text-[10px] text-ds-muted/40 hover:text-ds-accent transition-colors cursor-pointer"
-          >
-            ↑ обновления
-          </button>
-        )}
-
-        {isElectron && updateStatus === 'checking' && (
-          <span className="text-[10px] text-ds-muted animate-pulse">проверка...</span>
-        )}
-
-        {isElectron && updateStatus === 'uptodate' && (
-          <span className="text-[10px] text-ds-green/70">✓ актуальная версия</span>
-        )}
-
-        {isElectron && updateStatus === 'available' && (
-          <button
-            onClick={handleDownload}
-            className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity"
-          >
-            ↓ v{updateInfo?.version}
-          </button>
-        )}
-
-        {isElectron && updateStatus === 'downloading' && (
-          <span className="text-[10px] text-ds-accent animate-pulse">
-            ↓ {updateProgress}%
-          </span>
-        )}
-
-        {isElectron && updateStatus === 'ready' && (
-          <button
-            onClick={handleInstall}
-            className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 transition-opacity animate-pulse"
-          >
-            ↻ перезапустить
-          </button>
-        )}
-
-        {isElectron && updateStatus === 'error' && (
-          <button
-            onClick={handleCheckUpdate}
-            title={updateError || 'Неизвестная ошибка'}
-            className="text-[10px] text-ds-red/70 hover:text-ds-red transition-colors"
-          >
-            ошибка, повторить
-          </button>
-        )}
-      </div>
     </div>
   );
 }

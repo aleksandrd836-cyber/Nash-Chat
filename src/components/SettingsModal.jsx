@@ -133,11 +133,21 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
       // Обновляем старые сообщения этого пользователя!
       let messagesError = null;
       if (user?.id && !error) {
-        const res = await supabase
-          .from('messages')
-          .update({ username: `${username.trim()}@@${color}` })
-          .eq('user_id', user.id);
-        messagesError = res.error;
+        const [res, profileRes, dmRes] = await Promise.all([
+          supabase
+            .from('messages')
+            .update({ username: `${username.trim()}@@${color}` })
+            .eq('user_id', user.id),
+          supabase
+            .from('profiles')
+            .update({ username: username.trim(), color: color })
+            .eq('id', user.id),
+          supabase
+            .from('direct_messages')
+            .update({ sender_username: username.trim(), sender_color: color })
+            .eq('sender_id', user.id)
+        ]);
+        messagesError = res.error || profileRes.error || dmRes.error;
       }
 
       setSavingNick(false);

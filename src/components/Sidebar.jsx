@@ -8,7 +8,10 @@ import { getUserAvatar } from '../lib/avatar';
  * Поддерживает: создание, переименование, удаление каналов.
  * ПКМ по участникам голосовых каналов — микшер громкости.
  */
-export function Sidebar({ username, userColor, selectedChannel, onSelectChannel, onSignOut, voice, onOpenSettings, currentUserId }) {
+export function Sidebar({ 
+  username, userColor, selectedChannel, onSelectChannel, onSignOut, voice, onOpenSettings, currentUserId,
+  updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion
+}) {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading]   = useState(true);
 
@@ -365,6 +368,69 @@ export function Sidebar({ username, userColor, selectedChannel, onSelectChannel,
 
       {/* User panel */}
       <UserPanel username={username} userColor={userColor} onSignOut={onSignOut} voice={voice} onOpenSettings={onOpenSettings} />
+
+      {/* Version + Update widget at bottom left */}
+      <div className="flex items-center gap-2 px-3 pb-2 bg-ds-servers text-ds-muted/50 flex-shrink-0 relative z-10 -mt-1 pt-1">
+        <span className="text-[10px] font-mono">
+          v{isElectron ? window.electronAPI.version : appVersion}
+        </span>
+
+        {isElectron && (
+          <div className="ml-auto pointer-events-auto">
+            {updateStatus === 'idle' && (
+              <button
+                onClick={onCheckUpdate}
+                title="Проверить обновления"
+                className="text-[10px] hover:text-ds-accent transition-colors cursor-pointer"
+              >
+                ↑ обновления
+              </button>
+            )}
+
+            {updateStatus === 'checking' && (
+              <span className="text-[10px] animate-pulse">проверка...</span>
+            )}
+
+            {updateStatus === 'uptodate' && (
+              <span className="text-[10px] text-ds-green/70">✓ актуальная версия</span>
+            )}
+
+            {updateStatus === 'available' && (
+              <button
+                onClick={onDownload}
+                className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90"
+              >
+                ↓ v{updateInfo?.version}
+              </button>
+            )}
+
+            {updateStatus === 'downloading' && (
+              <span className="text-[10px] text-ds-accent animate-pulse">
+                ↓ {updateProgress}%
+              </span>
+            )}
+
+            {updateStatus === 'ready' && (
+              <button
+                onClick={onInstall}
+                className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 animate-pulse"
+              >
+                ↻ перезапустить
+              </button>
+            )}
+
+            {updateStatus === 'error' && (
+              <button
+                onClick={onCheckUpdate}
+                title={updateError || 'Неизвестная ошибка'}
+                className="text-[10px] text-ds-red/70 hover:text-ds-red"
+              >
+                ошибка, повторить
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── Контекстное меню канала ── */}
       {chanCtx && (
