@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Скачивание и установка
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  // Демонстрация экрана: получение источников (окон/экранов)
+  getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
+
   installUpdate:  () => ipcRenderer.invoke('install-update'),
 
   // События

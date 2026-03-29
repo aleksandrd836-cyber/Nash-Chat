@@ -337,24 +337,44 @@ export function useVoice() {
     '360p':  { width: 640,  height: 360 },
   };
 
-  const startScreenShare = useCallback(async (quality = '720p', currentUser) => {
+  const startScreenShare = useCallback(async (quality = '720p', currentUser, sourceId = null) => {
     try {
       const res = RESOLUTIONS[quality] || RESOLUTIONS['720p'];
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { width: { ideal: res.width }, height: { ideal: res.height }, frameRate: { ideal: 30 } },
-        audio: true, // Системный звук трансляции
-      });
+      let stream;
+
+      if (sourceId && window.electronAPI) {
+        // Специальный захват для Electron (конкретное окно/экран)
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false, // В Electron захват системного звука через getUserMedia сложнее, пока выключаем
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId,
+              minWidth: res.width,
+              maxWidth: res.width,
+              minHeight: res.height,
+              maxHeight: res.height
+            }
+          }
+        });
+      } else {
+        // Стандартный захват для браузера
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { width: { ideal: res.width }, height: { ideal: res.height }, frameRate: { ideal: 30 } },
+          audio: true, 
+        });
+      }
       
       screenStreamRef.current = stream;
       setIsScreenSharing(true);
       
       // Обновляем статус в Presence, чтобы появилась кнопка у других
-      if (realtimeChannel.current && currentUser.id) {
+      if (realtimeChannel.current && currentUser?.id) {
         const state = realtimeChannel.current.presenceState()[currentUser.id]?.[0] || {};
         await realtimeChannel.current.track({ ...state, isScreenSharing: true });
       }
 
-      // Если закрыли доступ на уровне браузера
+      // Если закрыли доступ на уровне браузера/системы
       stream.getVideoTracks()[0].onended = () => {
         stopScreenShare(currentUser);
       };

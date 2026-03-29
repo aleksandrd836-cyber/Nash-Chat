@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain, desktopCapturer, session } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
@@ -170,6 +170,20 @@ app.whenReady().then(() => {
 
   ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
   ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
+  ipcMain.handle('get-desktop-sources', async () => {
+    const sources = await desktopCapturer.getSources({ 
+      types: ['window', 'screen'],
+      thumbnailSize: { width: 400, height: 225 }, // 16:9
+      fetchWindowIcons: true
+    });
+    return sources.map(s => ({
+      id: s.id,
+      name: s.name,
+      thumbnail: s.thumbnail.toDataURL(),
+      appIcon: s.appIcon ? s.appIcon.toDataURL() : null
+    }));
+  });
+
   ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
 });
 

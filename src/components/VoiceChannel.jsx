@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getUserAvatar } from '../lib/avatar';
+import { ScreenPickerModal } from './ScreenPickerModal';
 
 
 function ScreenPlayer({ participant, stream }) {
@@ -76,6 +77,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
   const [ctxMenu, setCtxMenu] = useState(null); // { participant, x, y }
   const [volumes, setVolumes] = useState({});    // { [userId]: number 0-200 }
   const [quality, setQuality] = useState('720p'); // качество стрима
+  const [showPicker, setShowPicker] = useState(false);
   const menuRef = useRef(null);
 
   // Закрыть меню при клике вне его
@@ -338,7 +340,13 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
                     <option value="360p">360p</option>
                   </select>
                   <button 
-                    onClick={() => startScreenShare(quality, user)}
+                    onClick={() => {
+                      if (window.electronAPI) {
+                        setShowPicker(true);
+                      } else {
+                        startScreenShare(quality, user);
+                      }
+                    }}
                     className="flex-1 py-2.5 rounded-xl bg-ds-accent/10 hover:bg-ds-accent/20 text-ds-accent border border-ds-accent/30 font-semibold transition-colors flex items-center justify-center gap-2 text-sm"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -368,6 +376,17 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
           )}
         </div>
       </div>
+
+      {/* Screen Picker Modal (Electron only) */}
+      {showPicker && (
+        <ScreenPickerModal 
+          onClose={() => setShowPicker(false)}
+          onSelect={(sourceId) => {
+            setShowPicker(false);
+            startScreenShare(quality, user, sourceId);
+          }}
+        />
+      )}
 
       {/* ── Контекстное меню с микшером ── */}
       {ctxMenu && (
