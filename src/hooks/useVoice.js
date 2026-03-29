@@ -49,6 +49,7 @@ export function useVoice() {
   const analyserRef      = useRef(null);
   const vadIntervalRef   = useRef(null);
   const lastSpeakTimeRef = useRef(0);
+  const vadStreamRef     = useRef(null);
 
   // Инициализируем глобальный канал присутствия для боковой панели
   useEffect(() => {
@@ -181,6 +182,10 @@ export function useVoice() {
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
     }
+    if (vadStreamRef.current) {
+      vadStreamRef.current.getTracks().forEach(t => t.stop());
+      vadStreamRef.current = null;
+    }
     setIsSpeaking(false);
     lastSpeakTimeRef.current = 0;
     if (realtimeChannel.current) {
@@ -246,8 +251,12 @@ export function useVoice() {
     
     // Инициализируем VAD (Voice Activity Detection / Шумодав)
     try {
+      // "Клонируем" поток для анализатора, чтобы отключение основного не глушило шумодав
+      const vadStream = stream.clone();
+      vadStreamRef.current = vadStream;
+      
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioContext.createMediaStreamSource(stream);
+      const source = audioContext.createMediaStreamSource(vadStream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
