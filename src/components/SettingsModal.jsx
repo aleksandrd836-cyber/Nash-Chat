@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
+import { notifications } from '../lib/notifications';
 
 /**
  * Модальное окно настроек пользователя.
@@ -28,6 +29,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
   const animFrameRef   = useRef(null);
   const gainNodeRef    = useRef(null);
   const audioCtxRef    = useRef(null);
+  const [notifSettings, setNotifSettings] = useState(() => notifications.getSettings());
 
   // Загружаем список микрофонов и наушников
   useEffect(() => {
@@ -170,6 +172,16 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
       alert(err.message);
     }
   }
+
+  const updateNotifSetting = (key, val) => {
+    notifications.updateSetting(key, val);
+    setNotifSettings(notifications.getSettings());
+  };
+
+  const handleNotifVolume = (val) => {
+    notifications.setVolume(val);
+    setNotifSettings(notifications.getSettings());
+  };
 
   const { imageUrl, color: avatarColor } = getUserAvatar(username);
 
@@ -335,6 +347,67 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                 </p>
               </>
             )}
+          </section>
+
+          {/* ── Уведомления ── */}
+          <section className="pb-4">
+            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              Уведомления
+            </h3>
+
+            <div className="space-y-6">
+              {/* Громкость */}
+              <div className="bg-ds-bg border border-ds-divider/50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-ds-text">Громкость уведомлений</span>
+                  <span className="text-xs font-mono text-ds-muted">{notifSettings.volume}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={notifSettings.volume}
+                  onChange={(e) => handleNotifVolume(parseInt(e.target.value))}
+                  className="w-full h-1.5 bg-ds-divider rounded-lg appearance-none cursor-pointer accent-ds-accent"
+                />
+              </div>
+
+              {/* Список настроек */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { key: 'enabled_join', label: 'Кто-то зашел в голос' },
+                  { key: 'enabled_leave', label: 'Кто-то вышел из голоса' },
+                  { key: 'enabled_self_join', label: 'Вы зашли в канал' },
+                  { key: 'enabled_self_leave', label: 'Вы вышли из канала' },
+                  { key: 'enabled_stream', label: 'Трансляция экрана' },
+                  { key: 'enabled_dm', label: 'Личные сообщения' },
+                  { key: 'enabled_mute', label: 'Микрофон выключен' },
+                  { key: 'enabled_unmute', label: 'Микрофон включен' },
+                  { key: 'enabled_deafen', label: 'Наушники выключены' },
+                  { key: 'enabled_undeafen', label: 'Наушники включены' },
+                ].map((item) => (
+                  <label key={item.key} className="flex items-center justify-between p-3 bg-ds-bg/50 border border-ds-divider/30 rounded-lg cursor-pointer hover:bg-ds-hover transition-colors group">
+                    <span className="text-xs text-ds-text font-medium">{item.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={notifSettings[item.key]}
+                      onChange={(e) => updateNotifSetting(item.key, e.target.checked)}
+                      className="w-4 h-4 rounded border-ds-divider text-ds-accent focus:ring-ds-accent bg-ds-bg"
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <button
+                onClick={() => notifications.play('dm')}
+                className="w-full py-2 bg-ds-divider/30 hover:bg-ds-divider/50 text-ds-text text-xs font-semibold rounded-lg transition-all"
+              >
+                Проверить звук уведомления
+              </button>
+            </div>
           </section>
 
         </div>

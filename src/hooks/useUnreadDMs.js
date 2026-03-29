@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { notifications } from '../lib/notifications';
 
 /**
  * Хук для отслеживания непрочитанных личных сообщений.
@@ -48,6 +49,7 @@ export function useUnreadDMs(currentUserId, activeDMId) {
               ...prev,
               [msg.sender_id]: (prev[msg.sender_id] || 0) + 1
             }));
+            notifications.play('dm');
           }
         } else if (payload.eventType === 'UPDATE') {
           // Если обновился статус (стало прочитано)

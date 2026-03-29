@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { notifications } from '../lib/notifications';
 
 /**
  * Хук голосового чата.
@@ -40,6 +41,7 @@ export function useVoice() {
   const globalPresence   = useRef(null);
   const peerConns        = useRef({});   // { [userId]: RTCPeerConnection }
   const audioElements    = useRef({});   // { [userId]: HTMLAudioElement }
+<<<<<<< HEAD
   const realtimeChannel   = useRef(null);
   const currentUserRef    = useRef(null);
   const isMutedRef        = useRef(false);
@@ -51,6 +53,11 @@ export function useVoice() {
   const vadIntervalRef   = useRef(null);
   const lastSpeakTimeRef = useRef(0);
   const vadStreamRef     = useRef(null);
+=======
+  const realtimeChannel  = useRef(null);
+  const currentUserRef   = useRef(null);
+  const prevStreamers    = useRef(new Set()); // Для отслеживания новых стримов (звук)
+>>>>>>> 64bf0c7 (sounds)
 
   // Инициализируем глобальный канал присутствия для боковой панели
   useEffect(() => {
@@ -354,11 +361,19 @@ export function useVoice() {
         createPeerConnection(p.userId);
       });
       syncParticipants(channel);
+      // Звук входа (если это не я)
+      if (newPresences.some(p => p.userId !== user.id)) {
+        notifications.play('join');
+      }
     });
 
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
       leftPresences.forEach((p) => closePeer(p.userId));
       syncParticipants(channel);
+      // Звук выхода (если это не я)
+      if (leftPresences.some(p => p.userId !== user.id)) {
+        notifications.play('leave');
+      }
     });
 
     // === Broadcast events (сигналинг) ===
@@ -418,6 +433,7 @@ export function useVoice() {
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
+        notifications.play('self_join');
       }
     });
 
@@ -426,6 +442,7 @@ export function useVoice() {
 
   /** Выйти из голосового канала */
   const leaveVoiceChannel = useCallback(async () => {
+    notifications.play('self_leave');
     await cleanupAll();
   }, [cleanupAll]);
 
@@ -446,6 +463,14 @@ export function useVoice() {
       }
       return next;
     });
+<<<<<<< HEAD
+=======
+    setIsMuted((prev) => {
+      const next = !prev;
+      notifications.play(next ? 'mute' : 'unmute');
+      return next;
+    });
+>>>>>>> 64bf0c7 (sounds)
   }, []);
 
   /** Переключить заглушение (наушники) */
@@ -456,6 +481,7 @@ export function useVoice() {
       Object.values(audioElements.current).forEach((audio) => {
         if (audio) audio.muted = next;
       });
+      notifications.play(next ? 'deafen' : 'undeafen');
       return next;
     });
   }, []);
@@ -517,6 +543,8 @@ export function useVoice() {
       stream.getVideoTracks()[0].onended = () => {
         stopScreenShare(currentUser);
       };
+
+      notifications.play('self_stream');
     } catch (err) {
       console.error('Screen sharing error', err);
     }
@@ -542,6 +570,7 @@ export function useVoice() {
     if (realtimeChannel.current) {
       realtimeChannel.current.track({ ...presencePayload.current, isScreenSharing: false }).catch(() => {});
     }
+    notifications.play('stream_stop');
   }, []);
 
   const requestScreenView = useCallback((targetUserId) => {
@@ -570,6 +599,25 @@ export function useVoice() {
     // Оповещаем другие компоненты об изменении громкости
     window.dispatchEvent(new CustomEvent('volumeChanged', { detail: { userId, volumePct } }));
   }, []);
+
+  // Отслеживание начала чужих трансляций для звука
+  useEffect(() => {
+    const currentStreamers = new Set();
+    participants.forEach(p => {
+      if (p.isScreenSharing && p.userId !== currentUserRef.current?.id) {
+        currentStreamers.add(p.userId);
+      }
+    });
+
+    // Если кто-то новый начал стрим — играем звук
+    for (const userId of currentStreamers) {
+      if (!prevStreamers.current.has(userId)) {
+        notifications.play('stream');
+      }
+    }
+
+    prevStreamers.current = currentStreamers;
+  }, [participants]);
 
   return {
     activeChannelId,
