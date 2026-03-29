@@ -41,8 +41,9 @@ export default function App() {
     setUpdateError('');
     try { await window.electronAPI.checkForUpdates(); }
     catch (e) { setUpdateError(e?.message || String(e)); setUpdateStatus('error'); }
-    // Если нет новой версии — вернуться в idle через 3с
-    setTimeout(() => setUpdateStatus(s => s === 'checking' ? 'idle' : s), 3000);
+    // Если нет новой версии — показать "актуальная версия" на 3с
+    setTimeout(() => setUpdateStatus(s => s === 'checking' ? 'uptodate' : s), 3000);
+    setTimeout(() => setUpdateStatus(s => s === 'uptodate'  ? 'idle'    : s), 6000);
   };
 
   // Открывает браузер для скачивания
@@ -150,6 +151,10 @@ export default function App() {
 
         {isElectron && updateStatus === 'checking' && (
           <span className="text-[10px] text-ds-muted animate-pulse">проверка...</span>
+        )}
+
+        {isElectron && updateStatus === 'uptodate' && (
+          <span className="text-[10px] text-ds-green/70">✓ актуальная версия</span>
         )}
 
         {isElectron && updateStatus === 'available' && (
