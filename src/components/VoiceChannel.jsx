@@ -134,15 +134,27 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
     <div className="flex-1 flex flex-col bg-ds-bg" onClick={() => setCtxMenu(null)}>
       {/* Header */}
       <div className="h-12 flex items-center px-4 gap-2 border-b border-ds-divider/50 flex-shrink-0 bg-ds-bg/80 backdrop-blur-sm">
-        <svg className="text-ds-muted w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        <svg className="w-5 h-5 text-ds-muted" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
         </svg>
         <span className="text-ds-text font-semibold text-sm">{channel.name}</span>
         {isInThisChannel && (
-          <span className="ml-auto flex items-center gap-1.5 text-ds-green text-xs font-medium">
-            <span className="w-2 h-2 rounded-full bg-ds-green animate-pulse" />
+          <span className="ml-2 flex items-center gap-1.5 text-ds-green text-[10px] font-bold uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-ds-green animate-pulse" />
             Подключён
           </span>
+        )}
+        
+        {!window.electronAPI && (
+          <a 
+            href="https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest/download/Vibe-1.0.30-x64.exe"
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-ds-green hover:bg-ds-green/90 text-white text-[11px] font-bold rounded-md transition-all shadow-lg shadow-ds-green/20 animate-pulse-soft"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
+            </svg>
+            Скачать на Windows
+          </a>
         )}
       </div>
 

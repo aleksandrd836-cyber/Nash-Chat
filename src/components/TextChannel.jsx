@@ -133,6 +133,18 @@ export function TextChannel({ channel, user, username, userColor }) {
       <div className="h-12 flex items-center px-4 gap-2 border-b border-ds-divider/50 flex-shrink-0 bg-ds-bg/80 backdrop-blur-sm">
         <span className="text-ds-muted text-lg font-bold select-none">#</span>
         <span className="text-ds-text font-semibold text-sm">{channel.name}</span>
+        
+        {!window.electronAPI && (
+          <a 
+            href="https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest/download/Vibe-1.0.30-x64.exe"
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-ds-green hover:bg-ds-green/90 text-white text-[11px] font-bold rounded-md transition-all shadow-lg shadow-ds-green/20 animate-pulse-soft"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
+            </svg>
+            Скачать на Windows
+          </a>
+        )}
       </div>
 
       {/* Messages */}
