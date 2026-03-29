@@ -197,8 +197,9 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   onContextMenu={(e) => handleContextMenu(e, p)}
                   title={!isMe ? 'ПКМ для настройки громкости' : ''}
                 >
-                  <div className={`relative w-[96px] h-[96px] rounded-full bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center
-                    ${!isMe ? 'hover:ring-2 hover:ring-ds-accent/60 transition-all duration-150' : ''}`}
+                  <div className={`relative w-[96px] h-[96px] rounded-full bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center transition-all duration-150
+                    ${p.isSpeaking ? 'ring-4 ring-ds-green' : 'ring-1 ring-white/5'}
+                    ${!isMe ? 'hover:ring-ds-accent/60' : ''}`}
                   >
                     <img
                       src={imageUrl}

@@ -29,6 +29,7 @@ export function useVoice() {
   const [isMuted, setIsMuted]                  = useState(false);
   const [isDeafened, setIsDeafened]            = useState(false);
   const [isConnecting, setIsConnecting]        = useState(false);
+  const [isSpeaking, setIsSpeaking]            = useState(false);
   
   const [isScreenSharing, setIsScreenSharing]  = useState(false);
   const [remoteScreens, setRemoteScreens]      = useState({}); // { [userId]: MediaStream }
@@ -42,7 +43,16 @@ export function useVoice() {
   const audioElements    = useRef({});   // { [userId]: HTMLAudioElement }
   const realtimeChannel  = useRef(null);
   const currentUserRef   = useRef(null);
+  const isMutedRef       = useRef(false);
+  const presencePayload  = useRef({});
   const prevStreamers    = useRef(new Set()); // Для отслеживания новых стримов (звук)
+
+  // Noise Suppression / VAD refs
+  const audioContextRef  = useRef(null);
+  const analyserRef      = useRef(null);
+  const vadIntervalRef   = useRef(null);
+  const lastSpeakTimeRef = useRef(0);
+  const vadStreamRef     = useRef(null);
 
   // Инициализируем глобальный канал присутствия для боковой панели
   useEffect(() => {
@@ -50,13 +60,34 @@ export function useVoice() {
     
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
-      const newAll = {};
+      
+      // Дедубликация: 
+      // Если у пользователя зависла старая сессия (призрак), мы оставляем только ту, где joined_at новее.
+      const latestUserPresence = new Map();
+
       Object.values(state).flat().forEach(p => {
-        if (p.channelId && p.userId && p.username) {
-          if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
-          newAll[p.channelId].set(p.userId, { userId: p.userId, username: p.username, color: p.color, isScreenSharing: p.isScreenSharing });
+        if (!p.channelId || !p.userId || !p.username) return;
+        
+        const existing = latestUserPresence.get(p.userId);
+        if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
+          latestUserPresence.set(p.userId, p);
+        } else if (!existing && !p.joined_at) {
+          // Фолбэк на старые форматы, если они есть
+          latestUserPresence.set(p.userId, p);
         }
       });
+
+      const newAll = {};
+      latestUserPresence.forEach(p => {
+        if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
+        newAll[p.channelId].set(p.userId, { 
+          userId: p.userId, 
+          username: p.username, 
+          color: p.color, 
+          isScreenSharing: p.isScreenSharing 
+        });
+      });
+
       const finalAll = {};
       Object.keys(newAll).forEach(chId => {
         finalAll[chId] = Array.from(newAll[chId].values());
@@ -165,6 +196,22 @@ export function useVoice() {
     Object.keys(peerConns.current).forEach(closePeer);
     localStream.current?.getTracks().forEach((t) => t.stop());
     localStream.current = null;
+
+    // Очистка шумодава
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    if (vadStreamRef.current) {
+      vadStreamRef.current.getTracks().forEach(t => t.stop());
+      vadStreamRef.current = null;
+    }
+    setIsSpeaking(false);
+    lastSpeakTimeRef.current = 0;
     if (realtimeChannel.current) {
       try { await realtimeChannel.current.untrack(); } catch {}
       await supabase.removeChannel(realtimeChannel.current);
@@ -192,7 +239,13 @@ export function useVoice() {
     const state = channel.presenceState();
     const seen = new Map();
     Object.values(state).flat().forEach((p) => {
-      seen.set(p.userId, { userId: p.userId, username: p.username, color: p.color, isScreenSharing: p.isScreenSharing });
+      seen.set(p.userId, { 
+        userId: p.userId, 
+        username: p.username, 
+        color: p.color, 
+        isScreenSharing: p.isScreenSharing,
+        isSpeaking: p.isSpeaking 
+      });
     });
     setParticipants(Array.from(seen.values()));
   }, []);
@@ -202,17 +255,86 @@ export function useVoice() {
     if (activeChannelId) await leaveVoiceChannel();
     setIsConnecting(true);
 
-    // Запросить микрофон
+    // Запросить микрофон с улучшенными фильтрами
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }, 
+        video: false 
+      });
+    } catch (err) {
+      console.error('Mic capture error:', err);
       alert('Не удалось получить доступ к микрофону. Проверь разрешения браузера.');
       setIsConnecting(false);
       return;
     }
+    
+    // Инициализируем VAD (Voice Activity Detection / Шумодав) только для UI.
+    try {
+      const vadStream = stream.clone();
+      vadStreamRef.current = vadStream;
+      
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+
+      const source = audioContext.createMediaStreamSource(vadStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      
+      const SPEAK_THRESHOLD = 20; // Чувствительность к пикам
+      const SPEAK_HOLD_TIME = 400;
+
+      const checkVolume = () => {
+        if (isMutedRef.current) return;
+
+        analyser.getByteFrequencyData(dataArray);
+        
+        let maxFreq = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          if (dataArray[i] > maxFreq) maxFreq = dataArray[i];
+        }
+
+        const now = Date.now();
+        const currentlySpeaking = maxFreq > SPEAK_THRESHOLD;
+
+        if (currentlySpeaking) {
+          lastSpeakTimeRef.current = now;
+          setIsSpeaking(curr => {
+            if (!curr && realtimeChannel.current) {
+              realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: true }).catch(() => {});
+            }
+            return true;
+          });
+        } else if (now - lastSpeakTimeRef.current > SPEAK_HOLD_TIME) {
+          setIsSpeaking(curr => {
+            if (curr && realtimeChannel.current) {
+              realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: false }).catch(() => {});
+            }
+            return false;
+          });
+        }
+      };
+
+      vadIntervalRef.current = setInterval(checkVolume, 50);
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+    } catch (vadErr) {
+      console.warn('Failed to init Noise Gate:', vadErr);
+    }
+
     localStream.current   = stream;
     currentUserRef.current = { id: user.id, username };
+    
+    // Изначальный пейлоад для локального отслеживания
+    presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false };
 
     // Создаём Supabase Realtime канал (Presence + Broadcast)
     const channel = supabase.channel(`voice:${channelId}`, {
@@ -300,9 +422,9 @@ export function useVoice() {
     // Подписываемся и публикуем своё присутствие
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ userId: user.id, username, color });
+        await channel.track(presencePayload.current);
         if (globalPresence.current) {
-          await globalPresence.current.track({ channelId, userId: user.id, username, color });
+          await globalPresence.current.track({ channelId, userId: user.id, username, color, joined_at: Date.now() });
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
@@ -321,11 +443,22 @@ export function useVoice() {
 
   /** Переключить микрофон */
   const toggleMute = useCallback(() => {
-    localStream.current?.getAudioTracks().forEach((track) => {
-      track.enabled = !track.enabled;
-    });
     setIsMuted((prev) => {
       const next = !prev;
+      isMutedRef.current = next;
+      
+      // Включаем или выключаем саму передачу звука
+      localStream.current?.getAudioTracks().forEach((track) => {
+        track.enabled = !next;
+      });
+
+      if (next) {
+        setIsSpeaking(false);
+        if (realtimeChannel.current) {
+          realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: false }).catch(() => {});
+        }
+      }
+
       notifications.play(next ? 'mute' : 'unmute');
       return next;
     });
@@ -393,9 +526,8 @@ export function useVoice() {
       setIsScreenSharing(true);
       
       // Обновляем статус в Presence, чтобы появилась кнопка у других
-      if (realtimeChannel.current && currentUser?.id) {
-        const state = realtimeChannel.current.presenceState()[currentUser.id]?.[0] || {};
-        await realtimeChannel.current.track({ ...state, isScreenSharing: true });
+      if (realtimeChannel.current) {
+        realtimeChannel.current.track({ ...presencePayload.current, isScreenSharing: true }).catch(() => {});
       }
 
       // Если закрыли доступ на уровне браузера/системы
@@ -426,9 +558,8 @@ export function useVoice() {
     }
     setIsScreenSharing(false);
     
-    if (realtimeChannel.current && currentUser?.id) {
-      const state = realtimeChannel.current.presenceState()[currentUser.id]?.[0] || {};
-      await realtimeChannel.current.track({ ...state, isScreenSharing: false });
+    if (realtimeChannel.current) {
+      realtimeChannel.current.track({ ...presencePayload.current, isScreenSharing: false }).catch(() => {});
     }
     notifications.play('stream_stop');
   }, []);
@@ -486,6 +617,7 @@ export function useVoice() {
     isMuted,
     isDeafened,
     isConnecting,
+    isSpeaking,
     isScreenSharing,
     remoteScreens,
     joinVoiceChannel,

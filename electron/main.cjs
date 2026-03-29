@@ -185,6 +185,17 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
+
+  // Автоматическое разрешение на использование микрофона/камеры в EXE
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === 'media') return true;
+    return false;
+  });
+
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') return callback(true);
+    callback(false);
+  });
 });
 
 app.on('window-all-closed', () => { app.quit(); });
