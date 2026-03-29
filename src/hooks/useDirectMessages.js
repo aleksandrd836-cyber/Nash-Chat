@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { notifications } from '../lib/notifications';
 
 /**
  * Хук для личных сообщений между двумя пользователями.
@@ -55,6 +56,9 @@ export function useDirectMessages(currentUserId, targetUserId) {
           if (isRelevant) {
             if (payload.eventType === 'INSERT') {
               setMessages(prev => [...prev, msg]);
+              if (msg.sender_id === targetUserId) {
+                notifications.play('dm');
+              }
             } else if (payload.eventType === 'UPDATE') {
               setMessages(prev => prev.map(m => m.id === msg.id ? msg : m));
             }
