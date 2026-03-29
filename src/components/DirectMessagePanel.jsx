@@ -9,7 +9,7 @@ const MAX_LENGTH = 2000;
  * Отображается вместо основного контента при открытии DM.
  */
 export function DirectMessagePanel({ currentUser, username, userColor, targetMember, onClose }) {
-  const { messages, loading, sending, sendMessage } = useDirectMessages(
+  const { messages, loading, sending, sendMessage, markMessagesAsRead } = useDirectMessages(
     currentUser?.id,
     targetMember?.id
   );
@@ -28,6 +28,16 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
     setDraft('');
     inputRef.current?.focus();
   }, [targetMember?.id]);
+
+  // Помечаем открытые сообщения как прочитанные
+  useEffect(() => {
+    if (messages.length > 0) {
+      const hasUnread = messages.some(m => !m.is_read && m.receiver_id === currentUser?.id);
+      if (hasUnread) {
+        markMessagesAsRead();
+      }
+    }
+  }, [messages, currentUser?.id, markMessagesAsRead]);
 
   const handleSend = useCallback(async (e) => {
     e?.preventDefault();
@@ -152,9 +162,21 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
                         <span className="text-ds-muted text-[10px]">{time}</span>
                       </div>
                     )}
-                    <p className="text-ds-text text-sm leading-relaxed break-words whitespace-pre-wrap">
-                      {msg.content}
-                    </p>
+                    <div className="flex items-end gap-2">
+                      <p className="text-ds-text text-sm leading-relaxed break-words whitespace-pre-wrap">
+                        {msg.content}
+                      </p>
+                      {isMe && (
+                        <span 
+                          className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0
+                            ${msg.is_read ? 'text-ds-accent drop-shadow-[0_0_2px_rgba(88,101,242,0.4)]' : 'text-ds-muted'}
+                          `}
+                          title={msg.is_read ? "Прочитано" : "Доставлено"}
+                        >
+                          {msg.is_read ? '✓✓' : '✓'}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Timestamp (hover) */}

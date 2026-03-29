@@ -43,15 +43,21 @@ export function useDirectMessages(currentUserId, targetUserId) {
       .channel(channelName)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'direct_messages' },
+        { event: '*', schema: 'public', table: 'direct_messages' },
         (payload) => {
           const msg = payload.new;
+          if (!msg || !msg.sender_id) return; // ignore deletes if any
           // Принимаем только сообщения этого диалога
           const isRelevant =
             (msg.sender_id === currentUserId && msg.receiver_id === targetUserId) ||
             (msg.sender_id === targetUserId   && msg.receiver_id === currentUserId);
+          
           if (isRelevant) {
-            setMessages(prev => [...prev, msg]);
+            if (payload.eventType === 'INSERT') {
+              setMessages(prev => [...prev, msg]);
+            } else if (payload.eventType === 'UPDATE') {
+              setMessages(prev => prev.map(m => m.id === msg.id ? msg : m));
+            }
           }
         }
       )
@@ -84,5 +90,21 @@ export function useDirectMessages(currentUserId, targetUserId) {
     setSending(false);
   }, [currentUserId, targetUserId]);
 
-  return { messages, loading, sending, sendMessage };
+  const markMessagesAsRead = useCallback(async () => {
+    if (!currentUserId || !targetUserId) return;
+    
+    // Обновляем только те, где мы получатель, и они не прочитаны
+    const { error } = await supabase
+      .from('direct_messages')
+      .update({ is_read: true })
+      .eq('receiver_id', currentUserId)
+      .eq('sender_id', targetUserId)
+      .eq('is_read', false);
+
+    if (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }, [currentUserId, targetUserId]);
+
+  return { messages, loading, sending, sendMessage, markMessagesAsRead };
 }

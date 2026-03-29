@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS direct_messages (
   sender_username TEXT        NOT NULL,
   sender_color    TEXT,
   content         TEXT        NOT NULL,
+  is_read         BOOLEAN     NOT NULL DEFAULT false,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -128,6 +129,14 @@ CREATE POLICY "Отправители пишут ЛС"
   ON direct_messages FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = sender_id);
+
+-- ЛС: получатели могут помечать прочитанным (обновлять)
+DROP POLICY IF EXISTS "Получатели обновляют свои ЛС" ON direct_messages;
+CREATE POLICY "Получатели обновляют свои ЛС"
+  ON direct_messages FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = receiver_id)
+  WITH CHECK (auth.uid() = receiver_id);
 
 -- ============================================================
 -- Включить Realtime
