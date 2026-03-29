@@ -201,11 +201,11 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
             <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Привязанный Аватар</h3>
             <div className="flex items-center gap-5">
               {/* Preview */}
-              <div className="w-[96px] h-[96px] rounded-full flex-shrink-0 bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
+              <div className="w-[120px] h-[120px] rounded-full flex-shrink-0 bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
                 <img
                   src={imageUrl}
                   alt="Аватар профиля"
-                  className="w-[144px] h-[144px] max-w-none select-none"
+                  className="w-full h-full object-cover select-none"
                 />
               </div>
               <p className="text-xs text-ds-muted max-w-[200px] leading-relaxed">
