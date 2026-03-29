@@ -73,7 +73,7 @@ export function useMessages(channelId) {
   }, []);
 
   /** Отправить сообщение (text и/или image_url) */
-  const sendMessage = useCallback(async (content, userId, username, imageUrl = null, userColor = null) => {
+  const sendMessage = useCallback(async (content, userId, username, imageUrl = null, userColor = null, fileName = null) => {
     if (!content.trim() && !imageUrl) return;
     if (!channelId) return;
     setSending(true);
@@ -84,6 +84,7 @@ export function useMessages(channelId) {
       username: dbUsername,
       content: content.trim(),
       image_url: imageUrl ?? null,
+      file_name: fileName ?? null,
     });
     setSending(false);
     if (error) console.error('Ошибка отправки:', error);

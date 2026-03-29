@@ -4,6 +4,8 @@ import { Message } from './Message';
 import EmojiPicker from 'emoji-picker-react';
 
 const MAX_LENGTH = 2000;
+const MAX_FILE_SIZE_MB = 50;
+
 
 /**
  * Текстовый канал — история сообщений + поле ввода с прикреплением файлов
@@ -59,7 +61,7 @@ export function TextChannel({ channel, user, username, userColor }) {
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
-        if (item.type.startsWith('image/')) {
+        if (item.type.startsWith('image/') || item.type.startsWith('video/')) {
           const file = item.getAsFile();
           if (file) pickFile(file);
           break;
@@ -71,6 +73,10 @@ export function TextChannel({ channel, user, username, userColor }) {
   }, []);
 
   function pickFile(file) {
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      alert(`Файл слишком большой! Максимальный размер: ${MAX_FILE_SIZE_MB} МБ.`);
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
     setAttachment({ file, previewUrl });
   }
@@ -106,7 +112,7 @@ export function TextChannel({ channel, user, username, userColor }) {
       removeAttachment();
     }
 
-    await sendMessage(draft, user.id, username, imageUrl, userColor);
+    await sendMessage(draft, user.id, username, imageUrl, userColor, attachment?.file.name);
     setDraft('');
   }, [draft, attachment, sending, uploading, sendMessage, uploadFile, user.id, username, userColor]);
 
@@ -190,16 +196,35 @@ export function TextChannel({ channel, user, username, userColor }) {
 
           {/* Превью прикреплённого файла */}
           {attachment && (
-            <div className="mb-2 relative inline-block">
-              <img
-                src={attachment.previewUrl}
-                alt="Прикреплённое изображение"
-                className="max-h-40 max-w-xs rounded-xl border border-ds-divider/50 object-cover"
-              />
+            <div className="mb-2 relative inline-flex items-center gap-2 p-2 bg-ds-sidebar rounded-xl border border-ds-divider/30">
+              {attachment.file.type.startsWith('video/') ? (
+                <video
+                  src={attachment.previewUrl}
+                  className="h-14 w-14 rounded-lg object-cover"
+                />
+              ) : attachment.file.type.startsWith('image/') ? (
+                <img
+                  src={attachment.previewUrl}
+                  alt="Превью"
+                  className="h-14 w-14 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-lg bg-ds-bg flex items-center justify-center text-ds-muted">
+                  <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                  </svg>
+                </div>
+              )}
+              
+              <div className="flex-1 min-w-0 pr-6">
+                <p className="text-ds-text text-xs font-medium truncate max-w-[150px]">{attachment.file.name}</p>
+                <p className="text-ds-muted text-[10px] uppercase">{(attachment.file.size / 1024).toFixed(1)} KB</p>
+              </div>
+
               <button
                 type="button"
                 onClick={removeAttachment}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-ds-red rounded-full flex items-center justify-center hover:opacity-90 transition-opacity"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-ds-red rounded-full flex items-center justify-center hover:opacity-90 transition-opacity z-10"
                 title="Убрать"
               >
                 <svg width="10" height="10" fill="white" viewBox="0 0 24 24">
@@ -214,7 +239,6 @@ export function TextChannel({ channel, user, username, userColor }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
               className="hidden"
               onChange={handleFileChange}
               id="file-upload-input"

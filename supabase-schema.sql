@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS messages (
   user_id    UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   username   TEXT        NOT NULL,
   content    TEXT        NOT NULL,
+  file_name  TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -66,11 +67,32 @@ CREATE TABLE IF NOT EXISTS direct_messages (
   sender_color    TEXT,
   content         TEXT        NOT NULL,
   is_read         BOOLEAN     NOT NULL DEFAULT false,
+  image_url       TEXT,
+  file_name       TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Индекс для вывода диалога между двумя пользователями
 CREATE INDEX IF NOT EXISTS dm_participants_idx ON direct_messages(sender_id, receiver_id);
+
+-- 5. РЕАКЦИИ
+CREATE TABLE IF NOT EXISTS message_reactions (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  emoji      TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(message_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS direct_message_reactions (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID NOT NULL REFERENCES direct_messages(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  emoji      TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(message_id, user_id)
+);
 
 -- ============================================================
 -- Row Level Security
@@ -138,11 +160,25 @@ CREATE POLICY "Получатели обновляют свои ЛС"
   USING (auth.uid() = receiver_id)
   WITH CHECK (auth.uid() = receiver_id);
 
+-- Реакции
+ALTER TABLE message_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE direct_message_reactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Все могут смотреть реакции" ON message_reactions;
+CREATE POLICY "Все могут смотреть реакции" ON message_reactions FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Каждый может ставить/удалять свои реакции" ON message_reactions;
+CREATE POLICY "Каждый может ставить/удалять свои реакции" ON message_reactions FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Участники ЛС видят реакции" ON direct_message_reactions;
+CREATE POLICY "Участники ЛС видят реакции" ON direct_message_reactions FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Каждый может ставить свои реакции в ЛС" ON direct_message_reactions;
+CREATE POLICY "Каждый может ставить свои реакции в ЛС" ON direct_message_reactions FOR ALL TO authenticated USING (auth.uid() = user_id);
+
 -- ============================================================
 -- Включить Realtime
 -- ============================================================
 DROP PUBLICATION IF EXISTS supabase_realtime;
-CREATE PUBLICATION supabase_realtime FOR TABLE messages, profiles, direct_messages;
+CREATE PUBLICATION supabase_realtime FOR TABLE messages, profiles, direct_messages, message_reactions, direct_message_reactions;
 
 -- ============================================================
 -- Seed: стартовые каналы

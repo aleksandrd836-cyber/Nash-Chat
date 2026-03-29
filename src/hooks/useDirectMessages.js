@@ -70,8 +70,21 @@ export function useDirectMessages(currentUserId, targetUserId) {
     };
   }, [currentUserId, targetUserId]);
 
-  const sendMessage = useCallback(async (content, senderUsername, senderColor) => {
-    if (!content.trim() || !currentUserId || !targetUserId) return;
+  /** Загрузить файл в Supabase Storage, вернуть публичный URL (аналогично useMessages) */
+  const uploadFile = useCallback(async (file) => {
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}_dm_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage
+      .from('chat-images')
+      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const { data } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+    return data.publicUrl;
+  }, []);
+
+  const sendMessage = useCallback(async (content, senderUsername, senderColor, imageUrl = null, fileName = null) => {
+    if (!content.trim() && !imageUrl) return;
+    if (!currentUserId || !targetUserId) return;
     setSending(true);
 
     const { error } = await supabase.from('direct_messages').insert({
@@ -80,6 +93,8 @@ export function useDirectMessages(currentUserId, targetUserId) {
       sender_username: senderUsername,
       sender_color:    senderColor ?? null,
       content:         content.trim(),
+      image_url:       imageUrl ?? null,
+      file_name:       fileName ?? null,
     });
 
     if (error) {
@@ -106,5 +121,5 @@ export function useDirectMessages(currentUserId, targetUserId) {
     }
   }, [currentUserId, targetUserId]);
 
-  return { messages, loading, sending, sendMessage, markMessagesAsRead };
+  return { messages, loading, sending, sendMessage, markMessagesAsRead, uploadFile };
 }
