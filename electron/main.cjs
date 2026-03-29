@@ -104,6 +104,8 @@ function createWindow() {
 
   // Когда страница загружена — закрываем сплэш, показываем основное окно
   mainWindow.webContents.on('did-finish-load', () => {
+    // Фиксируем заголовок — сайт не должен его перезаписывать
+    mainWindow.setTitle('NashChat');
     setTimeout(() => {
       if (splashWindow && !splashWindow.isDestroyed()) {
         splashWindow.close();
@@ -136,6 +138,11 @@ function createWindow() {
 }
 
 Menu.setApplicationMenu(null);
+
+// Синхронный IPC для получения версии в preload (работает в .asar)
+ipcMain.on('get-app-version', (event) => {
+  event.returnValue = app.getVersion();
+});
 
 app.whenReady().then(() => {
   createSplash();   // мгновенно
