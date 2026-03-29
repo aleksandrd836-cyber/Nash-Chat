@@ -28,6 +28,7 @@ export function useVoice() {
   const [isMuted, setIsMuted]                  = useState(false);
   const [isDeafened, setIsDeafened]            = useState(false);
   const [isConnecting, setIsConnecting]        = useState(false);
+  const [isSpeaking, setIsSpeaking]            = useState(false);
   
   const [isScreenSharing, setIsScreenSharing]  = useState(false);
   const [remoteScreens, setRemoteScreens]      = useState({}); // { [userId]: MediaStream }
@@ -41,6 +42,12 @@ export function useVoice() {
   const audioElements    = useRef({});   // { [userId]: HTMLAudioElement }
   const realtimeChannel  = useRef(null);
   const currentUserRef   = useRef(null);
+
+  // Noise Suppression / VAD refs
+  const audioContextRef  = useRef(null);
+  const analyserRef      = useRef(null);
+  const vadIntervalRef   = useRef(null);
+  const lastSpeakTimeRef = useRef(0);
 
   // Инициализируем глобальный канал присутствия для боковой панели
   useEffect(() => {
@@ -163,6 +170,18 @@ export function useVoice() {
     Object.keys(peerConns.current).forEach(closePeer);
     localStream.current?.getTracks().forEach((t) => t.stop());
     localStream.current = null;
+
+    // Очистка шумодава
+    if (vadIntervalRef.current) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    setIsSpeaking(false);
+    lastSpeakTimeRef.current = 0;
     if (realtimeChannel.current) {
       try { await realtimeChannel.current.untrack(); } catch {}
       await supabase.removeChannel(realtimeChannel.current);
@@ -190,7 +209,13 @@ export function useVoice() {
     const state = channel.presenceState();
     const seen = new Map();
     Object.values(state).flat().forEach((p) => {
-      seen.set(p.userId, { userId: p.userId, username: p.username, color: p.color, isScreenSharing: p.isScreenSharing });
+      seen.set(p.userId, { 
+        userId: p.userId, 
+        username: p.username, 
+        color: p.color, 
+        isScreenSharing: p.isScreenSharing,
+        isSpeaking: p.isSpeaking 
+      });
     });
     setParticipants(Array.from(seen.values()));
   }, []);
@@ -200,15 +225,90 @@ export function useVoice() {
     if (activeChannelId) await leaveVoiceChannel();
     setIsConnecting(true);
 
-    // Запросить микрофон
+    // Запросить микрофон с улучшенными фильтрами
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }, 
+        video: false 
+      });
+    } catch (err) {
+      console.error('Mic capture error:', err);
       alert('Не удалось получить доступ к микрофону. Проверь разрешения браузера.');
       setIsConnecting(false);
       return;
     }
+    
+    // Инициализируем VAD (Voice Activity Detection / Шумодав)
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      
+      const SPEAK_THRESHOLD = 30; // Чувствительность (чем больше, тем агрессивнее)
+      const SPEAK_HOLD_TIME = 400; // Сколько держать канал открытым после конца фразы (ms)
+
+      const checkVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+        const average = sum / bufferLength;
+
+        const now = Date.now();
+        const currentlySpeaking = average > SPEAK_THRESHOLD;
+
+        if (currentlySpeaking) {
+          lastSpeakTimeRef.current = now;
+          setIsSpeaking(curr => {
+            if (!curr) {
+              // Если был выключен — включаем поток
+              stream.getAudioTracks().forEach(t => t.enabled = true);
+              // Оповещаем остальных через Presence
+              if (realtimeChannel.current) {
+                const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
+                realtimeChannel.current.track({ ...state, isSpeaking: true });
+              }
+            }
+            return true;
+          });
+        } else if (now - lastSpeakTimeRef.current > SPEAK_HOLD_TIME) {
+          setIsSpeaking(curr => {
+            if (curr) {
+              // Если был включен — гасим поток (шумодав сработал)
+              stream.getAudioTracks().forEach(t => t.enabled = false);
+              // Оповещаем остальных через Presence
+              if (realtimeChannel.current) {
+                const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
+                realtimeChannel.current.track({ ...state, isSpeaking: false });
+              }
+            }
+            return false;
+          });
+        }
+      };
+
+      vadIntervalRef.current = setInterval(checkVolume, 50);
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      // По умолчанию стартуем в тишине, если сразу не говорим
+      stream.getAudioTracks().forEach(t => t.enabled = false);
+
+    } catch (vadErr) {
+      console.warn('Failed to init Noise Gate:', vadErr);
+      // Если Web Audio упал, просто оставляем микрофон включенным
+      stream.getAudioTracks().forEach(t => t.enabled = true);
+    }
+
     localStream.current   = stream;
     currentUserRef.current = { id: user.id, username };
 
@@ -447,6 +547,7 @@ export function useVoice() {
     isMuted,
     isDeafened,
     isConnecting,
+    isSpeaking,
     isScreenSharing,
     remoteScreens,
     joinVoiceChannel,

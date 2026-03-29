@@ -6,13 +6,15 @@ import { getUserAvatar } from '../lib/avatar';
  * Показывает аватар, имя, кнопки голоса и настроек.
  */
 export function UserPanel({ username, userColor, onSignOut, voice, onOpenSettings }) {
-  const { activeChannelId, isMuted, toggleMute, leaveVoiceChannel } = voice;
+    const { activeChannelId, isMuted, isSpeaking, toggleMute, leaveVoiceChannel } = voice;
   const { imageUrl, color } = getUserAvatar(username);
 
   return (
     <div className="h-14 bg-ds-servers flex-shrink-0 flex items-center px-2 gap-2 border-t border-ds-divider/30">
       {/* Avatar */}
-      <div className="relative flex-shrink-0 w-12 h-12 rounded-full bg-ds-bg shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] flex items-center justify-center">
+      <div className={`relative flex-shrink-0 w-12 h-12 rounded-full bg-ds-bg shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] flex items-center justify-center transition-all duration-150
+        ${isSpeaking ? 'ring-2 ring-ds-green' : 'ring-1 ring-white/5'}`}
+      >
         <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
           <img
             src={imageUrl}
