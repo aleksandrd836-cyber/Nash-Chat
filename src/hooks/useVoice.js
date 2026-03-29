@@ -34,11 +34,8 @@ export function useVoice() {
   const currentUserRef  = useRef(null);
   const presencePayload = useRef({});
 
-  // VAD только для индикатора "говорит" — на звук не влияет
-  const audioContextRef  = useRef(null);
-  const vadIntervalRef   = useRef(null);
   const isSpeakingRef    = useRef(false);
-  const lastSpeakTimeRef = useRef(0);
+  const fakeVADIntervalRef = useRef(null);
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
 
   // Глобальный канал присутствия (кто в каком канале)
@@ -187,8 +184,7 @@ export function useVoice() {
     localStream.current?.getTracks().forEach(t => t.stop());
     localStream.current = null;
 
-    if (vadIntervalRef.current) { clearInterval(vadIntervalRef.current); vadIntervalRef.current = null; }
-    if (audioContextRef.current) { audioContextRef.current.close().catch(() => {}); audioContextRef.current = null; }
+    if (fakeVADIntervalRef.current) { clearInterval(fakeVADIntervalRef.current); fakeVADIntervalRef.current = null; }
     isSpeakingRef.current = false;
     setIsSpeaking(false);
 
@@ -229,17 +225,21 @@ export function useVoice() {
     if (activeChannelId) await leaveVoiceChannel();
     setIsConnecting(true);
 
-    // 1. Получаем поток микрофона
+    // 1. Получаем поток микрофона (с учетом выбранного девайса, если есть)
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      const selectedMic = localStorage.getItem('micDeviceId');
+      const constraints = {
+        audio: selectedMic
+          ? { deviceId: { exact: selectedMic }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+          : { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false
-      });
+      };
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('[Voice] Микрофон захвачен. Треки:', stream.getTracks().map(t => `${t.kind}:${t.enabled}`));
     } catch (err) {
       console.error('[Voice] Ошибка микрофона:', err);
-      alert('Не удалось получить доступ к микрофону. Проверь разрешения.');
+      alert('Не удалось получить доступ к микрофону. Выбери другое устройство в настройках и проверь разрешения.');
       setIsConnecting(false);
       return;
     }
@@ -248,46 +248,23 @@ export function useVoice() {
     stream.getAudioTracks().forEach(t => { t.enabled = true; });
     localStream.current = stream;
 
-    // 2. VAD только для индикатора "говорит" (на реальный звук не влияет)
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-      if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
-      const source = audioContext.createMediaStreamSource(stream);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      const SPEAK_THRESHOLD = 20;
-      const SPEAK_HOLD_TIME = 500;
-
-      vadIntervalRef.current = setInterval(() => {
-        analyser.getByteFrequencyData(dataArray);
-        let maxFreq = 0;
-        for (let i = 0; i < bufferLength; i++) { if (dataArray[i] > maxFreq) maxFreq = dataArray[i]; }
-        const now = Date.now();
-        if (maxFreq > SPEAK_THRESHOLD) {
-          lastSpeakTimeRef.current = now;
-          if (!isSpeakingRef.current) {
-            isSpeakingRef.current = true;
-            setIsSpeaking(true);
-            presencePayload.current.isSpeaking = true;
-            realtimeChannel.current?.track(presencePayload.current).catch(() => {});
-          }
-        } else if (now - lastSpeakTimeRef.current > SPEAK_HOLD_TIME) {
-          if (isSpeakingRef.current) {
-            isSpeakingRef.current = false;
-            setIsSpeaking(false);
-            presencePayload.current.isSpeaking = false;
-            realtimeChannel.current?.track(presencePayload.current).catch(() => {});
-          }
-        }
-      }, 50);
-
-      audioContextRef.current = audioContext;
-    } catch (e) {
-      console.warn('[Voice] VAD не инициализирован:', e);
-    }
+    // Включаем фейковый индикатор или просто светимся зеленым. Без 
+    // AudioContext микрофон не отключится из-за энергосбережения!
+    // Индикатор просто мигает, если микрофон не замьючен. 
+    fakeVADIntervalRef.current = setInterval(() => {
+      const shouldSpeak = !isMutedRef.current; // Всегда светится если микрофон включен, так как мы его не анализируем.
+      if (shouldSpeak && !isSpeakingRef.current) {
+        isSpeakingRef.current = true;
+        setIsSpeaking(true);
+        presencePayload.current.isSpeaking = true;
+        realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+      } else if (!shouldSpeak && isSpeakingRef.current) {
+        isSpeakingRef.current = false;
+        setIsSpeaking(false);
+        presencePayload.current.isSpeaking = false;
+        realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+      }
+    }, 500);
 
     // 3. Инициализируем Supabase канал
     currentUserRef.current = { id: user.id, username };
