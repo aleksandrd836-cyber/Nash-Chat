@@ -154,7 +154,7 @@ export function TextChannel({ channel, user, username, userColor }) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 flex flex-col justify-end min-h-0">
+      <div className="flex-1 overflow-y-auto py-4 flex flex-col min-h-0">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex gap-1">
@@ -175,7 +175,7 @@ export function TextChannel({ channel, user, username, userColor }) {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-0">
+          <div className="flex flex-col gap-0 mt-auto">
             {messages.map((msg, i) => (
               <Message 
                 key={msg.id} 

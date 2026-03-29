@@ -186,7 +186,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 flex flex-col justify-end min-h-0">
+      <div className="flex-1 overflow-y-auto py-4 flex flex-col min-h-0">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex gap-1 animate-pulse text-ds-muted">Загрузка сообщений...</div>
@@ -204,7 +204,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-0">
+          <div className="flex flex-col gap-0 mt-auto">
             {messages.map((msg, i) => (
               <Message 
                 key={msg.id} 
