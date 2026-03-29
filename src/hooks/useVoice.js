@@ -337,15 +337,20 @@ export function useVoice() {
     '360p':  { width: 640,  height: 360 },
   };
 
-  const startScreenShare = useCallback(async (quality = '720p', currentUser, sourceId = null) => {
+  const startScreenShare = useCallback(async (quality = '720p', currentUser, sourceId = null, withAudio = false) => {
     try {
       const res = RESOLUTIONS[quality] || RESOLUTIONS['720p'];
       let stream;
 
       if (sourceId && window.electronAPI) {
         // Специальный захват для Electron (конкретное окно/экран)
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false, // В Electron захват системного звука через getUserMedia сложнее, пока выключаем
+        const constraints = {
+          audio: withAudio ? {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId
+            }
+          } : false,
           video: {
             mandatory: {
               chromeMediaSource: 'desktop',
@@ -356,7 +361,9 @@ export function useVoice() {
               maxHeight: res.height
             }
           }
-        });
+        };
+        
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
       } else {
         // Стандартный захват для браузера
         stream = await navigator.mediaDevices.getDisplayMedia({

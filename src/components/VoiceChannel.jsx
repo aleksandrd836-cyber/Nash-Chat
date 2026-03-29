@@ -381,9 +381,9 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
       {showPicker && (
         <ScreenPickerModal 
           onClose={() => setShowPicker(false)}
-          onSelect={(sourceId) => {
+          onSelect={(sourceId, withAudio) => {
             setShowPicker(false);
-            startScreenShare(quality, user, sourceId);
+            startScreenShare(quality, user, sourceId, withAudio);
           }}
         />
       )}

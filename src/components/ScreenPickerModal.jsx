@@ -35,6 +35,8 @@ export function ScreenPickerModal({ onClose, onSelect }) {
     return true;
   });
 
+  const [withAudio, setWithAudio] = useState(true);
+
   return (
     <div 
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
@@ -97,7 +99,7 @@ export function ScreenPickerModal({ onClose, onSelect }) {
               {filteredSources.map(source => (
                 <button
                   key={source.id}
-                  onClick={() => onSelect(source.id)}
+                  onClick={() => onSelect(source.id, withAudio)}
                   className="group flex flex-col bg-ds-servers/50 rounded-xl overflow-hidden hover:ring-2 hover:ring-ds-accent transition-all animate-fade-in"
                 >
                   {/* Thumbnail */}
@@ -125,13 +127,31 @@ export function ScreenPickerModal({ onClose, onSelect }) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-ds-bg/50 border-t border-white/5 flex justify-end">
-          <button 
-            onClick={onClose}
-            className="px-6 py-2 text-sm font-bold text-ds-text hover:underline transition-all"
-          >
-            Отмена
-          </button>
+        <div className="p-4 bg-ds-bg/50 border-t border-white/5 flex items-center justify-between">
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="relative flex items-center">
+              <input 
+                type="checkbox" 
+                checked={withAudio}
+                onChange={e => setWithAudio(e.target.checked)}
+                className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-ds-divider bg-ds-servers transition-all checked:bg-ds-accent checked:border-ds-accent"
+              />
+              <svg className="absolute w-4 h-4 text-white pointer-events-none hidden peer-checked:block left-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-ds-muted group-hover:text-ds-text transition-colors">
+              Транслировать системный звук
+            </span>
+          </label>
+          <div className="flex gap-4">
+            <button 
+              onClick={onClose}
+              className="px-6 py-2 text-sm font-bold text-ds-text hover:underline transition-all"
+            >
+              Отмена
+            </button>
+          </div>
         </div>
       </div>
     </div>
