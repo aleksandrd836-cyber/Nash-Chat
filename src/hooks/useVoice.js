@@ -80,6 +80,11 @@ export function useVoice() {
       if (!audioElements.current[remoteUserId]) {
         const audio = new Audio();
         audio.autoplay = true;
+        // Применяем выбранное пользователем устройство вывода (если поддерживается)
+        const outputDeviceId = localStorage.getItem('outputDeviceId');
+        if (outputDeviceId && typeof audio.setSinkId === 'function') {
+          audio.setSinkId(outputDeviceId).catch(() => {});
+        }
         audioElements.current[remoteUserId] = audio;
       }
       audioElements.current[remoteUserId].srcObject = event.streams[0];

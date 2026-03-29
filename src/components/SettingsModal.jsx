@@ -17,17 +17,19 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
   const [nickMsg, setNickMsg]      = useState(null); // { type: 'ok'|'err', text }
 
   // ── Микрофон ──
-  const [devices, setDevices]         = useState([]);  // список микрофонов
+  const [devices, setDevices]               = useState([]);  // список микрофонов
+  const [outputDevices, setOutputDevices]   = useState([]);  // список колонок/наушников
   const [selectedDevice, setSelectedDevice] = useState(() => localStorage.getItem('micDeviceId') ?? '');
-  const [testing, setTesting]         = useState(false);
-  const [volume, setVolume]            = useState(0);   // 0-100 для индикатора
+  const [selectedOutput, setSelectedOutput] = useState(() => localStorage.getItem('outputDeviceId') ?? '');
+  const [testing, setTesting]               = useState(false);
+  const [volume, setVolume]                 = useState(0);   // 0-100 для индикатора
   const testStreamRef  = useRef(null);
   const analyserRef    = useRef(null);
   const animFrameRef   = useRef(null);
   const gainNodeRef    = useRef(null);
   const audioCtxRef    = useRef(null);
 
-  // Загружаем список микрофонов
+  // Загружаем список микрофонов и наушников
   useEffect(() => {
     async function loadDevices() {
       try {
@@ -35,8 +37,10 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
         await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));
         const all = await navigator.mediaDevices.enumerateDevices();
         setDevices(all.filter(d => d.kind === 'audioinput'));
+        setOutputDevices(all.filter(d => d.kind === 'audiooutput'));
       } catch {
         setDevices([]);
+        setOutputDevices([]);
       }
     }
     loadDevices();
@@ -46,6 +50,11 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
   useEffect(() => {
     localStorage.setItem('micDeviceId', selectedDevice);
   }, [selectedDevice]);
+
+  // Сохраняем выбранный выход в localStorage
+  useEffect(() => {
+    localStorage.setItem('outputDeviceId', selectedOutput);
+  }, [selectedOutput]);
 
   // Стоп теста при закрытии
   useEffect(() => () => stopTest(), []);
@@ -287,6 +296,35 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                 </p>
               )}
             </div>
+          </section>
+
+          {/* ── Наушники / Динамики ── */}
+          <section>
+            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Наушники / Динамики</h3>
+
+            {outputDevices.length === 0 ? (
+              <p className="text-ds-muted text-xs bg-ds-bg border border-ds-divider/50 rounded-lg px-3 py-2">
+                Устройства вывода недоступны (браузер или ОС не поддерживают выбор)
+              </p>
+            ) : (
+              <>
+                <select
+                  value={selectedOutput}
+                  onChange={e => setSelectedOutput(e.target.value)}
+                  className="w-full bg-ds-bg border border-ds-divider rounded-lg px-3 py-2 text-ds-text text-sm focus:outline-none focus:border-ds-accent transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="">По умолчанию (системный)</option>
+                  {outputDevices.map(d => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Устройство вывода ${d.deviceId.slice(0, 8)}`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-ds-muted text-[11px] mt-2">
+                  Выбранное устройство будет использоваться для воспроизведения голоса в звонках.
+                </p>
+              </>
+            )}
           </section>
 
         </div>
