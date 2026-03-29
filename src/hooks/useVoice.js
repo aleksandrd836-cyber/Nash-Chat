@@ -26,11 +26,13 @@ export function useVoice() {
   const [participants, setParticipants]        = useState([]);     // список участников (текущий канал)
   const [allParticipants, setAllParticipants]  = useState({});     // глобальный список: кто в каком канале
   const [isMuted, setIsMuted]                  = useState(false);
+  const [isDeafened, setIsDeafened]            = useState(false);
   const [isConnecting, setIsConnecting]        = useState(false);
   
   const [isScreenSharing, setIsScreenSharing]  = useState(false);
   const [remoteScreens, setRemoteScreens]      = useState({}); // { [userId]: MediaStream }
 
+  const isDeafenedRef    = useRef(false);
   const screenStreamRef  = useRef(null);
 
   const localStream      = useRef(null);
@@ -112,6 +114,7 @@ export function useVoice() {
         if (!audioElements.current[remoteUserId]) {
           const audio = new Audio();
           audio.autoplay = true;
+          audio.muted = isDeafenedRef.current;
           // Применяем выбранное пользователем устройство вывода (если поддерживается)
           const outputDeviceId = localStorage.getItem('outputDeviceId');
           if (outputDeviceId && typeof audio.setSinkId === 'function') {
@@ -177,6 +180,8 @@ export function useVoice() {
     setActiveChannelId(null);
     setParticipants([]);
     setIsMuted(false);
+    setIsDeafened(false);
+    isDeafenedRef.current = false;
     currentUserRef.current = null;
   }, [closePeer]);
 
@@ -310,6 +315,18 @@ export function useVoice() {
     setIsMuted((prev) => !prev);
   }, []);
 
+  /** Переключить заглушение (наушники) */
+  const toggleDeafen = useCallback(() => {
+    setIsDeafened((prev) => {
+      const next = !prev;
+      isDeafenedRef.current = next;
+      Object.values(audioElements.current).forEach((audio) => {
+        if (audio) audio.muted = next;
+      });
+      return next;
+    });
+  }, []);
+
   /**
    * Трансляция экрана
    */
@@ -401,12 +418,14 @@ export function useVoice() {
     participants,
     allParticipants,
     isMuted,
+    isDeafened,
     isConnecting,
     isScreenSharing,
     remoteScreens,
     joinVoiceChannel,
     leaveVoiceChannel,
     toggleMute,
+    toggleDeafen,
     setParticipantVolume,
     startScreenShare,
     stopScreenShare,
