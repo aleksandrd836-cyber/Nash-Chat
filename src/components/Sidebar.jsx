@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserPanel } from './UserPanel';
 import { getUserAvatar } from '../lib/avatar';
+import { useUnreadCounts } from '../hooks/useUnreadCounts';
 
 /**
  * Боковая панель со списком каналов.
@@ -14,6 +15,9 @@ export function Sidebar({
 }) {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading]   = useState(true);
+
+  // ── Непрочитанные сообщения ──
+  const { counts, markAsRead } = useUnreadCounts(currentUserId, selectedChannel?.id);
 
   // ── Редактирование канала ──
   const [editingId, setEditingId]     = useState(null);   // id канала, который переименовываем
@@ -207,19 +211,30 @@ export function Sidebar({
                     </div>
                   ) : (
                     <button
-                      onClick={() => onSelectChannel(ch)}
+                      onClick={() => {
+                        onSelectChannel(ch);
+                        markAsRead(ch.id);
+                      }}
                       onContextMenu={(e) => handleChannelCtx(e, ch)}
-                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm font-medium transition-all duration-150
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm font-medium transition-all duration-150 group/item
                         ${selectedChannel?.id === ch.id
                           ? 'bg-ds-active text-ds-text'
                           : 'text-ds-muted hover:bg-ds-hover hover:text-ds-text'
-                        }`}
+                        } ${counts[ch.id] > 0 ? 'text-ds-text font-bold' : ''}`}
                     >
-                      <span className="text-base leading-none opacity-70">#</span>
+                      <span className={`text-base leading-none opacity-70 ${counts[ch.id] > 0 ? 'text-ds-accent' : ''}`}>#</span>
                       <span className="truncate flex-1 text-left">{ch.name}</span>
+                      
+                      {/* Бейдж непрочитанных */}
+                      {counts[ch.id] > 0 && selectedChannel?.id !== ch.id && (
+                        <span className="px-1.5 py-0.5 bg-ds-red text-white text-[10px] font-bold rounded-full min-w-[18px] text-center shadow-lg animate-pulse">
+                          {counts[ch.id] > 99 ? '99+' : counts[ch.id]}
+                        </span>
+                      )}
+
                       {/* Кнопки управления (при наведении) */}
                       <span
-                        className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+                        className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto"
                         onClick={e => e.stopPropagation()}
                       >
                         <span
