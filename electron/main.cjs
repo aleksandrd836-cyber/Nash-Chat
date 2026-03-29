@@ -1,6 +1,6 @@
 const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('path');
-const https = require('https');
+const { autoUpdater } = require('electron-updater');
 
 const APP_URL = 'https://nash-chat1.pages.dev/';
 
@@ -144,53 +144,33 @@ ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
 });
 
-// ── Проверка обновлений через Cloudflare (без GitHub API) ──
-const VERSION_URL = 'https://nash-chat1.pages.dev/version.json';
-
-function fetchLatestVersion() {
-  return new Promise((resolve, reject) => {
-    https.get(VERSION_URL, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch (e) { reject(e); }
-      });
-    }).on('error', reject);
-  });
-}
-
-function isNewer(current, latest) {
-  const c = current.split('.').map(Number);
-  const l = latest.split('.').map(Number);
-  for (let i = 0; i < Math.max(c.length, l.length); i++) {
-    if ((l[i] || 0) > (c[i] || 0)) return true;
-    if ((l[i] || 0) < (c[i] || 0)) return false;
-  }
-  return false;
-}
-
-ipcMain.handle('check-for-updates', async () => {
-  const data   = await fetchLatestVersion();
-  const latest  = data.version;
-  const current = app.getVersion();
-  if (isNewer(current, latest)) {
-    mainWindow?.webContents.send('update-available', {
-      version:     latest,
-      downloadUrl: data.downloadUrl,
-    });
-  }
-  return { current, latest };
-});
-
-// Открываем браузер для скачивания
-ipcMain.handle('download-update', (_, url) => {
-  shell.openExternal(url || 'https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest');
-});
-
 app.whenReady().then(() => {
   createSplash();
   createWindow();
+
+  // ── Автообновление (через GitHub Releases) ──
+  autoUpdater.autoDownload = false; // Скачивать будем по кнопке
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update-available', info);
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update-progress', progress);
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents.send('update-downloaded');
+  });
+
+  autoUpdater.on('error', (err) => {
+    mainWindow?.webContents.send('update-error', err.message);
+  });
+
+  ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
+  ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
+  ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
 });
 
 app.on('window-all-closed', () => { app.quit(); });

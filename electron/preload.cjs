@@ -9,10 +9,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Проверка обновлений (возвращает { current, latest })
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
 
-  // Открывает браузер для скачивания новой версии
-  downloadUpdate: (url) => ipcRenderer.invoke('download-update', url),
+  // Скачивание и установка
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate:  () => ipcRenderer.invoke('install-update'),
 
   // События
-  onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_, info) => cb(info)),
-  onUpdateError:     (cb) => ipcRenderer.on('update-error',     (_, msg)  => cb(msg)),
+  onUpdateAvailable:  (cb) => ipcRenderer.on('update-available',  (_, info) => cb(info)),
+  onUpdateProgress:   (cb) => ipcRenderer.on('update-progress',   (_, progress) => cb(progress)),
+  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', () => cb()),
+  onUpdateError:      (cb) => ipcRenderer.on('update-error',      (_, msg)  => cb(msg)),
 });
