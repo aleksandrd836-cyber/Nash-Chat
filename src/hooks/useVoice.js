@@ -1,19 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { notifications } from '../lib/notifications';
 
 /**
  * Хук голосового чата.
  *
  * Сигналинг идёт через Supabase Realtime Broadcast — без отдельного сервера.
  * Аудио идёт напрямую P2P через нативный WebRTC.
- *
- * Схема:
- *  1. Пользователь A входит в голосовой канал → подписывается на Supabase Presence
- *  2. Уже находящиеся пользователи видят A через presence:join → инициируют offer
- *  3. A получает offer через broadcast, отвечает answer
- *  4. Обмен ICE-кандидатами через broadcast
- *  5. P2P аудио установлено
  */
 
 const ICE_SERVERS = [
@@ -41,18 +33,16 @@ export function useVoice() {
   const globalPresence   = useRef(null);
   const peerConns        = useRef({});   // { [userId]: RTCPeerConnection }
   const audioElements    = useRef({});   // { [userId]: HTMLAudioElement }
-  const realtimeChannel  = useRef(null);
-  const currentUserRef   = useRef(null);
-  const isMutedRef       = useRef(false);
-  const presencePayload  = useRef({});
-  const prevStreamers    = useRef(new Set()); // Для отслеживания новых стримов (звук)
+  const realtimeChannel   = useRef(null);
+  const currentUserRef    = useRef(null);
+  const isMutedRef        = useRef(false);
+  const presencePayload   = useRef({});
 
-  // Noise Suppression / VAD refs
   const audioContextRef  = useRef(null);
   const analyserRef      = useRef(null);
+  const gateNodeRef      = useRef(null);
   const vadIntervalRef   = useRef(null);
   const lastSpeakTimeRef = useRef(0);
-  const vadStreamRef     = useRef(null);
 
   // Инициализируем глобальный канал присутствия для боковой панели
   useEffect(() => {
@@ -60,19 +50,12 @@ export function useVoice() {
     
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
-      
-      // Дедубликация: 
-      // Если у пользователя зависла старая сессия (призрак), мы оставляем только ту, где joined_at новее.
       const latestUserPresence = new Map();
 
       Object.values(state).flat().forEach(p => {
         if (!p.channelId || !p.userId || !p.username) return;
-        
         const existing = latestUserPresence.get(p.userId);
         if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
-          latestUserPresence.set(p.userId, p);
-        } else if (!existing && !p.joined_at) {
-          // Фолбэк на старые форматы, если они есть
           latestUserPresence.set(p.userId, p);
         }
       });
@@ -111,14 +94,17 @@ export function useVoice() {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
     // Добавляем дорожки своего микрофона
-    localStream.current?.getTracks().forEach((track) => {
+    const tracks = localStream.current?.getTracks() || [];
+    console.log(`[WebRTC] Adding ${tracks.length} local tracks to PC for ${remoteUserId}`);
+    tracks.forEach((track) => {
       pc.addTrack(track, localStream.current);
     });
 
-    // Обработка renegotiation (необходима для добавления видеопотоков на лету)
+    // Обработка renegotiation
     pc.onnegotiationneeded = async () => {
       try {
         if (pc.signalingState !== 'stable') return;
+        console.log(`[WebRTC] Creating offer for ${remoteUserId}`);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         if (realtimeChannel.current && currentUserRef.current) {
@@ -129,38 +115,48 @@ export function useVoice() {
           });
         }
       } catch (err) {
-        console.error('onnegotiationneeded error', err);
+        console.error(`[WebRTC] onnegotiationneeded error for ${remoteUserId}:`, err);
       }
     };
 
     // Получаем аудио/видео от собеседника
     pc.ontrack = (event) => {
       const stream = event.streams[0];
+      const track = event.track;
+      console.log(`[WebRTC] Received track from ${remoteUserId}:`, { kind: track.kind, streamId: stream.id });
       
-      // Логика разграничения: если у нас уже создан аудио-плеер для голоса, 
-      // и приходит поток с ДРУГИМ ID, значит это стрим демонстрации экрана.
-      // (т.к. голос всегда подключается первым).
-      if (audioElements.current[remoteUserId] && audioElements.current[remoteUserId].srcObject?.id !== stream.id) {
+      if (track.kind === 'video') {
         setRemoteScreens(prev => ({ ...prev, [remoteUserId]: stream }));
-      } else {
-        // Это голосовой поток
+      } else if (track.kind === 'audio') {
         if (!audioElements.current[remoteUserId]) {
+          console.log(`[WebRTC] Creating new Audio element for ${remoteUserId}`);
           const audio = new Audio();
           audio.autoplay = true;
           audio.muted = isDeafenedRef.current;
-          // Применяем выбранное пользователем устройство вывода (если поддерживается)
+          
           const outputDeviceId = localStorage.getItem('outputDeviceId');
           if (outputDeviceId && typeof audio.setSinkId === 'function') {
-            audio.setSinkId(outputDeviceId).catch(() => {});
+            audio.setSinkId(outputDeviceId).catch(err => console.warn('[WebRTC] sinkId error', err));
           }
           audioElements.current[remoteUserId] = audio;
         }
-        audioElements.current[remoteUserId].srcObject = event.streams[0];
-        audioElements.current[remoteUserId].play().catch(() => {});
+        
+        const audioElement = audioElements.current[remoteUserId];
+        if (audioElement.srcObject?.id !== stream.id) {
+          audioElement.srcObject = stream;
+        }
+
+        audioElement.play().catch(err => {
+          console.error(`[WebRTC] Playback failed for ${remoteUserId}. Autoplay policy?`, err);
+          const playOnAction = () => {
+            audioElement.play().catch(() => {});
+            document.removeEventListener('click', playOnAction);
+          };
+          document.addEventListener('click', playOnAction);
+        });
       }
     };
 
-    // Шлём ICE-кандидатов через Supabase Broadcast
     pc.onicecandidate = ({ candidate }) => {
       if (candidate && realtimeChannel.current) {
         realtimeChannel.current.send({
@@ -171,8 +167,9 @@ export function useVoice() {
       }
     };
 
-    pc.onconnectionstatechange = () => {
-      if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+    pc.oniceconnectionstatechange = () => {
+      console.log(`[WebRTC] ICE state for ${remoteUserId}: ${pc.iceConnectionState}`);
+      if (['failed', 'closed', 'disconnected'].includes(pc.iceConnectionState)) {
         closePeer(remoteUserId);
       }
     };
@@ -181,7 +178,6 @@ export function useVoice() {
     return pc;
   }, []);
 
-  /** Закрыть соединение с одним пиром */
   const closePeer = useCallback((userId) => {
     peerConns.current[userId]?.close();
     delete peerConns.current[userId];
@@ -191,13 +187,11 @@ export function useVoice() {
     }
   }, []);
 
-  /** Полная очистка */
   const cleanupAll = useCallback(async () => {
     Object.keys(peerConns.current).forEach(closePeer);
     localStream.current?.getTracks().forEach((t) => t.stop());
     localStream.current = null;
 
-    // Очистка шумодава
     if (vadIntervalRef.current) {
       clearInterval(vadIntervalRef.current);
       vadIntervalRef.current = null;
@@ -206,19 +200,12 @@ export function useVoice() {
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
     }
-    if (vadStreamRef.current) {
-      vadStreamRef.current.getTracks().forEach(t => t.stop());
-      vadStreamRef.current = null;
-    }
     setIsSpeaking(false);
     lastSpeakTimeRef.current = 0;
     if (realtimeChannel.current) {
       try { await realtimeChannel.current.untrack(); } catch {}
       await supabase.removeChannel(realtimeChannel.current);
       realtimeChannel.current = null;
-    }
-    if (globalPresence.current) {
-      try { await globalPresence.current.untrack(); } catch {} // удаляем себя из всех списков
     }
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(t => t.stop());
@@ -234,7 +221,6 @@ export function useVoice() {
     currentUserRef.current = null;
   }, [closePeer]);
 
-  /** Обновить список участников из Presence-состояния */
   const syncParticipants = useCallback((channel) => {
     const state = channel.presenceState();
     const seen = new Map();
@@ -250,53 +236,51 @@ export function useVoice() {
     setParticipants(Array.from(seen.values()));
   }, []);
 
-  /** Войти в голосовой канал */
   const joinVoiceChannel = useCallback(async (channelId, user, username, color) => {
     if (activeChannelId) await leaveVoiceChannel();
     setIsConnecting(true);
 
-    // Запросить микрофон с улучшенными фильтрами
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }, 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, 
         video: false 
       });
     } catch (err) {
       console.error('Mic capture error:', err);
-      alert('Не удалось получить доступ к микрофону. Проверь разрешения браузера.');
+      alert('Не удалось получить доступ к микрофону.');
       setIsConnecting(false);
       return;
     }
     
-    // Инициализируем VAD (Voice Activity Detection / Шумодав) только для UI.
     try {
-      const vadStream = stream.clone();
-      vadStreamRef.current = vadStream;
-      
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
       if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
 
-      const source = audioContext.createMediaStreamSource(vadStream);
+      const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
+      const gateNode = audioContext.createGain();
+      const destination = audioContext.createMediaStreamDestination();
+
       analyser.fftSize = 256;
+      gateNode.gain.value = 0; 
+
+      source.connect(gateNode).connect(destination);
       source.connect(analyser);
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       
-      const SPEAK_THRESHOLD = 20; // Чувствительность к пикам
-      const SPEAK_HOLD_TIME = 400;
+      const SPEAK_THRESHOLD = 15; 
+      const SPEAK_HOLD_TIME = 500; 
 
       const checkVolume = () => {
-        if (isMutedRef.current) return;
+        if (isMutedRef.current || isDeafenedRef.current) {
+          if (gateNode.gain.value > 0) gateNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.01);
+          return;
+        }
 
         analyser.getByteFrequencyData(dataArray);
-        
         let maxFreq = 0;
         for (let i = 0; i < bufferLength; i++) {
           if (dataArray[i] > maxFreq) maxFreq = dataArray[i];
@@ -307,36 +291,37 @@ export function useVoice() {
 
         if (currentlySpeaking) {
           lastSpeakTimeRef.current = now;
-          setIsSpeaking(curr => {
-            if (!curr && realtimeChannel.current) {
-              realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: true }).catch(() => {});
-            }
-            return true;
-          });
+          if (gateNode.gain.value < 0.9) {
+            gateNode.gain.setTargetAtTime(1.0, audioContext.currentTime, 0.02);
+            setIsSpeaking(true);
+            presencePayload.current.isSpeaking = true;
+            if (realtimeChannel.current) realtimeChannel.current.track(presencePayload.current).catch(() => {});
+          }
         } else if (now - lastSpeakTimeRef.current > SPEAK_HOLD_TIME) {
-          setIsSpeaking(curr => {
-            if (curr && realtimeChannel.current) {
-              realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: false }).catch(() => {});
-            }
-            return false;
-          });
+          if (gateNode.gain.value > 0.1) {
+            gateNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+            setIsSpeaking(false);
+            presencePayload.current.isSpeaking = false;
+            if (realtimeChannel.current) realtimeChannel.current.track(presencePayload.current).catch(() => {});
+          }
         }
       };
 
       vadIntervalRef.current = setInterval(checkVolume, 50);
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
+      gateNodeRef.current = gateNode;
+
+      console.log('VAD: Initialized Digital Gate', { threshold: SPEAK_THRESHOLD });
+      localStream.current = destination.stream;
     } catch (vadErr) {
-      console.warn('Failed to init Noise Gate:', vadErr);
+      console.error('VAD Error:', vadErr);
+      localStream.current = stream; 
     }
 
-    localStream.current   = stream;
     currentUserRef.current = { id: user.id, username };
-    
-    // Изначальный пейлоад для локального отслеживания
     presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false };
 
-    // Создаём Supabase Realtime канал (Presence + Broadcast)
     const channel = supabase.channel(`voice:${channelId}`, {
       config: {
         presence: { key: user.id },
@@ -344,34 +329,19 @@ export function useVoice() {
       },
     });
 
-    // === Presence events ===
-    channel.on('presence', { event: 'sync' }, () => {
-      syncParticipants(channel);
-    });
-
+    channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
-      // Существующие пользователи создают PeerConnection (onnegotiationneeded сам создаст offer)
       newPresences.forEach((p) => {
         if (p.userId === user.id) return;
         createPeerConnection(p.userId);
       });
       syncParticipants(channel);
-      // Звук входа (если это не я)
-      if (newPresences.some(p => p.userId !== user.id)) {
-        notifications.play('join');
-      }
     });
-
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
       leftPresences.forEach((p) => closePeer(p.userId));
       syncParticipants(channel);
-      // Звук выхода (если это не я)
-      if (leftPresences.some(p => p.userId !== user.id)) {
-        notifications.play('leave');
-      }
     });
 
-    // === Broadcast events (сигналинг) ===
     channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
       if (payload.to !== user.id) return;
       const pc = createPeerConnection(payload.from);
@@ -395,31 +365,21 @@ export function useVoice() {
       if (payload.to !== user.id) return;
       const pc = peerConns.current[payload.from];
       if (pc && payload.candidate) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-        } catch {}
+        try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
       }
     });
 
-    // Обработка запроса на трансляцию
     channel.on('broadcast', { event: 'request-stream' }, async ({ payload }) => {
-      if (payload.to !== user.id) return;
-      if (!screenStreamRef.current) return;
-      
+      if (payload.to !== user.id || !screenStreamRef.current) return;
       const pc = peerConns.current[payload.from];
       if (pc) {
-        // Добавляем дорожки экрана. Это триггернет onnegotiationneeded (renegotiation)
         screenStreamRef.current.getTracks().forEach(track => {
-          // Проверяем, не добавлены ли уже
           const senders = pc.getSenders();
-          if (!senders.some(s => s.track === track)) {
-            pc.addTrack(track, screenStreamRef.current);
-          }
+          if (!senders.some(s => s.track === track)) pc.addTrack(track, screenStreamRef.current);
         });
       }
     });
 
-    // Подписываемся и публикуем своё присутствие
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track(presencePayload.current);
@@ -428,58 +388,39 @@ export function useVoice() {
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
-        notifications.play('self_join');
       }
     });
 
     realtimeChannel.current = channel;
   }, [activeChannelId, createPeerConnection, closePeer, syncParticipants]);
 
-  /** Выйти из голосового канала */
   const leaveVoiceChannel = useCallback(async () => {
-    notifications.play('self_leave');
     await cleanupAll();
   }, [cleanupAll]);
 
-  /** Переключить микрофон */
   const toggleMute = useCallback(() => {
     setIsMuted((prev) => {
       const next = !prev;
       isMutedRef.current = next;
-      
-      // Включаем или выключаем саму передачу звука
-      localStream.current?.getAudioTracks().forEach((track) => {
-        track.enabled = !next;
-      });
-
+      localStream.current?.getAudioTracks().forEach((track) => track.enabled = !next);
       if (next) {
         setIsSpeaking(false);
-        if (realtimeChannel.current) {
-          realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: false }).catch(() => {});
-        }
+        presencePayload.current.isSpeaking = false;
+        if (realtimeChannel.current) realtimeChannel.current.track(presencePayload.current).catch(() => {});
       }
-
-      notifications.play(next ? 'mute' : 'unmute');
       return next;
     });
   }, []);
 
-  /** Переключить заглушение (наушники) */
   const toggleDeafen = useCallback(() => {
     setIsDeafened((prev) => {
       const next = !prev;
       isDeafenedRef.current = next;
-      Object.values(audioElements.current).forEach((audio) => {
-        if (audio) audio.muted = next;
-      });
-      notifications.play(next ? 'deafen' : 'undeafen');
+      Object.values(audioElements.current).forEach((audio) => { if (audio) audio.muted = next; });
       return next;
     });
   }, []);
 
-  /**
-   * Трансляция экрана
-   */
   const RESOLUTIONS = {
     '1080p': { width: 1920, height: 1080 },
     '720p':  { width: 1280, height: 720 },
@@ -491,77 +432,44 @@ export function useVoice() {
     try {
       const res = RESOLUTIONS[quality] || RESOLUTIONS['720p'];
       let stream;
-
       if (sourceId && window.electronAPI) {
-        // Специальный захват для Electron (конкретное окно/экран)
-        const constraints = {
-          audio: withAudio ? {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: sourceId
-            }
-          } : false,
-          video: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: sourceId,
-              minWidth: res.width,
-              maxWidth: res.width,
-              minHeight: res.height,
-              maxHeight: res.height
-            }
-          }
-        };
-        
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: withAudio ? { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sourceId } } : false,
+          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sourceId, minWidth: res.width, maxWidth: res.width, minHeight: res.height, maxHeight: res.height } }
+        });
       } else {
-        // Стандартный захват для браузера
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: { width: { ideal: res.width }, height: { ideal: res.height }, frameRate: { ideal: 30 } },
           audio: true, 
         });
       }
-      
       screenStreamRef.current = stream;
       setIsScreenSharing(true);
-      
-      // Обновляем статус в Presence, чтобы появилась кнопка у других
       if (realtimeChannel.current) {
-        realtimeChannel.current.track({ ...presencePayload.current, isScreenSharing: true }).catch(() => {});
+        presencePayload.current.isScreenSharing = true;
+        realtimeChannel.current.track(presencePayload.current).catch(() => {});
       }
-
-      // Если закрыли доступ на уровне браузера/системы
-      stream.getVideoTracks()[0].onended = () => {
-        stopScreenShare(currentUser);
-      };
-
-      notifications.play('self_stream');
+      stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) {
       console.error('Screen sharing error', err);
     }
   }, []);
 
-  const stopScreenShare = useCallback(async (currentUser) => {
+  const stopScreenShare = useCallback(async () => {
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(t => t.stop());
-      
-      // Удаляем треки у всех слушателей
       Object.values(peerConns.current).forEach(pc => {
         pc.getSenders().forEach(sender => {
-          if (sender.track && screenStreamRef.current.getTracks().includes(sender.track)) {
-            pc.removeTrack(sender);
-          }
+          if (sender.track && screenStreamRef.current.getTracks().includes(sender.track)) pc.removeTrack(sender);
         });
       });
-      
       screenStreamRef.current = null;
     }
     setIsScreenSharing(false);
-    
     if (realtimeChannel.current) {
-      realtimeChannel.current.track({ ...presencePayload.current, isScreenSharing: false }).catch(() => {});
+      presencePayload.current.isScreenSharing = false;
+      realtimeChannel.current.track(presencePayload.current).catch(() => {});
     }
-    notifications.play('stream_stop');
   }, []);
 
   const requestScreenView = useCallback((targetUserId) => {
@@ -574,41 +482,12 @@ export function useVoice() {
     }
   }, []);
 
-  /**
-   * Установить громкость конкретного участника (0–200).
-   * 100 = нормальная, 200 = максимальная, 0 = заглушить.
-   * Применяется прямо к HTMLAudioElement.volume (0..2 через GainNode невозможен без Web Audio).
-   */
   const setParticipantVolume = useCallback((userId, volumePct) => {
     const audio = audioElements.current[userId];
-    if (audio) {
-      // Нативный volume поддерживает 0..1, двигаем плавно
-      audio.volume = Math.max(0, Math.min(2, volumePct / 100));
-    }
-    // Сохраняем в localStorage
+    if (audio) audio.volume = Math.max(0, Math.min(2, volumePct / 100));
     localStorage.setItem(`vol_${userId}`, String(volumePct));
-    // Оповещаем другие компоненты об изменении громкости
     window.dispatchEvent(new CustomEvent('volumeChanged', { detail: { userId, volumePct } }));
   }, []);
-
-  // Отслеживание начала чужих трансляций для звука
-  useEffect(() => {
-    const currentStreamers = new Set();
-    participants.forEach(p => {
-      if (p.isScreenSharing && p.userId !== currentUserRef.current?.id) {
-        currentStreamers.add(p.userId);
-      }
-    });
-
-    // Если кто-то новый начал стрим — играем звук
-    for (const userId of currentStreamers) {
-      if (!prevStreamers.current.has(userId)) {
-        notifications.play('stream');
-      }
-    }
-
-    prevStreamers.current = currentStreamers;
-  }, [participants]);
 
   return {
     activeChannelId,
