@@ -36,8 +36,21 @@ export default function App() {
   const [updateInfo,     setUpdateInfo]     = useState(null);
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateError,    setUpdateError]    = useState('');
+  const [downloadUrl,    setDownloadUrl]    = useState('https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest');
 
   const isElectron = !!window.electronAPI;
+
+  // Автоматическое получение ссылки на актуальный .exe для сайта
+  useEffect(() => {
+    if (isElectron) return;
+    fetch('https://api.github.com/repos/aleksandrd836-cyber/Nash-Chat/releases/latest')
+      .then(res => res.json())
+      .then(data => {
+        const asset = data.assets?.find(a => a.name.endsWith('.exe'));
+        if (asset) setDownloadUrl(asset.browser_download_url);
+      })
+      .catch(err => console.error('GitHub API error:', err));
+  }, [isElectron]);
 
   useEffect(() => {
     if (!isElectron) return;
@@ -164,6 +177,18 @@ export default function App() {
               <p className="text-ds-text text-xl font-bold">Привет, {displayUsername}!</p>
               <p className="text-ds-muted text-sm mt-1">Выбери канал слева, чтобы начать общение</p>
             </div>
+            
+            {!isElectron && (
+              <a 
+                href={downloadUrl}
+                className="mt-4 flex items-center gap-3 px-6 py-3 bg-ds-green hover:bg-ds-green/90 text-white font-bold rounded-xl transition-all shadow-xl shadow-ds-green/20 group animate-pulse-soft"
+              >
+                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
+                </svg>
+                Скачать Vibe для Windows
+              </a>
+            )}
           </div>
         ) : selectedChannel.type === 'text' ? (
           <TextChannel
@@ -171,6 +196,7 @@ export default function App() {
             user={auth.user}
             username={displayUsername}
             userColor={displayColor}
+            downloadUrl={downloadUrl}
           />
         ) : (
           <VoiceChannel
@@ -179,6 +205,7 @@ export default function App() {
             username={displayUsername}
             userColor={displayColor}
             voice={voice}
+            downloadUrl={downloadUrl}
           />
         )}
       </main>

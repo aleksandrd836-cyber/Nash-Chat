@@ -10,7 +10,7 @@ const MAX_FILE_SIZE_MB = 50;
 /**
  * Текстовый канал — история сообщений + поле ввода с прикреплением файлов
  */
-export function TextChannel({ channel, user, username, userColor }) {
+export function TextChannel({ channel, user, username, userColor, downloadUrl }) {
   const { messages, loading, sending, sendMessage, uploadFile } = useMessages(channel?.id);
   const [draft, setDraft]         = useState('');
   const [attachment, setAttachment] = useState(null);   // { file, previewUrl }
@@ -142,7 +142,7 @@ export function TextChannel({ channel, user, username, userColor }) {
         
         {!window.electronAPI && (
           <a 
-            href="https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest/download/Vibe-1.0.30-x64.exe"
+            href={downloadUrl}
             className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-ds-green hover:bg-ds-green/90 text-white text-[11px] font-bold rounded-md transition-all shadow-lg shadow-ds-green/20 animate-pulse-soft"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">

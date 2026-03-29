@@ -51,7 +51,7 @@ function ScreenPlayer({ participant, stream }) {
  * Отображается вместо TextChannel, когда выбран voice-канал.
  * Показывает участников, поддерживает контекстное меню с микшером громкости.
  */
-export function VoiceChannel({ channel, user, username, userColor, voice }) {
+export function VoiceChannel({ channel, user, username, userColor, voice, downloadUrl }) {
   const {
     activeChannelId,
     participants,
@@ -147,7 +147,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
         
         {!window.electronAPI && (
           <a 
-            href="https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest/download/Vibe-1.0.30-x64.exe"
+            href={downloadUrl}
             className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-ds-green hover:bg-ds-green/90 text-white text-[11px] font-bold rounded-md transition-all shadow-lg shadow-ds-green/20 animate-pulse-soft"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
