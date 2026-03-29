@@ -42,6 +42,7 @@ export function useVoice() {
   const audioElements    = useRef({});   // { [userId]: HTMLAudioElement }
   const realtimeChannel  = useRef(null);
   const currentUserRef   = useRef(null);
+  const isMutedRef       = useRef(false);
 
   // Noise Suppression / VAD refs
   const audioContextRef  = useRef(null);
@@ -254,24 +255,31 @@ export function useVoice() {
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       
-      const SPEAK_THRESHOLD = 30; // Чувствительность (чем больше, тем агрессивнее)
+      const SPEAK_THRESHOLD = 30; // Чувствительность к пикам (0-255)
       const SPEAK_HOLD_TIME = 400; // Сколько держать канал открытым после конца фразы (ms)
 
       const checkVolume = () => {
+        // Если пользователь замьючен вручную, ничего не шлем
+        if (isMutedRef.current) {
+          return;
+        }
+
         analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-        const average = sum / bufferLength;
+        
+        let maxFreq = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          if (dataArray[i] > maxFreq) maxFreq = dataArray[i];
+        }
 
         const now = Date.now();
-        const currentlySpeaking = average > SPEAK_THRESHOLD;
+        const currentlySpeaking = maxFreq > SPEAK_THRESHOLD;
 
         if (currentlySpeaking) {
           lastSpeakTimeRef.current = now;
           setIsSpeaking(curr => {
             if (!curr) {
               // Если был выключен — включаем поток
-              stream.getAudioTracks().forEach(t => t.enabled = true);
+              stream.getAudioTracks().forEach(t => { t.enabled = true; });
               // Оповещаем остальных через Presence
               if (realtimeChannel.current) {
                 const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
@@ -284,7 +292,7 @@ export function useVoice() {
           setIsSpeaking(curr => {
             if (curr) {
               // Если был включен — гасим поток (шумодав сработал)
-              stream.getAudioTracks().forEach(t => t.enabled = false);
+              stream.getAudioTracks().forEach(t => { t.enabled = false; });
               // Оповещаем остальных через Presence
               if (realtimeChannel.current) {
                 const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
@@ -409,10 +417,29 @@ export function useVoice() {
 
   /** Переключить микрофон */
   const toggleMute = useCallback(() => {
-    localStream.current?.getAudioTracks().forEach((track) => {
-      track.enabled = !track.enabled;
+    setIsMuted((prev) => {
+      const next = !prev;
+      isMutedRef.current = next;
+      
+      // Если мы сами себя замьютили, безусловно вырубаем трек и гасим speaking
+      if (next) {
+        localStream.current?.getAudioTracks().forEach((track) => {
+          track.enabled = false;
+        });
+        setIsSpeaking(false);
+        if (realtimeChannel.current && currentUserRef.current) {
+          const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
+          realtimeChannel.current.track({ ...state, isSpeaking: false });
+        }
+      } else {
+        // Как только размьютили, можно сразу "открыть" гейт, чтобы не съесть первый слог
+        localStream.current?.getAudioTracks().forEach((track) => {
+          track.enabled = true;
+        });
+        lastSpeakTimeRef.current = Date.now();
+      }
+      return next;
     });
-    setIsMuted((prev) => !prev);
   }, []);
 
   /** Переключить заглушение (наушники) */
