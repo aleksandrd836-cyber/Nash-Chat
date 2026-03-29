@@ -40,9 +40,10 @@ export function useVoice() {
   const globalPresence   = useRef(null);
   const peerConns        = useRef({});   // { [userId]: RTCPeerConnection }
   const audioElements    = useRef({});   // { [userId]: HTMLAudioElement }
-  const realtimeChannel  = useRef(null);
-  const currentUserRef   = useRef(null);
-  const isMutedRef       = useRef(false);
+  const realtimeChannel   = useRef(null);
+  const currentUserRef    = useRef(null);
+  const isMutedRef        = useRef(false);
+  const presencePayload   = useRef({});
 
   // Noise Suppression / VAD refs
   const audioContextRef  = useRef(null);
@@ -270,13 +271,14 @@ export function useVoice() {
       return;
     }
     
-    // Инициализируем VAD (Voice Activity Detection / Шумодав)
+    // Инициализируем VAD (Voice Activity Detection / Шумодав) только для UI.
     try {
-      // "Клонируем" поток для анализатора, чтобы отключение основного не глушило шумодав
       const vadStream = stream.clone();
       vadStreamRef.current = vadStream;
       
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+
       const source = audioContext.createMediaStreamSource(vadStream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
@@ -285,14 +287,11 @@ export function useVoice() {
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       
-      const SPEAK_THRESHOLD = 30; // Чувствительность к пикам (0-255)
-      const SPEAK_HOLD_TIME = 400; // Сколько держать канал открытым после конца фразы (ms)
+      const SPEAK_THRESHOLD = 20; // Чувствительность к пикам
+      const SPEAK_HOLD_TIME = 400;
 
       const checkVolume = () => {
-        // Если пользователь замьючен вручную, ничего не шлем
-        if (isMutedRef.current) {
-          return;
-        }
+        if (isMutedRef.current) return;
 
         analyser.getByteFrequencyData(dataArray);
         
@@ -307,27 +306,15 @@ export function useVoice() {
         if (currentlySpeaking) {
           lastSpeakTimeRef.current = now;
           setIsSpeaking(curr => {
-            if (!curr) {
-              // Если был выключен — включаем поток
-              stream.getAudioTracks().forEach(t => { t.enabled = true; });
-              // Оповещаем остальных через Presence
-              if (realtimeChannel.current) {
-                const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
-                realtimeChannel.current.track({ ...state, isSpeaking: true });
-              }
+            if (!curr && realtimeChannel.current) {
+              realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: true }).catch(() => {});
             }
             return true;
           });
         } else if (now - lastSpeakTimeRef.current > SPEAK_HOLD_TIME) {
           setIsSpeaking(curr => {
-            if (curr) {
-              // Если был включен — гасим поток (шумодав сработал)
-              stream.getAudioTracks().forEach(t => { t.enabled = false; });
-              // Оповещаем остальных через Presence
-              if (realtimeChannel.current) {
-                const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
-                realtimeChannel.current.track({ ...state, isSpeaking: false });
-              }
+            if (curr && realtimeChannel.current) {
+              realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: false }).catch(() => {});
             }
             return false;
           });
@@ -337,18 +324,15 @@ export function useVoice() {
       vadIntervalRef.current = setInterval(checkVolume, 50);
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
-
-      // По умолчанию стартуем в тишине, если сразу не говорим
-      stream.getAudioTracks().forEach(t => t.enabled = false);
-
     } catch (vadErr) {
       console.warn('Failed to init Noise Gate:', vadErr);
-      // Если Web Audio упал, просто оставляем микрофон включенным
-      stream.getAudioTracks().forEach(t => t.enabled = true);
     }
 
     localStream.current   = stream;
     currentUserRef.current = { id: user.id, username };
+    
+    // Изначальный пейлоад для локального отслеживания
+    presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false };
 
     // Создаём Supabase Realtime канал (Presence + Broadcast)
     const channel = supabase.channel(`voice:${channelId}`, {
@@ -428,7 +412,7 @@ export function useVoice() {
     // Подписываемся и публикуем своё присутствие
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ userId: user.id, username, color });
+        await channel.track(presencePayload.current);
         if (globalPresence.current) {
           await globalPresence.current.track({ channelId, userId: user.id, username, color, joined_at: Date.now() });
         }
@@ -451,22 +435,14 @@ export function useVoice() {
       const next = !prev;
       isMutedRef.current = next;
       
-      // Если мы сами себя замьютили, безусловно вырубаем трек и гасим speaking
+      // Включаем или выключаем саму передачу звука
+      localStream.current?.getAudioTracks().forEach((track) => {
+        track.enabled = !next;
+      });
+
       if (next) {
-        localStream.current?.getAudioTracks().forEach((track) => {
-          track.enabled = false;
-        });
         setIsSpeaking(false);
-        if (realtimeChannel.current && currentUserRef.current) {
-          const state = realtimeChannel.current.presenceState()[currentUserRef.current.id]?.[0] || {};
-          realtimeChannel.current.track({ ...state, isSpeaking: false });
-        }
-      } else {
-        // Как только размьютили, можно сразу "открыть" гейт, чтобы не съесть первый слог
-        localStream.current?.getAudioTracks().forEach((track) => {
-          track.enabled = true;
-        });
-        lastSpeakTimeRef.current = Date.now();
+        if (realtimeChannel.current) realtimeChannel.current.track({ ...presencePayload.current, isSpeaking: false }).catch(() => {});
       }
       return next;
     });
@@ -533,9 +509,8 @@ export function useVoice() {
       setIsScreenSharing(true);
       
       // Обновляем статус в Presence, чтобы появилась кнопка у других
-      if (realtimeChannel.current && currentUser?.id) {
-        const state = realtimeChannel.current.presenceState()[currentUser.id]?.[0] || {};
-        await realtimeChannel.current.track({ ...state, isScreenSharing: true });
+      if (realtimeChannel.current) {
+        realtimeChannel.current.track({ ...presencePayload.current, isScreenSharing: true }).catch(() => {});
       }
 
       // Если закрыли доступ на уровне браузера/системы
@@ -564,9 +539,8 @@ export function useVoice() {
     }
     setIsScreenSharing(false);
     
-    if (realtimeChannel.current && currentUser?.id) {
-      const state = realtimeChannel.current.presenceState()[currentUser.id]?.[0] || {};
-      await realtimeChannel.current.track({ ...state, isScreenSharing: false });
+    if (realtimeChannel.current) {
+      realtimeChannel.current.track({ ...presencePayload.current, isScreenSharing: false }).catch(() => {});
     }
   }, []);
 
