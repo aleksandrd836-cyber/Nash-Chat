@@ -39,6 +39,7 @@ export function useVoice() {
   const vadIntervalRef   = useRef(null);
   const isSpeakingRef    = useRef(false);
   const lastSpeakTimeRef = useRef(0);
+  const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
 
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
@@ -106,15 +107,17 @@ export function useVoice() {
           const audio = new Audio();
           audio.autoplay = true;
           audio.muted = isDeafenedRef.current;
-          // Применяем сохранённую громкость
+          // Сохранённая громкость
           const savedVol = localStorage.getItem(`vol_${remoteUserId}`);
           if (savedVol !== null) audio.volume = Math.min(2, Number(savedVol) / 100);
+          // Прикрепляем к DOM чтобы браузер не удалил элемент как мусор
+          audio.style.display = 'none';
+          document.body.appendChild(audio);
           audioElements.current[remoteUserId] = audio;
         }
         const audio = audioElements.current[remoteUserId];
         if (audio.srcObject?.id !== stream.id) audio.srcObject = stream;
         audio.play().catch(() => {
-          // Autoplay policy: пробуем после первого клика
           const unlock = () => { audio.play().catch(() => {}); document.removeEventListener('click', unlock); };
           document.addEventListener('click', unlock);
         });
@@ -131,9 +134,34 @@ export function useVoice() {
     };
 
     pc.oniceconnectionstatechange = () => {
-      console.log(`[WebRTC] ICE (${remoteUserId}): ${pc.iceConnectionState}`);
-      if (['failed', 'closed', 'disconnected'].includes(pc.iceConnectionState)) {
+      const state = pc.iceConnectionState;
+      console.log(`[WebRTC] ICE (${remoteUserId}): ${state}`);
+
+      if (state === 'failed' || state === 'closed') {
+        // Соединение окончательно упало — сразу закрываем
+        if (iceDisconnectTimers.current[remoteUserId]) {
+          clearTimeout(iceDisconnectTimers.current[remoteUserId]);
+          delete iceDisconnectTimers.current[remoteUserId];
+        }
         closePeer(remoteUserId);
+      } else if (state === 'disconnected') {
+        // 'disconnected' — временное состояние, WebRTC сам восстанавливается.
+        // Даём 8 секунд на самовосстановление, только потом закрываем.
+        if (!iceDisconnectTimers.current[remoteUserId]) {
+          iceDisconnectTimers.current[remoteUserId] = setTimeout(() => {
+            if (pc.iceConnectionState === 'disconnected') {
+              console.warn(`[WebRTC] Соединение с ${remoteUserId} не восстановилось — закрываю.`);
+              closePeer(remoteUserId);
+            }
+            delete iceDisconnectTimers.current[remoteUserId];
+          }, 8000);
+        }
+      } else if (state === 'connected' || state === 'completed') {
+        // Соединение восстановилось — отменяем таймер закрытия
+        if (iceDisconnectTimers.current[remoteUserId]) {
+          clearTimeout(iceDisconnectTimers.current[remoteUserId]);
+          delete iceDisconnectTimers.current[remoteUserId];
+        }
       }
     };
 
@@ -146,6 +174,10 @@ export function useVoice() {
     delete peerConns.current[userId];
     if (audioElements.current[userId]) {
       audioElements.current[userId].srcObject = null;
+      // Удаляем элемент из DOM
+      if (audioElements.current[userId].parentNode) {
+        audioElements.current[userId].parentNode.removeChild(audioElements.current[userId]);
+      }
       delete audioElements.current[userId];
     }
   }, []);
