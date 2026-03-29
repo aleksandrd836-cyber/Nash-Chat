@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 
 /**
  * Панель голосового канала.
  * Отображается вместо TextChannel, когда выбран voice-канал.
- * Показывает участников и управление голосом.
+ * Показывает участников, поддерживает контекстное меню с микшером громкости.
  */
 export function VoiceChannel({ channel, user, username, userColor, voice }) {
   const {
@@ -15,9 +15,51 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
     joinVoiceChannel,
     leaveVoiceChannel,
     toggleMute,
+    setParticipantVolume,
   } = voice;
 
   const isInThisChannel = activeChannelId === channel?.id;
+
+  // ── Контекстное меню ──
+  const [ctxMenu, setCtxMenu] = useState(null); // { participant, x, y }
+  const [volumes, setVolumes] = useState({});    // { [userId]: number 0-200 }
+  const menuRef = useRef(null);
+
+  // Закрыть меню при клике вне его
+  useEffect(() => {
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setCtxMenu(null);
+      }
+    }
+    if (ctxMenu) window.addEventListener('mousedown', handleClick);
+    return () => window.removeEventListener('mousedown', handleClick);
+  }, [ctxMenu]);
+
+  // Инициализировать громкость из localStorage при подключении участников
+  useEffect(() => {
+    const saved = {};
+    participants.forEach(p => {
+      const stored = localStorage.getItem(`vol_${p.userId}`);
+      saved[p.userId] = stored !== null ? Number(stored) : 100;
+    });
+    setVolumes(prev => ({ ...prev, ...saved }));
+  }, [participants]);
+
+  const handleContextMenu = useCallback((e, participant) => {
+    // Не показывать меню для себя
+    if (participant.userId === user?.id) return;
+    e.preventDefault();
+    const x = Math.min(e.clientX, window.innerWidth - 240);
+    const y = Math.min(e.clientY, window.innerHeight - 200);
+    setCtxMenu({ participant, x, y });
+  }, [user?.id]);
+
+  const handleVolumeChange = useCallback((userId, val) => {
+    const num = Number(val);
+    setVolumes(prev => ({ ...prev, [userId]: num }));
+    setParticipantVolume?.(userId, num);
+  }, [setParticipantVolume]);
 
   if (!channel) {
     return (
@@ -28,7 +70,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-ds-bg">
+    <div className="flex-1 flex flex-col bg-ds-bg" onClick={() => setCtxMenu(null)}>
       {/* Header */}
       <div className="h-12 flex items-center px-4 gap-2 border-b border-ds-divider/50 flex-shrink-0 bg-ds-bg/80 backdrop-blur-sm">
         <svg className="text-ds-muted w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -63,26 +105,54 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
 
         {/* Participants grid */}
         {isInThisChannel && participants.length > 0 && (
-          <div className="flex flex-wrap gap-4 justify-center max-w-md">
+          <div className="flex flex-wrap gap-6 justify-center max-w-lg">
             {participants.map((p) => {
-              const { imageUrl, color } = getUserAvatar(p.username);
+              const { imageUrl } = getUserAvatar(p.username);
+              const isMe = p.userId === user?.id;
+              const vol = volumes[p.userId] ?? 100;
               return (
-              <div key={p.userId} className="flex flex-col items-center gap-2 animate-fade-in">
-                <div className="w-[96px] h-[96px] rounded-full bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
-                  <img
-                    src={imageUrl}
-                    alt={p.username}
-                    className="w-[144px] h-[144px] max-w-none select-none"
-                  />
-                </div>
-                <p 
-                  className="text-ds-text font-semibold text-sm truncate w-full text-center group-hover:text-white transition-colors z-20 drop-shadow-md"
-                  style={p.color ? { color: p.color } : {}}
+                <div
+                  key={p.userId}
+                  className={`flex flex-col items-center gap-2 animate-fade-in select-none ${!isMe ? 'cursor-context-menu' : ''}`}
+                  onContextMenu={(e) => handleContextMenu(e, p)}
+                  title={!isMe ? 'ПКМ для настройки громкости' : ''}
                 >
-                  {p.username}
-                </p>
-              </div>
-            )})}
+                  <div className={`relative w-[96px] h-[96px] rounded-full bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center
+                    ${!isMe ? 'hover:ring-2 hover:ring-ds-accent/60 transition-all duration-150' : ''}`}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={p.username}
+                      className="w-[144px] h-[144px] max-w-none select-none"
+                    />
+                    {/* Иконка громкости у не-себя */}
+                    {!isMe && vol !== 100 && (
+                      <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-ds-servers/90 flex items-center justify-center">
+                        {vol === 0 ? (
+                          <svg className="w-3 h-3 text-ds-red" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0015 19.73L18.73 23.5 20 22.23l-18-18zM12 4L9.91 6.09 12 8.18V4z"/>
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3 text-ds-yellow" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.5 12A4.5 4.5 0 0016 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/>
+                          </svg>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <p
+                    className="text-ds-text font-semibold text-sm truncate w-full text-center drop-shadow-md"
+                    style={p.color ? { color: p.color } : {}}
+                  >
+                    {p.username}
+                  </p>
+                  {/* Маленький индикатор громкости под именем */}
+                  {!isMe && vol !== 100 && (
+                    <p className="text-[10px] text-ds-muted -mt-1">{vol}%</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -148,7 +218,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
                 className="py-3 px-4 rounded-xl bg-ds-red/15 hover:bg-ds-red/25 text-ds-red border border-ds-red/30 font-semibold transition-all duration-150 flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M10.9 15.6L9.4 17c-.99-.63-1.88-1.42-2.58-2.34l1.59-1.59c.55.73 1.22 1.37 2.49 2.53zm7.42-7.23c-.68-.7-1.5-1.3-2.43-1.76l-1.59 1.59c.89.59 1.66 1.34 2.18 2.12l1.84-1.95zM21 1l-3 3c-.9-.52-1.87-.91-2.91-1.14L14 6c1.08.17 2.09.55 3 1.13L15.13 9H21v5.86L17 17v4l-3-3-.68.68L2.75 8l-.75.75 3 3v.11c0 3.63 1.78 6.84 4.5 8.82l2.05-2.05C9.77 17.46 9 15.79 9 14v-.13l1.9 1.9L12 14.13V21h-2L7 24l4-4v-2h5.86L19 16v6l4-4-3-3V3l1-2zM4 11L2 9l.75-.75L15.13 21H13v2l-4-4h6v-2.86L12 14v-2H7.14L5.13 9.86 4.27 11z"/>
+                  <path d="M10.9 15.6L9.4 17c-.99-.63-1.88-1.42-2.58-2.34l1.59-1.59c.55.73 1.22 1.37 2.49 2.53zm7.42-7.23c-.68-.7-1.5-1.3-2.43-1.76l-1.59 1.59c.89.59 1.66 1.34 2.18 2.12l1.84-1.95zM21 1l-3 3c-.9-.52-1.87-.91-2.91-1.14L14 6c1.08.17 2.09.55 3 1.13L15.13 9H21v5.86L17 17v4l-3-3-.68.68L2.75 8l-.75.75 3 3v.11c0 3.63 1.78 6.84 4.5 8.82l2.05-2.05C9.77 17.46 9 15.79 9 14v-.13l1.9 1.9L12 14.13V21h-2L7 24l4-4v-2h5.86L19 16v6l4-4-3-3V3l1-2z"/>
                 </svg>
                 Выйти
               </button>
@@ -162,6 +232,72 @@ export function VoiceChannel({ channel, user, username, userColor, voice }) {
           )}
         </div>
       </div>
+
+      {/* ── Контекстное меню с микшером ── */}
+      {ctxMenu && (
+        <div
+          ref={menuRef}
+          className="fixed z-50 bg-ds-servers border border-ds-divider/60 rounded-xl shadow-2xl p-4 w-56 animate-fade-in"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Шапка */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0">
+              <img
+                src={getUserAvatar(ctxMenu.participant.username).imageUrl}
+                alt={ctxMenu.participant.username}
+                className="w-12 h-12 max-w-none"
+              />
+            </div>
+            <p className="text-ds-text text-sm font-semibold truncate"
+               style={ctxMenu.participant.color ? { color: ctxMenu.participant.color } : {}}
+            >
+              {ctxMenu.participant.username}
+            </p>
+          </div>
+
+          <div className="border-t border-ds-divider/40 pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-ds-muted text-xs font-semibold uppercase tracking-wider">Громкость</p>
+              <span className="text-ds-text text-xs font-bold tabular-nums">
+                {volumes[ctxMenu.participant.userId] ?? 100}%
+              </span>
+            </div>
+
+            {/* Слайдер */}
+            <input
+              type="range"
+              min="0"
+              max="200"
+              step="5"
+              value={volumes[ctxMenu.participant.userId] ?? 100}
+              onChange={e => handleVolumeChange(ctxMenu.participant.userId, e.target.value)}
+              className="w-full h-1.5 rounded-full accent-ds-accent cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, #5865F2 ${(volumes[ctxMenu.participant.userId] ?? 100) / 2}%, #3A3C42 ${(volumes[ctxMenu.participant.userId] ?? 100) / 2}%)`
+              }}
+            />
+
+            {/* Быстрые кнопки */}
+            <div className="flex gap-1.5 mt-3">
+              {[0, 50, 100, 150, 200].map(v => (
+                <button
+                  key={v}
+                  onClick={() => handleVolumeChange(ctxMenu.participant.userId, v)}
+                  className={`flex-1 py-1 rounded text-[10px] font-semibold transition-colors ${
+                    (volumes[ctxMenu.participant.userId] ?? 100) === v
+                      ? 'bg-ds-accent text-white'
+                      : 'bg-ds-bg text-ds-muted hover:text-ds-text hover:bg-ds-hover'
+                  }`}
+                >
+                  {v === 0 ? '🔇' : `${v}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

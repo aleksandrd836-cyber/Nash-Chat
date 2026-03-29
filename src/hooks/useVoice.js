@@ -262,6 +262,21 @@ export function useVoice() {
     setIsMuted((prev) => !prev);
   }, []);
 
+  /**
+   * Установить громкость конкретного участника (0–200).
+   * 100 = нормальная, 200 = максимальная, 0 = заглушить.
+   * Применяется прямо к HTMLAudioElement.volume (0..2 через GainNode невозможен без Web Audio).
+   */
+  const setParticipantVolume = useCallback((userId, volumePct) => {
+    const audio = audioElements.current[userId];
+    if (audio) {
+      // Нативный volume поддерживает 0..1, двигаем плавно
+      audio.volume = Math.max(0, Math.min(2, volumePct / 100));
+    }
+    // Сохраняем в localStorage
+    localStorage.setItem(`vol_${userId}`, String(volumePct));
+  }, []);
+
   return {
     activeChannelId,
     participants,
@@ -271,5 +286,6 @@ export function useVoice() {
     joinVoiceChannel,
     leaveVoiceChannel,
     toggleMute,
+    setParticipantVolume,
   };
 }
