@@ -6,7 +6,7 @@ import { getUserAvatar } from '../lib/avatar';
  * Отображается вместо TextChannel, когда выбран voice-канал.
  * Показывает участников и управление голосом.
  */
-export function VoiceChannel({ channel, user, username, voice }) {
+export function VoiceChannel({ channel, user, username, userColor, voice }) {
   const {
     activeChannelId,
     participants,
@@ -75,9 +75,12 @@ export function VoiceChannel({ channel, user, username, voice }) {
                     className="w-[144px] h-[144px] max-w-none select-none"
                   />
                 </div>
-                <span className="text-ds-text text-xs font-medium truncate max-w-[72px]">
-                  {p.username ?? 'Аноним'}
-                </span>
+                <p 
+                  className="text-ds-text font-semibold text-sm truncate w-full text-center group-hover:text-white transition-colors z-20 drop-shadow-md"
+                  style={p.color ? { color: p.color } : {}}
+                >
+                  {p.username}
+                </p>
               </div>
             )})}
           </div>
@@ -88,7 +91,7 @@ export function VoiceChannel({ channel, user, username, voice }) {
           {!isInThisChannel ? (
             <button
               id="join-voice-btn"
-              onClick={() => joinVoiceChannel(channel.id, user, username)}
+              onClick={() => joinVoiceChannel(channel.id, user, username, userColor)}
               disabled={isConnecting}
               className="w-full py-3 rounded-xl bg-ds-green hover:bg-ds-green/90 active:scale-[0.98] text-white font-semibold transition-all duration-150 flex items-center justify-center gap-2 shadow-lg shadow-ds-green/30 disabled:opacity-60 disabled:cursor-not-allowed"
             >

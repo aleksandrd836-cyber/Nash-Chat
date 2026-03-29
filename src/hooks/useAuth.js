@@ -24,6 +24,12 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
+  /** Принудительно обновить данные пользователя (например, после смены user_metadata) */
+  const refreshUser = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) setUser({ ...session.user });
+  }, []);
+
   /** Отображаемое имя пользователя */
   const getUsername = (u) => u?.user_metadata?.username ?? u?.email?.split('@')[0] ?? 'Unknown';
 
@@ -95,5 +101,6 @@ export function useAuth() {
     signUp,
     signIn,
     signOut,
+    refreshUser,
   };
 }

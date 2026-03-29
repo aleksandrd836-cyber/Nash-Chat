@@ -9,9 +9,10 @@ import { getUserAvatar } from '../lib/avatar';
  * - Выбор микрофона
  * - Тест микрофона (слышишь себя)
  */
-export function SettingsModal({ user, username: initialUsername, onClose, onUsernameChange }) {
-  // ── Ник ──
-  const [username, setUsername]   = useState(initialUsername ?? '');
+export function SettingsModal({ user, username: initialUsername, userColor, onClose, onUsernameChange }) {
+  // ── Ник и Цвет ──
+  const [username, setUsername]   = useState(initialUsername || '');
+  const [color, setColor]         = useState(userColor || '#ffffff');
   const [savingNick, setSavingNick] = useState(false);
   const [nickMsg, setNickMsg]      = useState(null); // { type: 'ok'|'err', text }
 
@@ -108,27 +109,50 @@ export function SettingsModal({ user, username: initialUsername, onClose, onUser
     setVolume(0);
   }
 
-  /** Сохранить ник */
-  async function saveUsername() {
-    if (!username.trim() || username.trim().length < 2) {
-      setNickMsg({ type: 'err', text: 'Имя должно быть не короче 2 символов' });
-      return;
-    }
-    setSavingNick(true);
-    const { error } = await supabase.auth.updateUser({
-      data: { username: username.trim() },
-    });
-    setSavingNick(false);
-    if (error) {
-      setNickMsg({ type: 'err', text: 'Ошибка сохранения: ' + error.message });
-    } else {
-      setNickMsg({ type: 'ok', text: 'Сохранено!' });
-      onUsernameChange?.(username.trim());
-      setTimeout(() => setNickMsg(null), 2000);
+  /** Сохранить ник и цвет */
+  async function saveSettings() {
+    try {
+      if (!username.trim() || username.trim().length < 2) {
+        setNickMsg({ type: 'err', text: 'Имя должно быть не короче 2 символов' });
+        return;
+      }
+      setSavingNick(true);
+      const { error } = await supabase.auth.updateUser({
+        data: { username: username.trim(), user_color: color },
+      });
+      
+      // Обновляем старые сообщения этого пользователя!
+      let messagesError = null;
+      if (user?.id && !error) {
+        const res = await supabase
+          .from('messages')
+          .update({ username: `${username.trim()}@@${color}` })
+          .eq('user_id', user.id);
+        messagesError = res.error;
+      }
+
+      setSavingNick(false);
+      
+      if (error) {
+        setNickMsg({ type: 'err', text: 'Ошибка сохранения профиля: ' + error.message });
+      } else if (messagesError) {
+        setNickMsg({ type: 'err', text: 'Профиль сохранен, но ошибка сообщений: ' + messagesError.message });
+      } else {
+        setNickMsg({ type: 'ok', text: 'Сохранено! Закрываем...' });
+        onUsernameChange?.(username.trim(), color);
+        setTimeout(() => {
+          setNickMsg(null);
+          onClose?.();
+        }, 800);
+      }
+    } catch (err) {
+      setSavingNick(false);
+      setNickMsg({ type: 'err', text: 'Критическая ошибка: ' + err.message });
+      alert(err.message);
     }
   }
 
-  const { imageUrl, color } = getUserAvatar(username);
+  const { imageUrl, color: avatarColor } = getUserAvatar(username);
 
   return (
     // Backdrop
@@ -179,12 +203,19 @@ export function SettingsModal({ user, username: initialUsername, onClose, onUser
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveUsername()}
+                onKeyDown={e => e.key === 'Enter' && saveSettings()}
                 placeholder="Твоё имя в чате"
                 className="flex-1 bg-ds-bg border border-ds-divider rounded-lg px-3 py-2 text-ds-text text-sm placeholder-ds-muted/60 focus:outline-none focus:border-ds-accent focus:ring-1 focus:ring-ds-accent transition-colors"
               />
+              <input
+                type="color"
+                value={color}
+                onChange={e => setColor(e.target.value)}
+                className="w-10 h-10 p-0.5 rounded border border-ds-divider bg-transparent cursor-pointer"
+                title="Цвет ника"
+              />
               <button
-                onClick={saveUsername}
+                onClick={saveSettings}
                 disabled={savingNick}
                 className="px-4 py-2 bg-ds-accent hover:bg-ds-accent/90 text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-60 shadow-sm shadow-ds-accent/30"
               >

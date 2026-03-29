@@ -45,7 +45,7 @@ export function useVoice() {
       Object.values(state).flat().forEach(p => {
         if (p.channelId && p.userId && p.username) {
           if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
-          newAll[p.channelId].set(p.userId, { userId: p.userId, username: p.username });
+          newAll[p.channelId].set(p.userId, { userId: p.userId, username: p.username, color: p.color });
         }
       });
       const finalAll = {};
@@ -143,13 +143,13 @@ export function useVoice() {
     // Дедупликация по userId — берём последнюю запись для каждого
     const seen = new Map();
     Object.values(state).flat().forEach((p) => {
-      seen.set(p.userId, { userId: p.userId, username: p.username });
+      seen.set(p.userId, { userId: p.userId, username: p.username, color: p.color });
     });
     setParticipants(Array.from(seen.values()));
   }, []);
 
   /** Войти в голосовой канал */
-  const joinVoiceChannel = useCallback(async (channelId, user, username) => {
+  const joinVoiceChannel = useCallback(async (channelId, user, username, color) => {
     if (activeChannelId) await leaveVoiceChannel();
     setIsConnecting(true);
 
@@ -232,9 +232,9 @@ export function useVoice() {
     // Подписываемся и публикуем своё присутствие
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ userId: user.id, username });
+        await channel.track({ userId: user.id, username, color });
         if (globalPresence.current) {
-          await globalPresence.current.track({ channelId, userId: user.id, username });
+          await globalPresence.current.track({ channelId, userId: user.id, username, color });
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);

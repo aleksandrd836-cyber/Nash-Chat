@@ -5,7 +5,7 @@ import { getUserAvatar } from '../lib/avatar';
  * Нижняя панель пользователя (слева в сайдбаре).
  * Показывает аватар, имя, кнопки голоса и настроек.
  */
-export function UserPanel({ username, onSignOut, voice, onOpenSettings }) {
+export function UserPanel({ username, userColor, onSignOut, voice, onOpenSettings }) {
   const { activeChannelId, isMuted, toggleMute, leaveVoiceChannel } = voice;
   const { imageUrl, color } = getUserAvatar(username);
 
@@ -26,7 +26,12 @@ export function UserPanel({ username, onSignOut, voice, onOpenSettings }) {
 
       {/* Username */}
       <div className="flex-1 min-w-0">
-        <p className="text-ds-text text-sm font-semibold truncate leading-tight">{username}</p>
+        <p 
+          className="text-ds-text text-sm font-semibold truncate leading-tight"
+          style={userColor ? { color: userColor } : {}}
+        >
+          {username}
+        </p>
         {activeChannelId ? (
           <p className="text-ds-green text-[10px] leading-tight flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-ds-green inline-block animate-pulse" />

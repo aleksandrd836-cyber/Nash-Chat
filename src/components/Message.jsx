@@ -40,11 +40,11 @@ function ImageAttachment({ url }) {
  * Компонент одного сообщения.
  * Поддерживает compact-режим и отображение прикреплённых изображений.
  */
-export function Message({ msg, prevMsg }) {
+export function Message({ msg, prevMsg, currentUser, currentUserColor }) {
   const isSameAuthor =
     prevMsg &&
-    prevMsg.username === msg.username &&
-    new Date(msg.created_at) - new Date(prevMsg.created_at) < 5 * 60 * 1000;
+    prevMsg.user_id === msg.user_id &&
+    new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() < 300000;
 
   const time = new Date(msg.created_at).toLocaleTimeString('ru-RU', {
     hour: '2-digit',
@@ -52,7 +52,13 @@ export function Message({ msg, prevMsg }) {
   });
   const fullTime = new Date(msg.created_at).toLocaleString('ru-RU');
   
-  const { imageUrl, color } = getUserAvatar(msg.username);
+  const [realName, colorStr] = msg.username?.split('@@') ?? ['Аноним', null];
+  const { imageUrl, color } = getUserAvatar(realName);
+  
+  // Если это сообщение текущего пользователя, принудительно показываем его новый цвет (даже если старое)
+  const currentUserName = currentUser?.user_metadata?.username ?? currentUser?.email?.split('@')[0];
+  const isMine = (currentUser?.id === msg.user_id) || (currentUserName && currentUserName === realName);
+  const displayColor = (isMine && currentUserColor) ? currentUserColor : (colorStr ?? color);
 
   if (isSameAuthor) {
     return (
@@ -77,7 +83,7 @@ export function Message({ msg, prevMsg }) {
       <div className="w-[60px] h-[60px] rounded-full flex-shrink-0 bg-ds-bg shadow-[inset_0_0_10px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
         <img
           src={imageUrl}
-          alt={msg.username}
+          alt={realName}
           className="w-[90px] h-[90px] max-w-none select-none"
         />
       </div>
@@ -87,9 +93,9 @@ export function Message({ msg, prevMsg }) {
         <div className="flex items-baseline gap-2">
           <span
             className="font-semibold text-sm"
-            style={{ color: color }}
+            style={{ color: displayColor }}
           >
-            {msg.username}
+            {realName}
           </span>
           <span className="text-[10px] text-ds-muted" title={fullTime}>{time}</span>
         </div>

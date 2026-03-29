@@ -39,9 +39,15 @@ export function useMessages(channelId) {
       .channel(`messages:${channelId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` },
+        { event: '*', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new]);
+          if (payload.eventType === 'INSERT') {
+            setMessages((prev) => [...prev, payload.new]);
+          } else if (payload.eventType === 'UPDATE') {
+            setMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
+          } else if (payload.eventType === 'DELETE') {
+            setMessages((prev) => prev.filter(m => m.id !== payload.old.id));
+          }
         }
       )
       .subscribe();
@@ -67,14 +73,15 @@ export function useMessages(channelId) {
   }, []);
 
   /** Отправить сообщение (text и/или image_url) */
-  const sendMessage = useCallback(async (content, userId, username, imageUrl = null) => {
+  const sendMessage = useCallback(async (content, userId, username, imageUrl = null, userColor = null) => {
     if (!content.trim() && !imageUrl) return;
     if (!channelId) return;
     setSending(true);
+    const dbUsername = userColor ? `${username}@@${userColor}` : username;
     const { error } = await supabase.from('messages').insert({
       channel_id: channelId,
       user_id: userId,
-      username,
+      username: dbUsername,
       content: content.trim(),
       image_url: imageUrl ?? null,
     });

@@ -14,6 +14,15 @@ export default function App() {
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [settingsOpen, setSettingsOpen]       = useState(false);
   const [localUsername, setLocalUsername]     = useState(null);
+  const [localColor, setLocalColor]           = useState(null);
+
+  // Инициализируем localColor из user_metadata при первом получении данных пользователя
+  useEffect(() => {
+    if (auth.user && localColor === null) {
+      const savedColor = auth.user.user_metadata?.user_color;
+      if (savedColor) setLocalColor(savedColor);
+    }
+  }, [auth.user]);
 
   // Состояние обновления: idle | checking | available | downloading | ready | uptodate | error
   const [updateStatus,   setUpdateStatus]   = useState('idle');
@@ -59,7 +68,8 @@ export default function App() {
 
   const handleInstall = () => window.electronAPI.installUpdate();
 
-  const displayUsername = localUsername ?? auth.username;
+  const displayUsername = localUsername ?? auth.user?.user_metadata?.username ?? auth.username;
+  const displayColor    = localColor || null;
 
   function handleSelectChannel(channel) {
     setSelectedChannel(channel);
@@ -94,6 +104,7 @@ export default function App() {
     <div className="flex h-screen overflow-hidden bg-ds-bg">
       <Sidebar
         username={displayUsername}
+        userColor={displayColor}
         selectedChannel={selectedChannel}
         onSelectChannel={handleSelectChannel}
         onSignOut={auth.signOut}
@@ -117,12 +128,14 @@ export default function App() {
             channel={selectedChannel}
             user={auth.user}
             username={displayUsername}
+            userColor={displayColor}
           />
         ) : (
           <VoiceChannel
             channel={selectedChannel}
             user={auth.user}
             username={displayUsername}
+            userColor={displayColor}
             voice={voice}
           />
         )}
@@ -133,8 +146,14 @@ export default function App() {
         <SettingsModal
           user={auth.user}
           username={displayUsername}
+          userColor={displayColor}
           onClose={() => setSettingsOpen(false)}
-          onUsernameChange={(newName) => setLocalUsername(newName)}
+          onUsernameChange={(newName, newColor) => {
+            setLocalUsername(newName);
+            setLocalColor(newColor || null);
+            // Принудительно обновляем auth.user, чтобы user_metadata подтянулся
+            auth.refreshUser?.();
+          }}
         />
       )}
 

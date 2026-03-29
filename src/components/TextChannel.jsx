@@ -1,20 +1,23 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMessages } from '../hooks/useMessages';
 import { Message } from './Message';
+import EmojiPicker from 'emoji-picker-react';
 
 const MAX_LENGTH = 2000;
 
 /**
  * Текстовый канал — история сообщений + поле ввода с прикреплением файлов
  */
-export function TextChannel({ channel, user, username }) {
+export function TextChannel({ channel, user, username, userColor }) {
   const { messages, loading, sending, sendMessage, uploadFile } = useMessages(channel?.id);
   const [draft, setDraft]         = useState('');
   const [attachment, setAttachment] = useState(null);   // { file, previewUrl }
   const [uploading, setUploading]  = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const bottomRef                  = useRef(null);
   const inputRef                   = useRef(null);
   const fileInputRef               = useRef(null);
+  const pickerRef                  = useRef(null);
 
   // Автоскролл вниз при новых сообщениях
   useEffect(() => {
@@ -26,7 +29,29 @@ export function TextChannel({ channel, user, username }) {
     inputRef.current?.focus();
     setAttachment(null);
     setDraft('');
+    setShowEmojiPicker(false);
   }, [channel?.id]);
+
+  // Закрытие эмодзи по клику вне
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+        if (event.target.closest('#emoji-toggle-btn')) return;
+        setShowEmojiPicker(false);
+      }
+    }
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
+
+  const onEmojiClick = (emojiObject) => {
+    setDraft(prev => (prev + emojiObject.emoji).slice(0, MAX_LENGTH));
+    inputRef.current?.focus();
+  };
 
   // Обработка ВСТАВКИ (Ctrl+V / PrintScreen → буфер обмена)
   useEffect(() => {
@@ -81,9 +106,9 @@ export function TextChannel({ channel, user, username }) {
       removeAttachment();
     }
 
-    await sendMessage(draft, user.id, username, imageUrl);
+    await sendMessage(draft, user.id, username, imageUrl, userColor);
     setDraft('');
-  }, [draft, attachment, sending, uploading, sendMessage, uploadFile, user.id, username]);
+  }, [draft, attachment, sending, uploading, sendMessage, uploadFile, user.id, username, userColor]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -134,7 +159,13 @@ export function TextChannel({ channel, user, username }) {
         ) : (
           <div className="flex flex-col gap-0">
             {messages.map((msg, i) => (
-              <Message key={msg.id} msg={msg} prevMsg={messages[i - 1]} />
+              <Message 
+                key={msg.id} 
+                msg={msg} 
+                prevMsg={messages[i - 1]} 
+                currentUser={user}
+                currentUserColor={userColor}
+              />
             ))}
           </div>
         )}
@@ -206,10 +237,31 @@ export function TextChannel({ channel, user, username }) {
 
             {/* Char count if near limit */}
             {draft.length > MAX_LENGTH * 0.8 && (
-              <span className={`text-xs flex-shrink-0 ${draft.length >= MAX_LENGTH ? 'text-ds-red' : 'text-ds-muted'}`}>
+              <span className={`text-xs flex-shrink-0 mb-2 ${draft.length >= MAX_LENGTH ? 'text-ds-red' : 'text-ds-muted'}`}>
                 {MAX_LENGTH - draft.length}
               </span>
             )}
+
+            {/* Emoji toggle */}
+            <div className="relative flex-shrink-0">
+              <button
+                id="emoji-toggle-btn"
+                type="button"
+                onClick={() => setShowEmojiPicker(prev => !prev)}
+                title="Добавить эмодзи"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-all"
+              >
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S7.67 8 8.5 8 10 8.67 10 9.5 9.33 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                </svg>
+              </button>
+
+              {showEmojiPicker && (
+                <div ref={pickerRef} className="absolute bottom-[calc(100%+12px)] right-0 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-lg">
+                  <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled />
+                </div>
+              )}
+            </div>
 
             {/* Кнопка отправки */}
             <button

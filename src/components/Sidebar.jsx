@@ -7,7 +7,7 @@ import { getUserAvatar } from '../lib/avatar';
  * Боковая панель со списком каналов.
  * Каналы загружаются из Supabase один раз при монтировании.
  */
-export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut, voice, onOpenSettings }) {
+export function Sidebar({ username, userColor, selectedChannel, onSelectChannel, onSignOut, voice, onOpenSettings }) {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading]   = useState(true);
 
@@ -111,7 +111,12 @@ export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut,
                                 className="w-[45px] h-[45px] max-w-none select-none"
                               />
                             </div>
-                            <span className="text-[11px] text-ds-muted truncate">{p.username}</span>
+                            <span 
+                              className="text-[11px] text-ds-muted truncate w-full"
+                              style={p.color ? { color: p.color } : {}}
+                            >
+                              {p.username}
+                            </span>
                           </div>
                         )})}
                       </div>
@@ -125,7 +130,7 @@ export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut,
       </div>
 
       {/* User panel */}
-      <UserPanel username={username} onSignOut={onSignOut} voice={voice} onOpenSettings={onOpenSettings} />
+      <UserPanel username={username} userColor={userColor} onSignOut={onSignOut} voice={voice} onOpenSettings={onOpenSettings} />
     </div>
   );
 }
