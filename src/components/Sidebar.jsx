@@ -30,7 +30,7 @@ export function Sidebar({ username, selectedChannel, onSelectChannel, onSignOut,
     <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col">
       {/* Server header */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-ds-divider/50 flex-shrink-0 cursor-default">
-        <span className="text-ds-text font-bold text-sm truncate">🎮 NashChat</span>
+        <span className="text-ds-text font-bold text-sm truncate">🎮 Vibe</span>
         <svg className="w-4 h-4 text-ds-muted flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
           <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
         </svg>
