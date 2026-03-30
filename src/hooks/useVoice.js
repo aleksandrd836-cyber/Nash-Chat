@@ -73,6 +73,7 @@ export function useVoice() {
             username: p.username,
             color: p.color,
             isScreenSharing: p.isScreenSharing,
+            isSpeaking: !!p.isSpeaking,
             isMuted: !!p.isMuted,
             isDeafened: !!p.isDeafened
           });
@@ -331,32 +332,59 @@ export function useVoice() {
     const gainNode = audioCtx.createGain();
     const destination = audioCtx.createMediaStreamDestination();
     
+    // AnalyserNode для реального определения голосовой активности
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.3;
+    // Подключаем анализатор ПАРАЛЛЕЛЬНО к gain — он слушает сырой микрофон
+    source.connect(analyser);
+    
     // Устанавливаем начальное состояние микрофона согласно стейту
     const shouldBeMuted = isMutedRef.current || isDeafenedRef.current;
-    gainNode.gain.value = shouldBeMuted ? 0 : 1; // 0 = полная тишина, 1 = микрофон
+    gainNode.gain.value = shouldBeMuted ? 0 : 1;
     
     source.connect(gainNode);
     gainNode.connect(destination);
     
     localGainNodeRef.current = gainNode;
-    // Теперь localStream содержит поток из нашего микшера, а не напрямую с микрофона.
-    // Если мы ставим gain.value = 0, отправляются пакеты тишины (DTX), и приемник не "залипает".
     localStream.current = destination.stream;
 
+    // Настоящий VAD: проверяем уровень громкости с микрофона каждые 100мс
+    const VAD_THRESHOLD = 0.015; // Порог громкости (0-1). Ниже = тишина.
+    const analyserData = new Float32Array(analyser.fftSize);
+
     fakeVADIntervalRef.current = setInterval(() => {
-      const shouldSpeak = !isMutedRef.current; 
-      if (shouldSpeak && !isSpeakingRef.current) {
+      // Читаем сырые данные с микрофона
+      analyser.getFloatTimeDomainData(analyserData);
+      
+      // Вычисляем RMS (среднеквадратичное отклонение) — реальный уровень громкости
+      let sum = 0;
+      for (let i = 0; i < analyserData.length; i++) {
+        sum += analyserData[i] * analyserData[i];
+      }
+      const rms = Math.sqrt(sum / analyserData.length);
+      
+      // Человек говорит, если: уровень выше порога И микрофон не замучен
+      const isActuallySpeaking = rms > VAD_THRESHOLD && !isMutedRef.current;
+      
+      if (isActuallySpeaking && !isSpeakingRef.current) {
         isSpeakingRef.current = true;
         setIsSpeaking(true);
         presencePayload.current.isSpeaking = true;
         realtimeChannel.current?.track(presencePayload.current).catch(() => {});
-      } else if (!shouldSpeak && isSpeakingRef.current) {
+        if (globalPresence.current) {
+          globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
+        }
+      } else if (!isActuallySpeaking && isSpeakingRef.current) {
         isSpeakingRef.current = false;
         setIsSpeaking(false);
         presencePayload.current.isSpeaking = false;
         realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+        if (globalPresence.current) {
+          globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
+        }
       }
-    }, 500);
+    }, 100); // 100мс для плавной реакции обводки
 
     // 3. Инициализируем Supabase канал
     currentUserRef.current = { id: user.id, username };
@@ -465,6 +493,13 @@ export function useVoice() {
     if (localGainNodeRef.current) {
       localGainNodeRef.current.gain.value = next ? 0 : 1;
     }
+    // КРИТИЧНО: Браузер может приостановить AudioContext во время тишины.
+    // При размуте обязательно возобновляем его, иначе звук не пойдёт.
+    if (!next && audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume().then(() => {
+        console.log('[Voice] AudioContext resumed after unmute');
+      });
+    }
 
     const updates = { isMuted: next };
 
@@ -532,6 +567,12 @@ export function useVoice() {
         autoMutedByDeafenRef.current = false;
         if (localGainNodeRef.current) {
           localGainNodeRef.current.gain.value = 1;
+        }
+        // КРИТИЧНО: Возобновляем AudioContext при размуте через наушники
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().then(() => {
+            console.log('[Voice] AudioContext resumed after undeafen');
+          });
         }
         updates.isMuted = false;
       }
