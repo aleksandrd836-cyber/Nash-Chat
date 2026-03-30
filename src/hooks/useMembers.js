@@ -27,10 +27,11 @@ export function useMembers(currentUser, serverId) {
         console.error('[useMembers] Ошибка загрузки участников:', error);
         setMembers([]);
       } else {
-        // Пытаемся сохранить текущий онлайн-статус при перезагрузке списка
+        // Пытаемся сохранить текущий онлайн-статус при перезагрузке списка.
+        // ВАЖНО: Принудительно ставим текущему пользователю Online (Client-side prediction)
         setMembers((data ?? []).map(m => ({ 
           ...m, 
-          isOnline: presenceIdsRef.current.has(m.id) 
+          isOnline: m.id === currentUser.id ? true : presenceIdsRef.current.has(m.id) 
         })));
       }
       setLoading(false);
