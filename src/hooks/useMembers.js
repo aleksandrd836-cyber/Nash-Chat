@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 /**
- * Хук для загрузки участников текущего сервера и отслеживания их онлайн-статуса.
- * Если serverId не передан — возвращает пустой массив.
+ * Хук для загрузки участников текущего сервера и отслеживания онлайн-статуса.
+ * Использует RPC get_server_members (SECURITY DEFINER) чтобы обойти проблемы RLS и foreign key join.
  */
 export function useMembers(currentUser, serverId) {
-  const [members, setMembers]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const channelRef                = useRef(null);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const channelRef = useRef(null);
 
-  // ── Загрузка участников текущего сервера ──
+  // ── Загрузка участников через RPC ──
   useEffect(() => {
     if (!currentUser || !serverId) {
       setMembers([]);
@@ -20,25 +20,22 @@ export function useMembers(currentUser, serverId) {
 
     async function fetchMembers() {
       const { data, error } = await supabase
-        .from('server_members')
-        .select('user_id, role, profiles(id, username, color)')
-        .eq('server_id', serverId);
+        .rpc('get_server_members', { p_server_id: serverId });
 
-      if (!error && data) {
-        setMembers(data.map(row => ({
-          ...row.profiles,
-          role: row.role,
-          isOnline: false,
-        })));
+      if (error) {
+        console.error('[useMembers] Ошибка загрузки участников:', error);
+        setMembers([]);
+      } else {
+        setMembers((data ?? []).map(m => ({ ...m, isOnline: false })));
       }
       setLoading(false);
     }
 
     fetchMembers();
 
-    // Подписка на изменения состава сервера
+    // Обновляем при изменении состава сервера или профилей
     const sub = supabase
-      .channel(`server-members-${serverId}`)
+      .channel(`server-members-watch-${serverId}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'server_members',
         filter: `server_id=eq.${serverId}`,
@@ -51,7 +48,7 @@ export function useMembers(currentUser, serverId) {
     return () => { sub.unsubscribe(); };
   }, [currentUser?.id, serverId]);
 
-  // ── Presence: отслеживаем онлайн-статус ──
+  // ── Presence: онлайн-статус ──
   useEffect(() => {
     if (!currentUser || !serverId) return;
 
