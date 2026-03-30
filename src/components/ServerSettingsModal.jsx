@@ -55,12 +55,15 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   }, [server.id, server.invite_code]);
 
   const fetchMembers = useCallback(async () => {
+    setLoading(true);
+    // Используем RPC-функцию для обхода проблем RLS/Joins
     const { data, error } = await supabase
-      .from('server_members')
-      .select('user_id, role, joined_at, profiles(id, username, color)')
-      .eq('server_id', server.id);
+      .rpc('get_server_members', { p_server_id: server.id });
+    
     if (!error && data) {
-      setMembers(data.map(m => ({ ...m.profiles, role: m.role, joined_at: m.joined_at })));
+      setMembers(data);
+    } else {
+      console.error('[ServerSettings] Ошибка загрузки участников:', error);
     }
     setLoading(false);
   }, [server.id]);
