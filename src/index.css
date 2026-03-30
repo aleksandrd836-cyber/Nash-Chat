@@ -93,3 +93,8 @@
   animation: border-pulse 4s ease-in-out infinite;
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
 }
+/* Fix for unreadable select options in dark mode (Windows/Chrome/Electron) */
+select option {
+  background-color: #121212 !important;
+  color: white !important;
+}
