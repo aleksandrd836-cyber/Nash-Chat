@@ -331,18 +331,21 @@ export function useVoice() {
     localStream.current = stream;
     
     // AudioContext + AnalyserNode ТОЛЬКО для VAD (не в пути отправки!)
+    // КРИТИЧНО: используем КЛОН потока! Если подключить AudioContext к тому же потоку,
+    // что идёт в WebRTC, Chromium/Electron "перехватывает" обработку аудио,
+    // и WebRTC получает тишину вместо голоса.
+    const vadStream = stream.clone();
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContextClass();
     audioContextRef.current = audioCtx;
     if (audioCtx.state === 'suspended') {
       await audioCtx.resume();
     }
-    const vadSource = audioCtx.createMediaStreamSource(stream);
+    const vadSource = audioCtx.createMediaStreamSource(vadStream);
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
     analyser.smoothingTimeConstant = 0.3;
     vadSource.connect(analyser);
-    // AnalyserNode не подключён к output — только читает данные для VAD
 
 
 
