@@ -43,13 +43,20 @@ export function Sidebar({
   }, [selectedServer?.id]);
 
   async function fetchChannels() {
-    const { data } = await supabase
-      .from('channels')
-      .select('*')
-      .eq('server_id', selectedServer.id)
-      .order('position');
-    setChannels(data ?? []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('channels')
+        .select('*')
+        .eq('server_id', selectedServer.id)
+        .order('position');
+      if (error) throw error;
+      setChannels(data ?? []);
+    } catch (e) {
+      console.warn('[Sidebar] fetchChannels error (Supabase blocked?):', e.message);
+      setChannels([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ── Закрытие меню при клике вне ──
