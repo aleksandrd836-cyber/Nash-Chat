@@ -18,7 +18,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
       <div className="flex items-center gap-3">
         {/* Avatar */}
         <div className={`relative flex-shrink-0 w-10 h-10 rounded-2xl bg-black/60 shadow-inner flex items-center justify-center transition-all duration-300
-          ${isSpeaking ? 'ring-2 ring-ds-accent vibe-glow-blue scale-105' : 'ring-1 ring-white/10'}`}
+          ${isSpeaking ? 'ring-2 ring-[#23A559] shadow-[0_0_8px_rgba(35,165,89,0.5)] scale-105' : 'ring-1 ring-white/10'}`}
         >
           <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center">
             <img src={imageUrl} alt={username} className="w-full h-full object-cover select-none" />

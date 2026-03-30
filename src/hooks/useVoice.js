@@ -40,6 +40,11 @@ export function useVoice() {
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
   const autoMutedByDeafenRef = useRef(false);
 
+  // Web Audio API refs для надежного мута без прерывания RTP потока
+  const audioContextRef = useRef(null);
+  const originalMicStreamRef = useRef(null);
+  const localGainNodeRef = useRef(null);
+
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
     let channel;
@@ -225,6 +230,16 @@ export function useVoice() {
     localStream.current?.getTracks().forEach(t => t.stop());
     localStream.current = null;
 
+    if (originalMicStreamRef.current) {
+      originalMicStreamRef.current.getTracks().forEach(t => t.stop());
+      originalMicStreamRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    localGainNodeRef.current = null;
+
     if (fakeVADIntervalRef.current) { clearInterval(fakeVADIntervalRef.current); fakeVADIntervalRef.current = null; }
     isSpeakingRef.current = false;
     setIsSpeaking(false);
@@ -306,10 +321,27 @@ export function useVoice() {
       return;
     }
 
+    // Внедряем Web Audio API для 100% надежного мута без прерывания RTP-пакетов
+    originalMicStreamRef.current = stream;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContextClass();
+    audioContextRef.current = audioCtx;
+    
+    const source = audioCtx.createMediaStreamSource(stream);
+    const gainNode = audioCtx.createGain();
+    const destination = audioCtx.createMediaStreamDestination();
+    
     // Устанавливаем начальное состояние микрофона согласно стейту
     const shouldBeMuted = isMutedRef.current || isDeafenedRef.current;
-    stream.getAudioTracks().forEach(t => { t.enabled = !shouldBeMuted; });
-    localStream.current = stream;
+    gainNode.gain.value = shouldBeMuted ? 0 : 1; // 0 = полная тишина, 1 = микрофон
+    
+    source.connect(gainNode);
+    gainNode.connect(destination);
+    
+    localGainNodeRef.current = gainNode;
+    // Теперь localStream содержит поток из нашего микшера, а не напрямую с микрофона.
+    // Если мы ставим gain.value = 0, отправляются пакеты тишины (DTX), и приемник не "залипает".
+    localStream.current = destination.stream;
 
     fakeVADIntervalRef.current = setInterval(() => {
       const shouldSpeak = !isMutedRef.current; 
@@ -429,11 +461,9 @@ export function useVoice() {
   const toggleMute = useCallback(() => {
     const next = !isMutedRef.current;
     
-    // 1. Принудительно переключаем дорожку микрофона
-    if (localStream.current) {
-      localStream.current.getAudioTracks().forEach(t => { 
-        t.enabled = !next;
-      });
+    // 1. Управляем громкостью в нашем виртуальном микшере (0 = тишина, 1 = микрофон)
+    if (localGainNodeRef.current) {
+      localGainNodeRef.current.gain.value = next ? 0 : 1;
     }
 
     const updates = { isMuted: next };
@@ -486,8 +516,8 @@ export function useVoice() {
         setIsMuted(true);
         isMutedRef.current = true;
         autoMutedByDeafenRef.current = true; 
-        if (localStream.current) {
-          localStream.current.getAudioTracks().forEach(t => { t.enabled = false; });
+        if (localGainNodeRef.current) {
+          localGainNodeRef.current.gain.value = 0;
         }
         updates.isMuted = true;
         updates.isSpeaking = false;
@@ -500,8 +530,8 @@ export function useVoice() {
         setIsMuted(false);
         isMutedRef.current = false;
         autoMutedByDeafenRef.current = false;
-        if (localStream.current) {
-          localStream.current.getAudioTracks().forEach(t => { t.enabled = true; });
+        if (localGainNodeRef.current) {
+          localGainNodeRef.current.gain.value = 1;
         }
         updates.isMuted = false;
       }

@@ -4,6 +4,8 @@ import { UserPanel } from './UserPanel';
 import { ProfileFooter } from './ProfileFooter';
 import { getUserAvatar } from '../lib/avatar';
 import { useUnreadCounts } from '../hooks/useUnreadCounts';
+import { MicOff, Headphones } from 'lucide-react';
+
 
 /**
  * Боковая панель со списком каналов.
@@ -396,27 +398,25 @@ export function Sidebar({
                               onContextMenu={(e) => handleParticipantCtx(e, p)}
                               title={!isMe ? 'ПКМ для регулировки громкости' : ''}
                             >
-                              <div className="w-[28px] h-[28px] rounded-full bg-ds-bg shadow-inner overflow-hidden flex items-center justify-center flex-shrink-0 border border-white/5">
+                              <div className={`w-[28px] h-[28px] rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0 transition-all duration-300 ${p.isSpeaking ? 'ring-2 ring-[#23A559] shadow-[0_0_8px_rgba(35,165,89,0.5)] scale-105' : 'border border-white/5'}`}>
                                 <img src={imageUrl} alt={p.username} 
-                                  className={`w-full h-full object-cover select-none transition-all duration-300 ${p.isSpeaking ? 'scale-110' : ''}`} 
+                                  className="w-full h-full object-cover select-none" 
                                 />
                               </div>
-                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-ds-accent' : 'text-ds-muted group-hover:text-white'}`}>
+                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-[#23A559]' : 'text-ds-muted group-hover:text-white'}`}>
                                 {p.username}
                               </span>
 
                               {/* Статус Мута/Деафена */}
                               <div className="flex items-center gap-1 flex-shrink-0 ml-1">
                                 {p.isDeafened && (
-                                  <svg className="w-3.5 h-3.5 text-ds-red flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12v7c0 1.1.9 2 2 2h3v-8H4v-1c0-4.41 3.59-8 8-8s8 3.59 8 8v1h-3v8h3c1.1 0 2-.9 2-2v-7c0-5.52-4.48-10-10-10zm-6 17H4v-5h2v5zm14 0h-2v-5h2v5z"/>
-                                    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2.5" />
-                                  </svg>
+                                  <div className="slashed-container w-3.5 h-3.5 text-ds-red flex-shrink-0">
+                                    <Headphones className="w-full h-full" />
+                                    <div className="slashed-icon-line" style={{ height: '1.5px' }} />
+                                  </div>
                                 )}
                                 {p.isMuted && !p.isDeafened && (
-                                  <svg className="w-3.5 h-3.5 text-ds-red flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
-                                  </svg>
+                                  <MicOff className="w-3.5 h-3.5 text-ds-red flex-shrink-0" />
                                 )}
                               </div>
 
