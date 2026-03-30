@@ -166,7 +166,9 @@ export function Sidebar({
     setParticipantVolume?.(userId, num);
   }, [setParticipantVolume]);
 
+  const textChannels  = channels.filter(c => c.type === 'text');
   const voiceChannels = channels.filter(c => c.type === 'voice');
+
 
   // ── Рендер ──
   return (
