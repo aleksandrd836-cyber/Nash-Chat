@@ -40,22 +40,6 @@ export function useVoice() {
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
   const autoMutedByDeafenRef = useRef(false);
 
-  // 1. EFFECT: Receiver-side enforcement
-  // If a participant status changes (e.g., they unmute), ensure their audio element reflects it globally.
-  useEffect(() => {
-    Object.values(participants).forEach(p => {
-      if (currentUserRef.current && p.userId === currentUserRef.current.id) return;
-      const audio = audioElements.current[p.userId];
-      if (audio) {
-        const shouldBeMuted = p.isMuted || isDeafenedRef.current;
-        if (audio.muted !== shouldBeMuted) {
-          console.log(`[Voice] Syncing ${p.username} audio: muted=${shouldBeMuted}`);
-          audio.muted = shouldBeMuted;
-        }
-      }
-    });
-  }, [participants, isDeafened]);
-
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
     let channel;
@@ -153,7 +137,11 @@ export function useVoice() {
           audioElements.current[remoteUserId] = audio;
         }
         const audio = audioElements.current[remoteUserId];
-        if (audio.srcObject?.id !== stream.id) audio.srcObject = stream;
+        // Всегда обновляем srcObject и всегда вызываем play().
+        // Некоторые браузеры останавливают воспроизведение после renegotiation WebRTC.
+        if (audio.srcObject?.id !== stream.id) {
+          audio.srcObject = stream;
+        }
         audio.play().catch(() => {
           const unlock = () => { audio.play().catch(() => {}); document.removeEventListener('click', unlock); };
           document.addEventListener('click', unlock);
@@ -427,15 +415,13 @@ export function useVoice() {
   const toggleMute = useCallback(() => {
     const next = !isMutedRef.current;
     
-    // 1. Сначала принудительно обновляем дорожку
+    // 1. Принудительно переключаем дорожку микрофона
     if (localStream.current) {
       localStream.current.getAudioTracks().forEach(t => { 
-        t.enabled = !next; 
-        console.log(`[Voice] Track set: enabled=${!next}`);
+        t.enabled = !next;
       });
     }
 
-    // 2. Атомарно готовим апдейт статуса
     const updates = { isMuted: next };
 
     // [ОСОБАЯ ЛОГИКА]: Если размучиваем микрофон, а наушники включены — размучиваем и их
@@ -447,6 +433,16 @@ export function useVoice() {
       notifications.play('undeafen');
     }
 
+    // 2. При размучивании — принудительно вызываем play() на всех элементах.
+    //    Некоторые браузеры приостанавливают Audio, если трек был тихим долгое время.
+    if (!next) {
+      Object.values(audioElements.current).forEach(audio => {
+        if (audio && !audio.muted) {
+          audio.play().catch(() => {});
+        }
+      });
+    }
+
     if (next) {
       isSpeakingRef.current = false;
       setIsSpeaking(false);
@@ -456,11 +452,9 @@ export function useVoice() {
     // 3. Обновляем стейты и рефы
     setIsMuted(next);
     isMutedRef.current = next;
-    autoMutedByDeafenRef.current = false; 
+    autoMutedByDeafenRef.current = false;
 
     notifications.play(next ? 'mute' : 'unmute');
-    
-    // 4. Пушим статус всем — теперь он точно актуален
     updatePresenceStatus(updates);
   }, [updatePresenceStatus]);
 
