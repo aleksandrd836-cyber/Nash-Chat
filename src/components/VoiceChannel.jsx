@@ -283,7 +283,10 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                       : 'bg-[#121212] border-white/5 text-white/50 hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
                     }`}
                 >
-                  <Headphones size={24} />
+                  <div className="slashed-container">
+                    <Headphones size={24} />
+                    {isDeafened && <div className="slashed-icon-line" style={{ height: '2px', width: '32px' }} />}
+                  </div>
                 </button>
  
                 <button

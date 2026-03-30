@@ -38,6 +38,7 @@ export function useVoice() {
   const isSpeakingRef    = useRef(false);
   const fakeVADIntervalRef = useRef(null);
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
+  const autoMutedByDeafenRef = useRef(false);
 
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
@@ -288,8 +289,9 @@ export function useVoice() {
       return;
     }
 
-    // Микрофон ВСЕГДА включён
-    stream.getAudioTracks().forEach(t => { t.enabled = true; });
+    // Устанавливаем начальное состояние микрофона согласно стейту
+    const shouldBeMuted = isMutedRef.current || isDeafenedRef.current;
+    stream.getAudioTracks().forEach(t => { t.enabled = !shouldBeMuted; });
     localStream.current = stream;
 
     // Включаем фейковый индикатор или просто светимся зеленым. Без 
@@ -410,38 +412,80 @@ export function useVoice() {
   }, [cleanupAll, activeChannelId]);
 
   const toggleMute = useCallback(() => {
-    setIsMuted(prev => {
-      const next = !prev;
-      isMutedRef.current = next;
-      // Просто включаем/выключаем дорожку — VAD не мешает
-      if (localStream.current) {
-        localStream.current.getAudioTracks().forEach(t => { t.enabled = !next; });
-      }
-      if (next) {
-        isSpeakingRef.current = false;
-        setIsSpeaking(false);
-      }
-      notifications.play(next ? 'mute' : 'unmute');
-      
-      // Обновляем статус везде
-      updatePresenceStatus({ isMuted: next, isSpeaking: false });
-      
-      return next;
-    });
+    const next = !isMutedRef.current;
+    
+    // Просто включаем/выключаем дорожку
+    if (localStream.current) {
+      localStream.current.getAudioTracks().forEach(t => { t.enabled = !next; });
+    }
+
+    const updates = { isMuted: next };
+
+    // [ОСОБАЯ ЛОГИКА]: Если размучиваем микрофон, а наушники включены — размучиваем и их
+    if (!next && isDeafenedRef.current) {
+      setIsDeafened(false);
+      isDeafenedRef.current = false;
+      Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = false; });
+      updates.isDeafened = false;
+      notifications.play('undeafen');
+    }
+
+    if (next) {
+      isSpeakingRef.current = false;
+      setIsSpeaking(false);
+      updates.isSpeaking = false;
+    }
+    
+    // Обновляем стейты и рефы
+    setIsMuted(next);
+    isMutedRef.current = next;
+    autoMutedByDeafenRef.current = false; // Любое ручное переключение микрофона сбрасывает автомут
+
+    notifications.play(next ? 'mute' : 'unmute');
+    updatePresenceStatus(updates);
   }, [updatePresenceStatus]);
 
   const toggleDeafen = useCallback(() => {
-    setIsDeafened(prev => {
-      const next = !prev;
-      isDeafenedRef.current = next;
-      Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = next; });
-      notifications.play(next ? 'deafen' : 'undeafen');
+    const next = !isDeafenedRef.current;
+    
+    // Приглушаем/включаем звук от других
+    Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = next; });
+    
+    const updates = { isDeafened: next };
 
-      // Обновляем статус везде
-      updatePresenceStatus({ isDeafened: next });
+    if (next) {
+      // [Discord-style]: При нажатии на наушники (Deafen) — всегда включается микрофон (Mute)
+      if (!isMutedRef.current) {
+        setIsMuted(true);
+        isMutedRef.current = true;
+        autoMutedByDeafenRef.current = true; // Запоминаем, что выключили автоматом
+        if (localStream.current) {
+          localStream.current.getAudioTracks().forEach(t => { t.enabled = false; });
+        }
+        updates.isMuted = true;
+        updates.isSpeaking = false;
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+      }
+    } else {
+      // При выключении наушников — возвращаем микрофон, только если мутили его автоматом
+      if (autoMutedByDeafenRef.current) {
+        setIsMuted(false);
+        isMutedRef.current = false;
+        autoMutedByDeafenRef.current = false;
+        if (localStream.current) {
+          localStream.current.getAudioTracks().forEach(t => { t.enabled = true; });
+        }
+        updates.isMuted = false;
+      }
+    }
 
-      return next;
-    });
+    // Обновляем стейты и рефы
+    setIsDeafened(next);
+    isDeafenedRef.current = next;
+
+    notifications.play(next ? 'deafen' : 'undeafen');
+    updatePresenceStatus(updates);
   }, [updatePresenceStatus]);
 
   const setParticipantVolume = useCallback((userId, volumePct) => {
