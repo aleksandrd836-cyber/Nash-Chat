@@ -41,37 +41,43 @@ export function useVoice() {
 
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
-    const channel = supabase.channel('global_voice_presence');
-    channel.on('presence', { event: 'sync' }, () => {
-      const state = channel.presenceState();
-      const latestUserPresence = new Map();
-      Object.values(state).flat().forEach(p => {
-        if (!p.channelId || !p.userId || !p.username) return;
-        const existing = latestUserPresence.get(p.userId);
-        if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
-          latestUserPresence.set(p.userId, p);
-        }
+    let channel;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      channel = supabase.channel('global_voice_presence', {
+        config: { presence: { key: user.id } }
       });
-      const newAll = {};
-      latestUserPresence.forEach(p => {
-        if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
-        newAll[p.channelId].set(p.userId, {
-          userId: p.userId, 
-          username: p.username, 
-          color: p.color, 
-          isScreenSharing: p.isScreenSharing,
-          isMuted: p.isMuted,
-          isDeafened: p.isDeafened
+      channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const latestUserPresence = new Map();
+        Object.values(state).flat().forEach(p => {
+          if (!p.channelId || !p.userId || !p.username) return;
+          const existing = latestUserPresence.get(p.userId);
+          if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
+            latestUserPresence.set(p.userId, p);
+          }
         });
+        const newAll = {};
+        latestUserPresence.forEach(p => {
+          if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
+          newAll[p.channelId].set(p.userId, {
+            userId: p.userId, 
+            username: p.username, 
+            color: p.color, 
+            isScreenSharing: p.isScreenSharing,
+            isMuted: p.isMuted,
+            isDeafened: p.isDeafened
+          });
+        });
+        const finalAll = {};
+        Object.keys(newAll).forEach(chId => { finalAll[chId] = Array.from(newAll[chId].values()); });
+        setAllParticipants(finalAll);
       });
-      const finalAll = {};
-      Object.keys(newAll).forEach(chId => { finalAll[chId] = Array.from(newAll[chId].values()); });
-      setAllParticipants(finalAll);
+      channel.subscribe();
+      globalPresence.current = channel;
     });
-    channel.subscribe();
-    globalPresence.current = channel;
     return () => { cleanupAll(); };
-  }, []);
+  }, [cleanupAll]);
 
   const createPeerConnection = useCallback((remoteUserId) => {
     if (peerConns.current[remoteUserId]) return peerConns.current[remoteUserId];
@@ -215,6 +221,26 @@ export function useVoice() {
     currentUserRef.current = null;
   }, [closePeer]);
 
+  // Хелпер для синхронного обновления статуса в локальном и глобальном канале
+  const updatePresenceStatus = useCallback(async (updates) => {
+    // 1. Обновляем локальный стейт (реф)
+    presencePayload.current = { ...presencePayload.current, ...updates };
+    
+    // 2. Трекаем в локальный канал голоса
+    if (realtimeChannel.current) {
+      await realtimeChannel.current.track(presencePayload.current).catch(() => {});
+    }
+    
+    // 3. Трекаем в глобальный канал (для сайдбара)
+    if (globalPresence.current && activeChannelId) {
+      await globalPresence.current.track({
+        ...presencePayload.current,
+        channelId: activeChannelId,
+        joined_at: Date.now() // для дедупликации если ключи не отработали
+      }).catch(() => {});
+    }
+  }, [activeChannelId]);
+
   const syncParticipants = useCallback((channel) => {
     const state = channel.presenceState();
     const seen = new Map();
@@ -342,18 +368,20 @@ export function useVoice() {
 
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await channel.track(presencePayload.current);
+        const payload = { 
+          ...presencePayload.current,
+          isMuted: isMutedRef.current,
+          isDeafened: isDeafenedRef.current,
+          isScreenSharing: false,
+          joined_at: Date.now()
+        };
+        await channel.track(payload);
+        
         if (globalPresence.current) {
           globalPresence.current.track({ 
-            channelId, 
-            userId: user.id, 
-            username, 
-            color, 
-            joined_at: Date.now(),
-            isMuted: isMutedRef.current,
-            isDeafened: isDeafenedRef.current,
-            isScreenSharing: false
-          });
+            ...payload,
+            channelId
+          }).catch(() => {});
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
@@ -381,26 +409,15 @@ export function useVoice() {
       if (next) {
         isSpeakingRef.current = false;
         setIsSpeaking(false);
-        presencePayload.current.isSpeaking = false;
-        realtimeChannel.current?.track(presencePayload.current).catch(() => {});
       }
       notifications.play(next ? 'mute' : 'unmute');
       
-      // Обновляем статус в Presence
-      presencePayload.current.isMuted = next;
-      realtimeChannel.current?.track(presencePayload.current).catch(() => {});
-      
-      if (globalPresence.current) {
-        globalPresence.current.track({ 
-          ...presencePayload.current, 
-          channelId: activeChannelId,
-          joined_at: Date.now() 
-        }).catch(() => {});
-      }
+      // Обновляем статус везде
+      updatePresenceStatus({ isMuted: next, isSpeaking: false });
       
       return next;
     });
-  }, []);
+  }, [updatePresenceStatus]);
 
   const toggleDeafen = useCallback(() => {
     setIsDeafened(prev => {
@@ -409,21 +426,12 @@ export function useVoice() {
       Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = next; });
       notifications.play(next ? 'deafen' : 'undeafen');
 
-      // Обновляем статус в Presence
-      presencePayload.current.isDeafened = next;
-      realtimeChannel.current?.track(presencePayload.current).catch(() => {});
-
-      if (globalPresence.current) {
-        globalPresence.current.track({ 
-          ...presencePayload.current, 
-          channelId: activeChannelId,
-          joined_at: Date.now() 
-        }).catch(() => {});
-      }
+      // Обновляем статус везде
+      updatePresenceStatus({ isDeafened: next });
 
       return next;
     });
-  }, []);
+  }, [updatePresenceStatus]);
 
   const setParticipantVolume = useCallback((userId, volumePct) => {
     const audio = audioElements.current[userId];
@@ -448,21 +456,14 @@ export function useVoice() {
       }
       screenStreamRef.current = stream;
       setIsScreenSharing(true);
-      presencePayload.current.isScreenSharing = true;
-      realtimeChannel.current?.track(presencePayload.current).catch(() => {});
       
-      if (globalPresence.current) {
-        globalPresence.current.track({ 
-          ...presencePayload.current, 
-          channelId: activeChannelId,
-          joined_at: Date.now() 
-        }).catch(() => {});
-      }
+      // Обновляем статус везде
+      updatePresenceStatus({ isScreenSharing: true });
       
       notifications.play('self_stream');
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) { console.error('Screen sharing error', err); }
-  }, []);
+  }, [updatePresenceStatus]);
 
   const stopScreenShare = useCallback(async () => {
     if (screenStreamRef.current) {
@@ -476,19 +477,12 @@ export function useVoice() {
       screenStreamRef.current = null;
     }
     setIsScreenSharing(false);
-    presencePayload.current.isScreenSharing = false;
-    realtimeChannel.current?.track(presencePayload.current).catch(() => {});
     
-    if (globalPresence.current) {
-      globalPresence.current.track({ 
-        ...presencePayload.current, 
-        channelId: activeChannelId,
-        joined_at: Date.now() 
-      }).catch(() => {});
-    }
+    // Обновляем статус везде
+    updatePresenceStatus({ isScreenSharing: false });
     
     notifications.play('stream_stop');
-  }, []);
+  }, [updatePresenceStatus]);
 
   const requestScreenView = useCallback((targetUserId) => {
     if (realtimeChannel.current && currentUserRef.current) {
