@@ -4,12 +4,15 @@ import { useVoice } from './hooks/useVoice';
 import { useMembers } from './hooks/useMembers';
 import { useUnreadDMs } from './hooks/useUnreadDMs';
 import { AuthPage } from './components/AuthPage';
+import { ServerSidebar } from './components/ServerSidebar';
 import { Sidebar } from './components/Sidebar';
 import { TextChannel } from './components/TextChannel';
 import { VoiceChannel } from './components/VoiceChannel';
 import { SettingsModal } from './components/SettingsModal';
 import { MembersPanel } from './components/MembersPanel';
 import { DirectMessagePanel } from './components/DirectMessagePanel';
+import { ServerEntryModal } from './components/ServerEntryModal';
+import { ServerSettingsModal } from './components/ServerSettingsModal';
 
 export default function App() {
   const auth  = useAuth();
@@ -20,10 +23,14 @@ export default function App() {
   const [localUsername, setLocalUsername]     = useState(null);
   const [localColor, setLocalColor]           = useState(null);
 
-  // DM: открытый диалог с участником
-  const [activeDM, setActiveDM] = useState(null);  // member object | null
+  // ── Серверы ──
+  const [selectedServer, setSelectedServer]         = useState(null);
+  const [serverEntryOpen, setServerEntryOpen]       = useState(false);
+  const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
 
-  // Инициализируем localColor из user_metadata при первом получении данных пользователя
+  // DM
+  const [activeDM, setActiveDM] = useState(null);
+
   useEffect(() => {
     if (auth.user && localColor === null) {
       const savedColor = auth.user.user_metadata?.user_color;
@@ -31,7 +38,7 @@ export default function App() {
     }
   }, [auth.user]);
 
-  // Состояние обновления: idle | checking | available | downloading | ready | uptodate | error
+  // ── Автообновление (Electron) ──
   const [updateStatus,   setUpdateStatus]   = useState('idle');
   const [updateInfo,     setUpdateInfo]     = useState(null);
   const [updateProgress, setUpdateProgress] = useState(0);
@@ -40,7 +47,6 @@ export default function App() {
 
   const isElectron = !!window.electronAPI;
 
-  // Автоматическое получение ссылки на актуальный .exe для сайта
   useEffect(() => {
     if (isElectron) return;
     fetch('https://api.github.com/repos/aleksandrd836-cyber/Nash-Chat/releases/latest')
@@ -49,26 +55,16 @@ export default function App() {
         const asset = data.assets?.find(a => a.name.endsWith('.exe'));
         if (asset) setDownloadUrl(asset.browser_download_url);
       })
-      .catch(err => console.error('GitHub API error:', err));
+      .catch(() => {});
   }, [isElectron]);
 
   useEffect(() => {
     if (!isElectron) return;
     const api = window.electronAPI;
-
-    api.onUpdateAvailable((info) => {
-      setUpdateInfo(info);
-      setUpdateStatus('available');
-    });
-    api.onUpdateProgress?.((p) => {
-      setUpdateProgress(Math.round(p.percent));
-      setUpdateStatus('downloading');
-    });
+    api.onUpdateAvailable((info) => { setUpdateInfo(info); setUpdateStatus('available'); });
+    api.onUpdateProgress?.((p) => { setUpdateProgress(Math.round(p.percent)); setUpdateStatus('downloading'); });
     api.onUpdateDownloaded?.(() => setUpdateStatus('ready'));
-    api.onUpdateError?.((msg) => {
-      setUpdateError(msg);
-      setUpdateStatus('error');
-    });
+    api.onUpdateError?.((msg) => { setUpdateError(msg); setUpdateStatus('error'); });
   }, [isElectron]);
 
   const handleCheckUpdate = async () => {
@@ -76,43 +72,38 @@ export default function App() {
     setUpdateError('');
     try { await window.electronAPI.checkForUpdates(); }
     catch (e) { setUpdateError(e?.message || String(e)); setUpdateStatus('error'); }
-    // Если нет новой версии — показать "актуальная версия" на 3с
     setTimeout(() => setUpdateStatus(s => s === 'checking' ? 'uptodate' : s), 3000);
     setTimeout(() => setUpdateStatus(s => s === 'uptodate'  ? 'idle'    : s), 6000);
   };
-
-  const handleDownload = async () => {
-    setUpdateStatus('downloading');
-    await window.electronAPI.downloadUpdate();
-  };
-
-  const handleInstall = () => window.electronAPI.installUpdate();
+  const handleDownload = async () => { setUpdateStatus('downloading'); await window.electronAPI.downloadUpdate(); };
+  const handleInstall  = () => window.electronAPI.installUpdate();
 
   const displayUsername = localUsername ?? auth.user?.user_metadata?.username ?? auth.username;
   const displayColor    = localColor || null;
 
   function handleSelectChannel(channel) {
-    setActiveDM(null);   // закрываем DM при переходе в канал
+    setActiveDM(null);
     setSelectedChannel(channel);
   }
 
   function handleOpenDM(member) {
     setActiveDM(member);
-    setSelectedChannel(null);  // сбрасываем выбранный канал
-    markAsRead(member.id);     // помечаем как прочитанные
+    setSelectedChannel(null);
+    markAsRead(member.id);
   }
 
-  function handleCloseDM() {
+  function handleCloseDM() { setActiveDM(null); }
+
+  // При смене сервера — сбрасываем канал и DM
+  function handleSelectServer(server) {
+    setSelectedServer(server);
+    setSelectedChannel(null);
     setActiveDM(null);
   }
 
-  // Загрузка зарегистрированных пользователей
-  const { members } = useMembers(auth.user);
-  
-  // Получаем непрочитанные ЛС
+  const { members } = useMembers(auth.user, selectedServer?.id);
   const { unreadCounts, markAsRead } = useUnreadDMs(auth.user?.id, activeDM?.id);
 
-  // Загрузка сессии
   if (auth.loading) {
     return (
       <div className="min-h-screen bg-ds-servers flex items-center justify-center">
@@ -124,7 +115,6 @@ export default function App() {
     );
   }
 
-  // Не авторизован
   if (!auth.user) {
     return (
       <AuthPage
@@ -136,31 +126,83 @@ export default function App() {
     );
   }
 
-  // Основной интерфейс
   return (
     <div className="flex h-screen overflow-hidden bg-ds-bg">
-      <Sidebar
-        username={displayUsername}
-        userColor={displayColor}
-        currentUserId={auth.user?.id}
-        selectedChannel={selectedChannel}
-        onSelectChannel={handleSelectChannel}
-        onSignOut={auth.signOut}
-        voice={voice}
-        onOpenSettings={() => setSettingsOpen(true)}
-        updateStatus={updateStatus}
-        updateInfo={updateInfo}
-        updateProgress={updateProgress}
-        updateError={updateError}
-        isElectron={isElectron}
-        onCheckUpdate={handleCheckUpdate}
-        onDownload={handleDownload}
-        onInstall={handleInstall}
-        appVersion={typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''}
+
+      {/* ── Панель серверов (крайняя левая) ── */}
+      <ServerSidebar
+        currentUserId={auth.user.id}
+        selectedServerId={selectedServer?.id}
+        onSelectServer={handleSelectServer}
+        onCreateServer={() => setServerEntryOpen(true)}
       />
 
+      {/* ── Канальная панель ── */}
+      {selectedServer ? (
+        <Sidebar
+          username={displayUsername}
+          userColor={displayColor}
+          currentUserId={auth.user?.id}
+          selectedChannel={selectedChannel}
+          onSelectChannel={handleSelectChannel}
+          onSignOut={auth.signOut}
+          voice={voice}
+          onOpenSettings={() => setSettingsOpen(true)}
+          updateStatus={updateStatus}
+          updateInfo={updateInfo}
+          updateProgress={updateProgress}
+          updateError={updateError}
+          isElectron={isElectron}
+          onCheckUpdate={handleCheckUpdate}
+          onDownload={handleDownload}
+          onInstall={handleInstall}
+          appVersion={typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''}
+          selectedServer={selectedServer}
+          isOwner={selectedServer.owner_id === auth.user.id}
+          onOpenServerSettings={() => setServerSettingsOpen(true)}
+        />
+      ) : (
+        // Заглушка если сервер не выбран
+        <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col items-center justify-center gap-3 p-6">
+          <div className="w-16 h-16 rounded-full bg-ds-hover flex items-center justify-center">
+            <span className="text-3xl">🏠</span>
+          </div>
+          <p className="text-ds-text font-semibold text-center">Выбери или создай сервер</p>
+          <p className="text-ds-muted text-xs text-center">Нажми «+» слева чтобы создать сервер или войти по коду от друга</p>
+          <button
+            onClick={() => setServerEntryOpen(true)}
+            className="mt-2 px-4 py-2 bg-ds-accent hover:bg-ds-accent/90 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-ds-accent/20"
+          >
+            Создать / Войти
+          </button>
+        </div>
+      )}
+
+      {/* ── Основной контент ── */}
       <main className="flex-1 flex min-w-0 overflow-hidden">
-        {activeDM ? (
+        {!selectedServer ? (
+          // Экран приветствия когда нет сервера
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
+            <div className="w-20 h-20 rounded-full bg-ds-sidebar flex items-center justify-center">
+              <span className="text-4xl">👋</span>
+            </div>
+            <div>
+              <p className="text-ds-text text-xl font-bold">Привет, {displayUsername}!</p>
+              <p className="text-ds-muted text-sm mt-1">Создай свой сервер или войди по коду друга</p>
+            </div>
+            {!isElectron && (
+              <a
+                href={downloadUrl}
+                className="mt-4 flex items-center gap-3 px-6 py-3 bg-ds-green hover:bg-ds-green/90 text-white font-bold rounded-xl transition-all shadow-xl shadow-ds-green/20 group"
+              >
+                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
+                </svg>
+                Скачать Vibe для Windows
+              </a>
+            )}
+          </div>
+        ) : activeDM ? (
           <DirectMessagePanel
             currentUser={auth.user}
             username={displayUsername}
@@ -174,21 +216,9 @@ export default function App() {
               <span className="text-4xl">👋</span>
             </div>
             <div>
-              <p className="text-ds-text text-xl font-bold">Привет, {displayUsername}!</p>
+              <p className="text-ds-text text-xl font-bold">Добро пожаловать на сервер «{selectedServer.name}»!</p>
               <p className="text-ds-muted text-sm mt-1">Выбери канал слева, чтобы начать общение</p>
             </div>
-            
-            {!isElectron && (
-              <a 
-                href={downloadUrl}
-                className="mt-4 flex items-center gap-3 px-6 py-3 bg-ds-green hover:bg-ds-green/90 text-white font-bold rounded-xl transition-all shadow-xl shadow-ds-green/20 group animate-pulse-soft"
-              >
-                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
-                </svg>
-                Скачать Vibe для Windows
-              </a>
-            )}
           </div>
         ) : selectedChannel.type === 'text' ? (
           <TextChannel
@@ -210,16 +240,18 @@ export default function App() {
         )}
       </main>
 
-      {/* Right members panel */}
-      <MembersPanel
-        members={members}
-        loading={false}
-        currentUserId={auth.user?.id}
-        onOpenDM={handleOpenDM}
-        unreadCounts={unreadCounts}
-      />
+      {/* ── Участники сервера (справа) ── */}
+      {selectedServer && (
+        <MembersPanel
+          members={members}
+          loading={false}
+          currentUserId={auth.user?.id}
+          onOpenDM={handleOpenDM}
+          unreadCounts={unreadCounts}
+        />
+      )}
 
-      {/* Settings Modal */}
+      {/* ── Модалки ── */}
       {settingsOpen && (
         <SettingsModal
           user={auth.user}
@@ -229,8 +261,30 @@ export default function App() {
           onUsernameChange={(newName, newColor) => {
             setLocalUsername(newName);
             setLocalColor(newColor || null);
-            // Принудительно обновляем auth.user, чтобы user_metadata подтянулся
             auth.refreshUser?.();
+          }}
+        />
+      )}
+
+      {serverEntryOpen && (
+        <ServerEntryModal
+          currentUserId={auth.user.id}
+          onClose={() => setServerEntryOpen(false)}
+          onServerJoined={(server) => {
+            setServerEntryOpen(false);
+            handleSelectServer(server);
+          }}
+        />
+      )}
+
+      {serverSettingsOpen && selectedServer && (
+        <ServerSettingsModal
+          server={selectedServer}
+          currentUserId={auth.user.id}
+          onClose={() => setServerSettingsOpen(false)}
+          onServerDeleted={() => {
+            setSelectedServer(null);
+            setSelectedChannel(null);
           }}
         />
       )}

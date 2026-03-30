@@ -2,55 +2,65 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 /**
- * Хук для загрузки всех зарегистрированных пользователей
- * и отслеживания их онлайн-статуса через Supabase Realtime Presence.
+ * Хук для загрузки участников текущего сервера и отслеживания их онлайн-статуса.
+ * Если serverId не передан — возвращает пустой массив.
  */
-export function useMembers(currentUser) {
-  const [members, setMembers]     = useState([]);   // [{ id, username, color, isOnline }]
+export function useMembers(currentUser, serverId) {
+  const [members, setMembers]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const channelRef                = useRef(null);
 
-  // ── Загрузка списка всех пользователей из таблицы profiles ──
+  // ── Загрузка участников текущего сервера ──
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !serverId) {
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
 
     async function fetchMembers() {
-      // Используем таблицу profiles (создадим через SQL), либо читаем user_metadata через RPC
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, color')
-        .order('username');
+        .from('server_members')
+        .select('user_id, role, profiles(id, username, color)')
+        .eq('server_id', serverId);
 
       if (!error && data) {
-        setMembers(data.map(m => ({ ...m, isOnline: false })));
+        setMembers(data.map(row => ({
+          ...row.profiles,
+          role: row.role,
+          isOnline: false,
+        })));
       }
       setLoading(false);
     }
 
     fetchMembers();
 
-    // Подписка на изменения таблицы profiles (если пользователь обновил никнейм)
+    // Подписка на изменения состава сервера
     const sub = supabase
-      .channel('profiles-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        fetchMembers();
-      })
+      .channel(`server-members-${serverId}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'server_members',
+        filter: `server_id=eq.${serverId}`,
+      }, fetchMembers)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'profiles',
+      }, fetchMembers)
       .subscribe();
 
     return () => { sub.unsubscribe(); };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, serverId]);
 
-  // ── Presence: отслеживаем кто онлайн ──
+  // ── Presence: отслеживаем онлайн-статус ──
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !serverId) return;
 
     const username = currentUser.user_metadata?.username ?? currentUser.email?.split('@')[0] ?? 'Unknown';
     const color    = currentUser.user_metadata?.user_color ?? null;
 
-    const channel = supabase.channel('online-members', {
+    const channel = supabase.channel(`online-${serverId}`, {
       config: { presence: { key: currentUser.id } },
     });
-
     channelRef.current = channel;
 
     channel
@@ -71,10 +81,8 @@ export function useMembers(currentUser) {
         }
       });
 
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [currentUser?.id]);
+    return () => { channel.unsubscribe(); };
+  }, [currentUser?.id, serverId]);
 
   return { members, loading };
 }
