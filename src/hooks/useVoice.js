@@ -40,10 +40,9 @@ export function useVoice() {
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
   const autoMutedByDeafenRef = useRef(false);
 
-  // Web Audio API refs для надежного мута без прерывания RTP потока
+  // Web Audio API refs для VAD (не для отправки звука!)
   const audioContextRef = useRef(null);
   const originalMicStreamRef = useRef(null);
-  const localGainNodeRef = useRef(null);
 
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
@@ -239,7 +238,6 @@ export function useVoice() {
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
     }
-    localGainNodeRef.current = null;
 
     if (fakeVADIntervalRef.current) { clearInterval(fakeVADIntervalRef.current); fakeVADIntervalRef.current = null; }
     isSpeakingRef.current = false;
@@ -322,41 +320,30 @@ export function useVoice() {
       return;
     }
 
-    // Внедряем Web Audio API для 100% надежного мута без прерывания RTP-пакетов
+    // Сохраняем оригинальный поток для клонирования при размуте
     originalMicStreamRef.current = stream;
+    
+    // Устанавливаем начальное состояние микрофона согласно стейту
+    const shouldBeMuted = isMutedRef.current || isDeafenedRef.current;
+    stream.getAudioTracks().forEach(t => { t.enabled = !shouldBeMuted; });
+    
+    // Используем ОРИГИНАЛЬНЫЙ поток микрофона для WebRTC (не Web Audio destination!)
+    localStream.current = stream;
+    
+    // AudioContext + AnalyserNode ТОЛЬКО для VAD (не в пути отправки!)
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContextClass();
     audioContextRef.current = audioCtx;
-    
-    // КРИТИЧНО: AudioContext может стартовать в suspended после async getUserMedia.
-    // В suspended режиме destination.stream не производит аудио-фреймы!
     if (audioCtx.state === 'suspended') {
       await audioCtx.resume();
     }
-    console.log('[Voice] AudioContext state:', audioCtx.state);
-    
-    const source = audioCtx.createMediaStreamSource(stream);
-    const gainNode = audioCtx.createGain();
-    const destination = audioCtx.createMediaStreamDestination();
-    
-    // AnalyserNode для реального определения голосовой активности
+    const vadSource = audioCtx.createMediaStreamSource(stream);
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
     analyser.smoothingTimeConstant = 0.3;
-    
-    // Цепочка: source → analyser → gainNode → destination
-    // AnalyserNode пропускает аудио насквозь + анализирует его
-    source.connect(analyser);
-    analyser.connect(gainNode);
-    
-    const shouldBeMuted = isMutedRef.current || isDeafenedRef.current;
-    gainNode.gain.value = shouldBeMuted ? 0 : 1;
-    
-    gainNode.connect(destination);
-    
-    localGainNodeRef.current = gainNode;
-    localStream.current = destination.stream;
-    console.log('[Voice] Pipeline ready, tracks:', destination.stream.getAudioTracks().length, 'active:', destination.stream.active);
+    vadSource.connect(analyser);
+    // AnalyserNode не подключён к output — только читает данные для VAD
+
 
 
     // Настоящий VAD: проверяем уровень громкости с микрофона каждые 100мс
@@ -499,15 +486,41 @@ export function useVoice() {
   const toggleMute = useCallback(() => {
     const next = !isMutedRef.current;
     
-    // 1. Управляем громкостью в нашем виртуальном микшере (0 = тишина, 1 = микрофон)
-    if (localGainNodeRef.current) {
-      localGainNodeRef.current.gain.value = next ? 0 : 1;
-    }
-    // КРИТИЧНО: Браузер может приостановить AudioContext во время тишины.
-    // При размуте обязательно возобновляем его, иначе звук не пойдёт.
-    if (!next && audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume().then(() => {
-        console.log('[Voice] AudioContext resumed after unmute');
+    if (next) {
+      // МУТИМ: просто отключаем трек
+      if (localStream.current) {
+        localStream.current.getAudioTracks().forEach(t => { t.enabled = false; });
+      }
+      isSpeakingRef.current = false;
+      setIsSpeaking(false);
+    } else {
+      // РАЗМУТ: клонируем оригинальный трек и подменяем на всех соединениях.
+      // Это КЛЮЧЕВОЕ исправление — replaceTrack() заставляет WebRTC
+      // заново синхронизировать аудио, избегая бага с "мёртвым" треком.
+      const origTrack = originalMicStreamRef.current?.getAudioTracks()[0];
+      if (origTrack) {
+        const freshTrack = origTrack.clone();
+        freshTrack.enabled = true;
+        
+        // Подменяем трек на всех peer connections
+        Object.values(peerConns.current).forEach(pc => {
+          const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
+          if (sender) {
+            sender.replaceTrack(freshTrack).catch(e => console.warn('[Voice] replaceTrack error:', e));
+          }
+        });
+        
+        // Обновляем localStream с новым треком
+        const oldTracks = localStream.current?.getAudioTracks() || [];
+        oldTracks.forEach(t => { if (t !== origTrack) t.stop(); });
+        localStream.current = new MediaStream([freshTrack]);
+      }
+      
+      // Принудительно play() у всех аудио-элементов
+      Object.values(audioElements.current).forEach(audio => {
+        if (audio && !audio.muted) {
+          audio.play().catch(() => {});
+        }
       });
     }
 
@@ -522,23 +535,11 @@ export function useVoice() {
       notifications.play('undeafen');
     }
 
-    // 2. При размучивании — принудительно вызываем play() на всех элементах.
-    //    Некоторые браузеры приостанавливают Audio, если трек был тихим долгое время.
-    if (!next) {
-      Object.values(audioElements.current).forEach(audio => {
-        if (audio && !audio.muted) {
-          audio.play().catch(() => {});
-        }
-      });
-    }
-
     if (next) {
-      isSpeakingRef.current = false;
-      setIsSpeaking(false);
       updates.isSpeaking = false;
     }
     
-    // 3. Обновляем стейты и рефы
+    // Обновляем стейты и рефы
     setIsMuted(next);
     isMutedRef.current = next;
     autoMutedByDeafenRef.current = false;
@@ -546,6 +547,7 @@ export function useVoice() {
     notifications.play(next ? 'mute' : 'unmute');
     updatePresenceStatus(updates);
   }, [updatePresenceStatus]);
+
 
   const toggleDeafen = useCallback(() => {
     const next = !isDeafenedRef.current;
@@ -561,8 +563,8 @@ export function useVoice() {
         setIsMuted(true);
         isMutedRef.current = true;
         autoMutedByDeafenRef.current = true; 
-        if (localGainNodeRef.current) {
-          localGainNodeRef.current.gain.value = 0;
+        if (localStream.current) {
+          localStream.current.getAudioTracks().forEach(t => { t.enabled = false; });
         }
         updates.isMuted = true;
         updates.isSpeaking = false;
@@ -575,15 +577,30 @@ export function useVoice() {
         setIsMuted(false);
         isMutedRef.current = false;
         autoMutedByDeafenRef.current = false;
-        if (localGainNodeRef.current) {
-          localGainNodeRef.current.gain.value = 1;
-        }
-        // КРИТИЧНО: Возобновляем AudioContext при размуте через наушники
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume().then(() => {
-            console.log('[Voice] AudioContext resumed after undeafen');
+        
+        // replaceTrack с клоном — гарантированное восстановление аудио
+        const origTrack = originalMicStreamRef.current?.getAudioTracks()[0];
+        if (origTrack) {
+          const freshTrack = origTrack.clone();
+          freshTrack.enabled = true;
+          Object.values(peerConns.current).forEach(pc => {
+            const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
+            if (sender) {
+              sender.replaceTrack(freshTrack).catch(e => console.warn('[Voice] replaceTrack error:', e));
+            }
           });
+          const oldTracks = localStream.current?.getAudioTracks() || [];
+          oldTracks.forEach(t => { if (t !== origTrack) t.stop(); });
+          localStream.current = new MediaStream([freshTrack]);
         }
+        
+        // Принудительно play() у всех аудио-элементов
+        Object.values(audioElements.current).forEach(audio => {
+          if (audio && !audio.muted) {
+            audio.play().catch(() => {});
+          }
+        });
+        
         updates.isMuted = false;
       }
     }
