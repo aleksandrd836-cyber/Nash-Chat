@@ -38,9 +38,10 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
     <div className="min-h-screen bg-[#020202] flex items-center justify-center p-6 relative overflow-hidden font-sans">
       {/* ── Анимированный фон (VIBE AURORA) ── */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-ds-accent/10 rounded-full blur-[150px] animate-pulse-soft opacity-40 shadow-[0_0_100px_rgba(0,240,255,0.1)]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 rounded-full blur-[150px] animate-pulse-soft opacity-30 shadow-[0_0_100px_rgba(147,51,234,0.1)]" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(0,240,255,0.03)_0%,transparent_70%)]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-ds-accent/20 rounded-full blur-[120px] animate-vibe-pulse opacity-60 shadow-[0_0_150px_rgba(0,240,255,0.2)]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/15 rounded-full blur-[120px] animate-vibe-pulse opacity-40 shadow-[0_0_150px_rgba(147,51,234,0.15)]" style={{ animationDelay: '3s' }} />
+        <div className="absolute top-1/4 right-1/4 w-[30%] h-[30%] bg-ds-accent/5 rounded-full blur-[100px] animate-vibe-pulse opacity-20" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,240,255,0.02)_0%,transparent_70%)]" />
       </div>
 
       <div className="relative w-full max-w-md animate-fade-in">
