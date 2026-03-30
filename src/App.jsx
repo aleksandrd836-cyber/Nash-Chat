@@ -245,7 +245,11 @@ function App() {
           // Экран приветствия когда нет сервера
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-[#050505] relative overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-ds-accent/5 rounded-full blur-[150px] animate-pulse-soft opacity-30" />
+               {/* Core Nebula Glow */}
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] vibe-nebula opacity-50 blur-[100px]" />
+               {/* Dynamic Aurora Layers */}
+               <div className="absolute top-1/2 left-1/2 w-[80%] h-[80%] -translate-x-1/2 -translate-y-1/2 vibe-aurora opacity-20 blur-[120px]" />
+               <div className="absolute top-1/2 left-1/2 w-[60%] h-[60%] -translate-x-1/2 -translate-y-1/2 vibe-aurora opacity-30 blur-[80px]" style={{ animationDirection: 'reverse', animationDuration: '15s' }} />
             </div>
             <div className="relative group">
                <div className="w-32 h-32 rounded-[3rem] bg-black/40 flex items-center justify-center text-ds-accent vibe-glow-blue border-2 border-white/5 relative z-10">
