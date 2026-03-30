@@ -495,6 +495,15 @@ export function useVoice() {
     notifications.play('stream_stop');
   }, [updatePresenceStatus]);
 
+  const requestScreenView = useCallback((targetUserId) => {
+    if (realtimeChannel.current && currentUserRef.current) {
+      realtimeChannel.current.send({
+        type: 'broadcast', event: 'request-stream',
+        payload: { from: currentUserRef.current.id, to: targetUserId },
+      });
+    }
+  }, []);
+
   const [ping, setPing] = useState(null);
 
   // ── Мониторинг задержки (Ping) ──
