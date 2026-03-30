@@ -27,6 +27,7 @@ export default function App() {
   const [selectedServer, setSelectedServer]         = useState(null);
   const [serverEntryOpen, setServerEntryOpen]       = useState(false);
   const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
+  const [serverRefresh, setServerRefresh]           = useState(0); // триггер для обновления ServerSidebar
 
   // DM
   const [activeDM, setActiveDM] = useState(null);
@@ -135,6 +136,7 @@ export default function App() {
         selectedServerId={selectedServer?.id}
         onSelectServer={handleSelectServer}
         onCreateServer={() => setServerEntryOpen(true)}
+        refreshTrigger={serverRefresh}
       />
 
       {/* ── Канальная панель ── */}
@@ -272,6 +274,7 @@ export default function App() {
           onClose={() => setServerEntryOpen(false)}
           onServerJoined={(server) => {
             setServerEntryOpen(false);
+            setServerRefresh(r => r + 1); // триггерим обновление панели серверов
             handleSelectServer(server);
           }}
         />

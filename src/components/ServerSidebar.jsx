@@ -6,7 +6,7 @@ import { getUserAvatar } from '../lib/avatar';
  * Вертикальная панель серверов слева.
  * Отображает иконки серверов участника и кнопку "+" для создания/вступления.
  */
-export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, onJoinServer }) {
+export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, refreshTrigger }) {
   const [servers, setServers] = useState([]);
 
   const fetchServers = useCallback(async () => {
@@ -22,7 +22,6 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
 
   useEffect(() => {
     fetchServers();
-    // Подписка на изменения членства
     const sub = supabase
       .channel('server-members-changes')
       .on('postgres_changes', {
@@ -31,7 +30,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
       }, fetchServers)
       .subscribe();
     return () => { sub.unsubscribe(); };
-  }, [currentUserId, fetchServers]);
+  }, [currentUserId, fetchServers, refreshTrigger]); // refreshTrigger заставляет перезапросить список
 
   return (
     <div className="w-[72px] flex-shrink-0 bg-ds-servers flex flex-col items-center py-3 gap-2 overflow-y-auto">
