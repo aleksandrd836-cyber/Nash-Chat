@@ -56,7 +56,12 @@ export function useVoice() {
       latestUserPresence.forEach(p => {
         if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
         newAll[p.channelId].set(p.userId, {
-          userId: p.userId, username: p.username, color: p.color, isScreenSharing: p.isScreenSharing
+          userId: p.userId, 
+          username: p.username, 
+          color: p.color, 
+          isScreenSharing: p.isScreenSharing,
+          isMuted: p.isMuted,
+          isDeafened: p.isDeafened
         });
       });
       const finalAll = {};
@@ -216,7 +221,8 @@ export function useVoice() {
     Object.values(state).flat().forEach(p => {
       seen.set(p.userId, {
         userId: p.userId, username: p.username, color: p.color,
-        isScreenSharing: p.isScreenSharing, isSpeaking: p.isSpeaking
+        isScreenSharing: p.isScreenSharing, isSpeaking: p.isSpeaking,
+        isMuted: p.isMuted, isDeafened: p.isDeafened
       });
     });
     setParticipants(Array.from(seen.values()));
@@ -269,7 +275,15 @@ export function useVoice() {
 
     // 3. Инициализируем Supabase канал
     currentUserRef.current = { id: user.id, username };
-    presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false };
+    presencePayload.current = { 
+      userId: user.id, 
+      username, 
+      color, 
+      isScreenSharing: false, 
+      isSpeaking: false,
+      isMuted: isMutedRef.current,
+      isDeafened: isDeafenedRef.current
+    };
 
     const channel = supabase.channel(`voice:${channelId}`, {
       config: { presence: { key: user.id }, broadcast: { self: false, ack: false } },
@@ -362,6 +376,11 @@ export function useVoice() {
         realtimeChannel.current?.track(presencePayload.current).catch(() => {});
       }
       notifications.play(next ? 'mute' : 'unmute');
+      
+      // Обновляем статус в Presence
+      presencePayload.current.isMuted = next;
+      realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+      
       return next;
     });
   }, []);
@@ -372,6 +391,11 @@ export function useVoice() {
       isDeafenedRef.current = next;
       Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = next; });
       notifications.play(next ? 'deafen' : 'undeafen');
+
+      // Обновляем статус в Presence
+      presencePayload.current.isDeafened = next;
+      realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+
       return next;
     });
   }, []);

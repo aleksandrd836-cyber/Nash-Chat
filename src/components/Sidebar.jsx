@@ -390,6 +390,22 @@ export function Sidebar({
                               <span className="text-[11px] text-ds-muted truncate flex-1" style={p.color ? { color: p.color } : {}}>
                                 {p.username}
                               </span>
+
+                              {/* Статус Мута/Деафена */}
+                              <div className="flex items-center gap-0.5 flex-shrink-0">
+                                {p.isDeafened && (
+                                  <svg className="w-3.5 h-3.5 text-ds-red" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9h10v2H7z"/>
+                                  </svg>
+                                )}
+                                {p.isMuted && !p.isDeafened && (
+                                  <svg className="w-3.5 h-3.5 text-ds-red" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/><path d="M0 0h24v24H0z" fill="none"/>
+                                    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" />
+                                  </svg>
+                                )}
+                              </div>
+
                               {!isMe && vol !== 100 && (
                                 <span className={`text-[9px] font-bold flex-shrink-0 ${vol === 0 ? 'text-ds-red' : 'text-ds-yellow'}`}>
                                   {vol === 0 ? '🔇' : `${vol}%`}
