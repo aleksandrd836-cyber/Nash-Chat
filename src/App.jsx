@@ -221,6 +221,17 @@ export default function App() {
               <p className="text-ds-text text-xl font-bold">Добро пожаловать на сервер «{selectedServer.name}»!</p>
               <p className="text-ds-muted text-sm mt-1">Выбери канал слева, чтобы начать общение</p>
             </div>
+            {!isElectron && (
+              <a
+                href={downloadUrl}
+                className="mt-2 flex items-center gap-3 px-6 py-3 bg-ds-green hover:bg-ds-green/90 text-white font-bold rounded-xl transition-all shadow-xl shadow-ds-green/20 group"
+              >
+                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
+                </svg>
+                Скачать Vibe для Windows
+              </a>
+            )}
           </div>
         ) : selectedChannel.type === 'text' ? (
           <TextChannel
