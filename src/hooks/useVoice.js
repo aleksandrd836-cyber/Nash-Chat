@@ -40,6 +40,20 @@ export function useVoice() {
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
   const autoMutedByDeafenRef = useRef(false);
 
+  // EFFECT: При изменении списка участников — проверяем, не «завис» ли у нас чей-то audio в паузе.
+  // Мы ТОЛЬКО вызываем play() — никогда не меняем audio.muted здесь.
+  // Это безопасный резерв для случая, когда браузер остановил audio из-за тихого трека (mute/unmute).
+  useEffect(() => {
+    participants.forEach(p => {
+      if (currentUserRef.current && p.userId === currentUserRef.current.id) return;
+      const audio = audioElements.current[p.userId];
+      if (audio && !audio.muted && audio.paused) {
+        console.log(`[Voice] Auto-resuming paused audio for ${p.username}`);
+        audio.play().catch(() => {});
+      }
+    });
+  }, [participants]);
+
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
     let channel;
@@ -135,6 +149,16 @@ export function useVoice() {
           audio.style.display = 'none';
           document.body.appendChild(audio);
           audioElements.current[remoteUserId] = audio;
+
+          // МГНОВЕННЫЙ АВТОРЕСТАРТ: если браузер поставил audio на паузу
+          // (например, потому что трек был disabled и стал тихим),
+          // мы немедленно перезапускаем воспроизведение.
+          audio.onpause = () => {
+            if (!audio.muted) {
+              console.log(`[Voice] audio.onpause — перезапуск для ${remoteUserId}`);
+              audio.play().catch(() => {});
+            }
+          };
         }
         const audio = audioElements.current[remoteUserId];
         // Всегда обновляем srcObject и всегда вызываем play().
