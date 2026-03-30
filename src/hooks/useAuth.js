@@ -34,8 +34,11 @@ export function useAuth() {
   const getUsername = (u) => u?.user_metadata?.username ?? u?.email?.split('@')[0] ?? 'Unknown';
 
   /** Регистрация: email + username + password */
-  const signUp = useCallback(async (email, username, password) => {
+  const signUp = useCallback(async (email, username, password, rememberMe = true) => {
     setError(null);
+
+    // Сохраняем предпочтение перед входом
+    localStorage.setItem('vibe_remember_me', rememberMe ? 'true' : 'false');
 
     if (!email || !email.includes('@')) {
       setError('Введи корректный email');
@@ -74,8 +77,12 @@ export function useAuth() {
   }, []);
 
   /** Вход: email + password */
-  const signIn = useCallback(async (email, password) => {
+  const signIn = useCallback(async (email, password, rememberMe = true) => {
     setError(null);
+    
+    // Сохраняем предпочтение перед входом
+    localStorage.setItem('vibe_remember_me', rememberMe ? 'true' : 'false');
+
     const { error: err } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,

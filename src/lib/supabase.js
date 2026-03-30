@@ -10,4 +10,32 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const customStorage = {
+  getItem: (key) => {
+    const useLocal = localStorage.getItem('vibe_remember_me') === 'true';
+    return useLocal ? localStorage.getItem(key) : sessionStorage.getItem(key);
+  },
+  setItem: (key, value) => {
+    const useLocal = localStorage.getItem('vibe_remember_me') === 'true';
+    if (useLocal) {
+       localStorage.setItem(key, value);
+    } else {
+       sessionStorage.setItem(key, value);
+       // Очищаем из local на случай, если там что-то было раньше
+       localStorage.removeItem(key); 
+    }
+  },
+  removeItem: (key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  }
+};
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: customStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});

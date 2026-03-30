@@ -15,13 +15,15 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
 
+  const [rememberMe, setRememberMe] = useState(true);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     if (mode === 'login') {
-      await onSignIn(email, password);
+      await onSignIn(email, password, rememberMe);
     } else {
-      await onSignUp(email, username, password);
+      await onSignUp(email, username, password, rememberMe);
     }
     setLoading(false);
   }
@@ -138,6 +140,30 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                   required
                   className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold placeholder-white/10 focus:border-ds-accent/30 focus:bg-black/60 transition-all outline-none"
                 />
+              </div>
+
+              {/* Remember Me Checkbox */}
+              <div className="flex items-center justify-between px-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className="flex items-center gap-3 group cursor-pointer outline-none"
+                >
+                  <div className={`w-5 h-5 rounded-md border-2 transition-all duration-300 flex items-center justify-center
+                    ${rememberMe 
+                      ? 'bg-ds-accent border-ds-accent shadow-[0_0_10px_rgba(0,240,255,0.4)]' 
+                      : 'border-white/10 bg-white/5 group-hover:border-white/20'}`}
+                  >
+                    {rememberMe && (
+                      <svg className="w-3.5 h-3.5 text-black animate-slide-up" fill="none" stroke="currentColor" strokeWidth="4" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${rememberMe ? 'text-ds-accent' : 'text-white/20 group-hover:text-white/40'}`}>
+                    Запомнить меня
+                  </span>
+                </button>
               </div>
 
               {/* Error Box */}
