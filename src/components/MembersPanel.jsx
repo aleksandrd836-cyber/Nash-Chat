@@ -10,7 +10,8 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
   const offline = members.filter(m => !m.isOnline);
 
   return (
-    <div className="w-60 flex-shrink-0 bg-[#0a0a0a] flex flex-col border-l border-white/5 shadow-2xl z-10 transition-all duration-300">
+    <div className="w-60 flex-shrink-0 bg-[#0a0a0a] flex flex-col border-l border-white/5 shadow-2xl z-10 transition-all duration-300 relative">
+      <div className="absolute top-0 left-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
       {/* Header */}
       <div className="h-12 flex items-center px-4 border-b border-white/5 flex-shrink-0 bg-black/20 backdrop-blur-md">
         <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">

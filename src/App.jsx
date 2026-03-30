@@ -204,6 +204,7 @@ function App() {
       ) : (
         // Заглушка если сервер не выбран
         <div className="w-60 flex-shrink-0 bg-[#0a0a0a] flex flex-col border-r border-white/5 relative">
+          <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
           <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center animate-fade-in">
             <div className="w-20 h-20 rounded-3xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
                <Globe size={40} strokeWidth={2} />
@@ -283,9 +284,9 @@ function App() {
           />
         ) : !selectedChannel ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-[#050505] relative animate-fade-in">
-            <div className="w-28 h-28 rounded-[2.5rem] bg-black/40 flex items-center justify-center text-white/10 border border-white/5 relative overflow-hidden group">
-               <div className="absolute inset-0 vibe-moving-glow opacity-5" />
-               <Hash size={56} strokeWidth={1} />
+            <div className="w-28 h-28 rounded-[2.5rem] bg-black/40 flex items-center justify-center text-ds-accent/40 border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
+               <div className="absolute inset-0 vibe-moving-glow opacity-10" />
+               <Hash size={56} strokeWidth={2.5} />
             </div>
             <div className="max-w-xs">
               <h3 className="text-white font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>
