@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
  * Использует RPC get_server_members (SECURITY DEFINER) чтобы обойти проблемы RLS и foreign key join.
  */
 export function useMembers(currentUser, serverId) {
+  const presenceIdsRef = useRef(new Set());
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef(null);
@@ -26,7 +27,11 @@ export function useMembers(currentUser, serverId) {
         console.error('[useMembers] Ошибка загрузки участников:', error);
         setMembers([]);
       } else {
-        setMembers((data ?? []).map(m => ({ ...m, isOnline: false })));
+        // Пытаемся сохранить текущий онлайн-статус при перезагрузке списка
+        setMembers((data ?? []).map(m => ({ 
+          ...m, 
+          isOnline: presenceIdsRef.current.has(m.id) 
+        })));
       }
       setLoading(false);
     }
@@ -64,12 +69,19 @@ export function useMembers(currentUser, serverId) {
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const onlineIds = new Set(Object.keys(state));
-        setMembers(prev => prev.map(m => ({ ...m, isOnline: onlineIds.has(m.id) })));
+        presenceIdsRef.current = onlineIds; // Обновляем реф для будущих fetchMembers
+        
+        setMembers(prev => prev.map(m => ({ 
+          ...m, 
+          isOnline: onlineIds.has(m.id) 
+        })));
       })
       .on('presence', { event: 'join' }, ({ key }) => {
+        presenceIdsRef.current.add(key);
         setMembers(prev => prev.map(m => m.id === key ? { ...m, isOnline: true } : m));
       })
       .on('presence', { event: 'leave' }, ({ key }) => {
+        presenceIdsRef.current.delete(key);
         setMembers(prev => prev.map(m => m.id === key ? { ...m, isOnline: false } : m));
       })
       .subscribe(async (status) => {
