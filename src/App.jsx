@@ -12,6 +12,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { MembersPanel } from './components/MembersPanel';
 import { DirectMessagePanel } from './components/DirectMessagePanel';
 import { ServerEntryModal } from './components/ServerEntryModal';
+import { UserPanel } from './components/UserPanel';
 import { ServerSettingsModal } from './components/ServerSettingsModal';
 
 export default function App() {
@@ -165,18 +166,57 @@ export default function App() {
         />
       ) : (
         // Заглушка если сервер не выбран
-        <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col items-center justify-center gap-3 p-6">
-          <div className="w-16 h-16 rounded-full bg-ds-hover flex items-center justify-center">
-            <span className="text-3xl">🏠</span>
+        <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-ds-hover flex items-center justify-center">
+              <span className="text-3xl">🏠</span>
+            </div>
+            <p className="text-ds-text font-semibold">Выбери или создай сервер</p>
+            <p className="text-ds-muted text-xs">Нажми «+» слева чтобы создать сервер или войти по коду от друга</p>
+            <button
+              onClick={() => setServerEntryOpen(true)}
+              className="mt-2 px-4 py-2 bg-ds-accent hover:bg-ds-accent/90 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-ds-accent/20"
+            >
+              Создать / Войти
+            </button>
           </div>
-          <p className="text-ds-text font-semibold text-center">Выбери или создай сервер</p>
-          <p className="text-ds-muted text-xs text-center">Нажми «+» слева чтобы создать сервер или войти по коду от друга</p>
-          <button
-            onClick={() => setServerEntryOpen(true)}
-            className="mt-2 px-4 py-2 bg-ds-accent hover:bg-ds-accent/90 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-ds-accent/20"
-          >
-            Создать / Войти
-          </button>
+
+          <UserPanel 
+            username={displayUsername} 
+            userColor={displayColor} 
+            onSignOut={auth.signOut} 
+            voice={voice} 
+            onOpenSettings={() => setSettingsOpen(true)} 
+          />
+
+          <div className="flex items-center gap-2 px-3 pb-2 bg-ds-servers text-ds-muted/50 flex-shrink-0 relative z-10 -mt-1 pt-1">
+            <span className="text-[10px] font-mono">
+              v{isElectron ? window.electronAPI.version : (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '')}
+            </span>
+            {isElectron && (
+              <div className="ml-auto pointer-events-auto">
+                {updateStatus === 'idle' && (
+                  <button
+                    onClick={handleCheckUpdate}
+                    title="Проверить обновления"
+                    className="text-[10px] hover:text-ds-accent transition-colors cursor-pointer"
+                  >
+                    ↑ обновления
+                  </button>
+                )}
+                {updateStatus === 'checking' && <span className="text-[10px] animate-pulse">проверка...</span>}
+                {updateStatus === 'uptodate' && <span className="text-[10px] text-ds-green/70">✓ актуально</span>}
+                {updateStatus === 'available' && (
+                  <button onClick={handleDownload} className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90">
+                    ↓ v{updateInfo?.version}
+                  </button>
+                )}
+                {updateStatus === 'downloading' && <span className="text-[10px] text-ds-accent animate-pulse">↓ {updateProgress}%</span>}
+                {updateStatus === 'ready' && <button onClick={handleInstall} className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold animate-pulse">↻ обновить</button>}
+                {updateStatus === 'error' && <button onClick={handleCheckUpdate} className="text-[10px] text-ds-red/70 hover:text-ds-red">ошибка</button>}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
