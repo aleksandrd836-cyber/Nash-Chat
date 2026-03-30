@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, Menu, ipcMain, desktopCapturer, session } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain, desktopCapturer, session, Tray, nativeImage } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
@@ -6,6 +6,8 @@ const APP_URL = 'https://vbchat.ru/';
 
 let mainWindow;
 let splashWindow;
+let tray;
+let isQuitting = false;
 
 // ── Splash screen (появляется мгновенно) ──
 function createSplash() {
@@ -21,7 +23,6 @@ function createSplash() {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
-  // Встроенный HTML — не грузит интернет, открывается за <100мс
   splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
     <!DOCTYPE html>
     <html>
@@ -104,7 +105,6 @@ function createWindow() {
 
   // Когда страница загружена — закрываем сплэш, показываем основное окно
   mainWindow.webContents.on('did-finish-load', () => {
-    // Фиксируем заголовок — сайт не должен его перезаписывать
     mainWindow.setTitle('Vibe');
     setTimeout(() => {
       if (splashWindow && !splashWindow.isDestroyed()) {
@@ -113,10 +113,9 @@ function createWindow() {
       }
       mainWindow.show();
       mainWindow.focus();
-    }, 300); // небольшая пауза для плавности
+    }, 300);
   });
 
-  // Если сайт не загрузился — всё равно показываем окно
   mainWindow.webContents.on('did-fail-load', () => {
     if (splashWindow && !splashWindow.isDestroyed()) {
       splashWindow.close();
@@ -134,12 +133,59 @@ function createWindow() {
     return { action: 'allow' };
   });
 
+  // Перехват закрытия окна — сворачиваем в трей
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    return false;
+  });
+
   mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+// ── Системный трей ──
+function createTray() {
+  const iconPath = path.join(__dirname, 'icon.png');
+  const trayIcon = nativeImage.createFromPath(iconPath);
+  
+  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { 
+      label: 'Развернуть Vibe', 
+      click: () => {
+        mainWindow.show();
+        mainWindow.focus();
+      } 
+    },
+    { type: 'separator' },
+    { 
+      label: 'Выйти', 
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      } 
+    }
+  ]);
+
+  tray.setToolTip('Vibe — Чат будущего');
+  tray.setContextMenu(contextMenu);
+
+  // Одинарный клик по иконке разворачивает окно
+  tray.on('click', () => {
+    if (mainWindow.isVisible()) {
+      mainWindow.focus();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 }
 
 Menu.setApplicationMenu(null);
 
-// Синхронный IPC для получения версии в preload (работает в .asar)
 ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
 });
@@ -147,9 +193,9 @@ ipcMain.on('get-app-version', (event) => {
 app.whenReady().then(() => {
   createSplash();
   createWindow();
+  createTray();
 
-  // ── Автообновление (через GitHub Releases) ──
-  autoUpdater.autoDownload = false; // Скачивать будем по кнопке
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('update-available', (info) => {
@@ -173,7 +219,7 @@ app.whenReady().then(() => {
   ipcMain.handle('get-desktop-sources', async () => {
     const sources = await desktopCapturer.getSources({ 
       types: ['window', 'screen'],
-      thumbnailSize: { width: 400, height: 225 }, // 16:9
+      thumbnailSize: { width: 400, height: 225 },
       fetchWindowIcons: true
     });
     return sources.map(s => ({
@@ -186,7 +232,6 @@ app.whenReady().then(() => {
 
   ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
 
-  // Автоматическое разрешение на использование микрофона/камеры в EXE
   session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
     if (permission === 'media') return true;
     return false;
@@ -198,4 +243,12 @@ app.whenReady().then(() => {
   });
 });
 
-app.on('window-all-closed', () => { app.quit(); });
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    // На Windows мы не выходим, так как приложение висит в трее
+  }
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
+});
