@@ -134,10 +134,17 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
         <Mic size={20} className="text-ds-accent vibe-glow-blue" />
         <span className="text-white font-bold text-[15px]">{channel.name}</span>
         {isInThisChannel && (
-          <span className="ml-2 flex items-center gap-1.5 text-ds-accent text-[10px] font-bold uppercase tracking-widest">
-            <span className="w-1.5 h-1.5 rounded-full bg-ds-accent shadow-[0_0_8px_#00f0ff] animate-pulse" />
-            ПОДКЛЮЧЕНО
-          </span>
+          <div className="ml-2 flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-ds-accent text-[10px] font-bold uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-ds-accent shadow-[0_0_8px_#00f0ff] animate-pulse" />
+              ПОДКЛЮЧЕНО
+            </span>
+            {voice.ping !== null && (
+              <span className="text-white/30 text-[10px] font-mono font-bold uppercase tracking-widest animate-fade-in">
+                PING — {voice.ping} MS
+              </span>
+            )}
+          </div>
         )}
         
         {!window.electronAPI && (

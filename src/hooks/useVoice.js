@@ -495,17 +495,41 @@ export function useVoice() {
     notifications.play('stream_stop');
   }, [updatePresenceStatus]);
 
-  const requestScreenView = useCallback((targetUserId) => {
-    if (realtimeChannel.current && currentUserRef.current) {
-      realtimeChannel.current.send({
-        type: 'broadcast', event: 'request-stream',
-        payload: { from: currentUserRef.current.id, to: targetUserId },
-      });
+  const [ping, setPing] = useState(null);
+
+  // ── Мониторинг задержки (Ping) ──
+  useEffect(() => {
+    if (!activeChannelId || Object.keys(peerConns.current).length === 0) {
+      setPing(null);
+      return;
     }
-  }, []);
+
+    const interval = setInterval(async () => {
+      let rtts = [];
+      for (const pc of Object.values(peerConns.current)) {
+        if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') continue;
+        try {
+          const stats = await pc.getStats();
+          stats.forEach(report => {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.currentRoundTripTime !== undefined) {
+              rtts.push(report.currentRoundTripTime * 1000); // в миллисекунды
+            }
+          });
+        } catch (err) { /* ignore */ }
+      }
+      
+      if (rtts.length > 0) {
+        setPing(Math.round(rtts.reduce((a, b) => a + b, 0) / rtts.length));
+      } else {
+        setPing(null);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeChannelId]);
 
   return {
-    activeChannelId, participants, allParticipants,
+    activeChannelId, participants, allParticipants, ping,
     isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens,
     joinVoiceChannel, leaveVoiceChannel,
     toggleMute, toggleDeafen, setParticipantVolume,
