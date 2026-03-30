@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { notifications } from '../lib/notifications';
 
 const PAGE_SIZE = 50;
 
@@ -8,7 +9,7 @@ const PAGE_SIZE = 50;
  * - Загружает историю (последние 50)
  * - Подписывается на real-time вставки через Supabase Realtime
  */
-export function useMessages(channelId) {
+export function useMessages(channelId, currentUserId) {
   const [messages, setMessages]   = useState([]);
   const [loading, setLoading]     = useState(false);
   const [sending, setSending]     = useState(false);
@@ -43,6 +44,10 @@ export function useMessages(channelId) {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setMessages((prev) => [...prev, payload.new]);
+            // Звук если сообщение не от нас
+            if (payload.new.user_id !== currentUserId) {
+              notifications.play('dm');
+            }
           } else if (payload.eventType === 'UPDATE') {
             setMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
           } else if (payload.eventType === 'DELETE') {

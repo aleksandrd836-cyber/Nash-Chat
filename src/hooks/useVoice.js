@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { notifications } from '../lib/notifications';
 
 /**
  * Хук голосового чата (V6 - Простой и надёжный)
@@ -276,11 +277,19 @@ export function useVoice() {
 
     channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
-      newPresences.forEach(p => { if (p.userId !== user.id) createPeerConnection(p.userId); });
+      newPresences.forEach(p => { 
+        if (p.userId !== user.id) {
+          createPeerConnection(p.userId); 
+          notifications.play('join');
+        }
+      });
       syncParticipants(channel);
     });
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
-      leftPresences.forEach(p => closePeer(p.userId));
+      leftPresences.forEach(p => {
+        closePeer(p.userId);
+        if (p.userId !== user.id) notifications.play('leave');
+      });
       syncParticipants(channel);
     });
 
@@ -325,6 +334,7 @@ export function useVoice() {
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
+        notifications.play('self_join');
       }
     });
 
@@ -332,8 +342,10 @@ export function useVoice() {
   }, [activeChannelId, createPeerConnection, closePeer, syncParticipants]);
 
   const leaveVoiceChannel = useCallback(async () => {
+    const wasActive = !!activeChannelId;
     await cleanupAll();
-  }, [cleanupAll]);
+    if (wasActive) notifications.play('self_leave');
+  }, [cleanupAll, activeChannelId]);
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
@@ -349,6 +361,7 @@ export function useVoice() {
         presencePayload.current.isSpeaking = false;
         realtimeChannel.current?.track(presencePayload.current).catch(() => {});
       }
+      notifications.play(next ? 'mute' : 'unmute');
       return next;
     });
   }, []);
@@ -358,6 +371,7 @@ export function useVoice() {
       const next = !prev;
       isDeafenedRef.current = next;
       Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = next; });
+      notifications.play(next ? 'deafen' : 'undeafen');
       return next;
     });
   }, []);
@@ -387,6 +401,7 @@ export function useVoice() {
       setIsScreenSharing(true);
       presencePayload.current.isScreenSharing = true;
       realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+      notifications.play('self_stream');
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) { console.error('Screen sharing error', err); }
   }, []);
@@ -405,6 +420,7 @@ export function useVoice() {
     setIsScreenSharing(false);
     presencePayload.current.isScreenSharing = false;
     realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+    notifications.play('stream_stop');
   }, []);
 
   const requestScreenView = useCallback((targetUserId) => {
