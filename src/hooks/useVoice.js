@@ -40,6 +40,22 @@ export function useVoice() {
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
   const autoMutedByDeafenRef = useRef(false);
 
+  // 1. EFFECT: Receiver-side enforcement
+  // If a participant status changes (e.g., they unmute), ensure their audio element reflects it globally.
+  useEffect(() => {
+    Object.values(participants).forEach(p => {
+      if (currentUserRef.current && p.userId === currentUserRef.current.id) return;
+      const audio = audioElements.current[p.userId];
+      if (audio) {
+        const shouldBeMuted = p.isMuted || isDeafenedRef.current;
+        if (audio.muted !== shouldBeMuted) {
+          console.log(`[Voice] Syncing ${p.username} audio: muted=${shouldBeMuted}`);
+          audio.muted = shouldBeMuted;
+        }
+      }
+    });
+  }, [participants, isDeafened]);
+
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
     let channel;
@@ -294,11 +310,8 @@ export function useVoice() {
     stream.getAudioTracks().forEach(t => { t.enabled = !shouldBeMuted; });
     localStream.current = stream;
 
-    // Включаем фейковый индикатор или просто светимся зеленым. Без 
-    // AudioContext микрофон не отключится из-за энергосбережения!
-    // Индикатор просто мигает, если микрофон не замьючен. 
     fakeVADIntervalRef.current = setInterval(() => {
-      const shouldSpeak = !isMutedRef.current; // Всегда светится если микрофон включен, так как мы его не анализируем.
+      const shouldSpeak = !isMutedRef.current; 
       if (shouldSpeak && !isSpeakingRef.current) {
         isSpeakingRef.current = true;
         setIsSpeaking(true);
@@ -414,11 +427,15 @@ export function useVoice() {
   const toggleMute = useCallback(() => {
     const next = !isMutedRef.current;
     
-    // Просто включаем/выключаем дорожку
+    // 1. Сначала принудительно обновляем дорожку
     if (localStream.current) {
-      localStream.current.getAudioTracks().forEach(t => { t.enabled = !next; });
+      localStream.current.getAudioTracks().forEach(t => { 
+        t.enabled = !next; 
+        console.log(`[Voice] Track set: enabled=${!next}`);
+      });
     }
 
+    // 2. Атомарно готовим апдейт статуса
     const updates = { isMuted: next };
 
     // [ОСОБАЯ ЛОГИКА]: Если размучиваем микрофон, а наушники включены — размучиваем и их
@@ -436,19 +453,21 @@ export function useVoice() {
       updates.isSpeaking = false;
     }
     
-    // Обновляем стейты и рефы
+    // 3. Обновляем стейты и рефы
     setIsMuted(next);
     isMutedRef.current = next;
-    autoMutedByDeafenRef.current = false; // Любое ручное переключение микрофона сбрасывает автомут
+    autoMutedByDeafenRef.current = false; 
 
     notifications.play(next ? 'mute' : 'unmute');
+    
+    // 4. Пушим статус всем — теперь он точно актуален
     updatePresenceStatus(updates);
   }, [updatePresenceStatus]);
 
   const toggleDeafen = useCallback(() => {
     const next = !isDeafenedRef.current;
     
-    // Приглушаем/включаем звук от других
+    // 1. Глушим всех локально
     Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = next; });
     
     const updates = { isDeafened: next };
@@ -458,7 +477,7 @@ export function useVoice() {
       if (!isMutedRef.current) {
         setIsMuted(true);
         isMutedRef.current = true;
-        autoMutedByDeafenRef.current = true; // Запоминаем, что выключили автоматом
+        autoMutedByDeafenRef.current = true; 
         if (localStream.current) {
           localStream.current.getAudioTracks().forEach(t => { t.enabled = false; });
         }
@@ -480,11 +499,13 @@ export function useVoice() {
       }
     }
 
-    // Обновляем стейты и рефы
+    // 2. Обновляем стейты
     setIsDeafened(next);
     isDeafenedRef.current = next;
 
     notifications.play(next ? 'deafen' : 'undeafen');
+    
+    // 3. Пушим статус
     updatePresenceStatus(updates);
   }, [updatePresenceStatus]);
 
