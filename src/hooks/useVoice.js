@@ -349,42 +349,41 @@ export function useVoice() {
 
 
 
-    // Настоящий VAD: проверяем уровень громкости с микрофона каждые 100мс
-    const VAD_THRESHOLD = 0.015; // Порог громкости (0-1). Ниже = тишина.
+    // VAD: определение голосовой активности
+    // ВАЖНО: Supabase имеет rate-limit на presence обновления!
+    // Если спамить track() слишком часто, broadcast (offer/answer/ice) отбрасывается.
+    const VAD_THRESHOLD = 0.015;
     const analyserData = new Float32Array(analyser.fftSize);
+    let lastPresenceUpdate = 0;
+    const PRESENCE_THROTTLE = 2000; // Обновляем presence не чаще чем раз в 2 секунды
 
     fakeVADIntervalRef.current = setInterval(() => {
-      // Читаем сырые данные с микрофона
       analyser.getFloatTimeDomainData(analyserData);
       
-      // Вычисляем RMS (среднеквадратичное отклонение) — реальный уровень громкости
       let sum = 0;
       for (let i = 0; i < analyserData.length; i++) {
         sum += analyserData[i] * analyserData[i];
       }
       const rms = Math.sqrt(sum / analyserData.length);
-      
-      // Человек говорит, если: уровень выше порога И микрофон не замучен
       const isActuallySpeaking = rms > VAD_THRESHOLD && !isMutedRef.current;
       
-      if (isActuallySpeaking && !isSpeakingRef.current) {
-        isSpeakingRef.current = true;
-        setIsSpeaking(true);
-        presencePayload.current.isSpeaking = true;
-        realtimeChannel.current?.track(presencePayload.current).catch(() => {});
-        if (globalPresence.current) {
-          globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
-        }
-      } else if (!isActuallySpeaking && isSpeakingRef.current) {
-        isSpeakingRef.current = false;
-        setIsSpeaking(false);
-        presencePayload.current.isSpeaking = false;
-        realtimeChannel.current?.track(presencePayload.current).catch(() => {});
-        if (globalPresence.current) {
-          globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
+      // Обновляем ЛОКАЛЬНЫЙ стейт мгновенно (для плавной обводки)
+      if (isActuallySpeaking !== isSpeakingRef.current) {
+        isSpeakingRef.current = isActuallySpeaking;
+        setIsSpeaking(isActuallySpeaking);
+        presencePayload.current.isSpeaking = isActuallySpeaking;
+        
+        // Обновляем presence С ТРОТТЛИНГОМ — чтобы не убить канал сигнализации
+        const now = Date.now();
+        if (now - lastPresenceUpdate > PRESENCE_THROTTLE) {
+          lastPresenceUpdate = now;
+          realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+          if (globalPresence.current) {
+            globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
+          }
         }
       }
-    }, 100); // 100мс для плавной реакции обводки
+    }, 150);
 
     // 3. Инициализируем Supabase канал
     currentUserRef.current = { id: user.id, username };
