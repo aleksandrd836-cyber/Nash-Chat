@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { 
+  X, Plus, Link, ArrowLeft, Globe, 
+  Sparkles, Check, Hash, Shield
+} from 'lucide-react';
 
 /**
  * Модалка для создания нового сервера или вступления по коду.
+ * Обновлена под стиль VIBE.
  */
 export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
   const [mode, setMode] = useState('choose'); // 'choose' | 'create' | 'join'
@@ -16,7 +21,6 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
     setLoading(true);
     setError(null);
     try {
-      // 1. Создаём сервер
       const { data: server, error: serverErr } = await supabase
         .from('servers')
         .insert({ name: serverName.trim(), owner_id: currentUserId })
@@ -24,7 +28,6 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
         .single();
       if (serverErr) throw serverErr;
 
-      // 2. Добавляем создателя как владельца
       const { error: memberErr } = await supabase
         .from('server_members')
         .insert({ server_id: server.id, user_id: currentUserId, role: 'owner' });
@@ -44,25 +47,23 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
     setLoading(true);
     setError(null);
     try {
-      // Используем RPC-функцию (SECURITY DEFINER) — она обходит RLS и сама добавит участника
       const { data, error: rpcErr } = await supabase
         .rpc('join_server_by_invite', { p_invite_code: inviteCode.trim().toLowerCase() });
 
       if (rpcErr) throw rpcErr;
 
       if (data?.error === 'not_found') {
-        setError('Сервер с таким кодом не найден. Проверь правильность кода.');
+        setError('Код не найден. Проверь правильность ввода.');
         setLoading(false);
         return;
       }
 
       if (data?.error === 'already_member') {
-        setError('Вы уже являетесь участником этого сервера.');
+        setError('Ты уже на этом сервере.');
         setLoading(false);
         return;
       }
 
-      // data содержит { id, name, owner_id, invite_code }
       onServerJoined(data);
       onClose();
     } catch (e) {
@@ -74,130 +75,126 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-ds-sidebar rounded-2xl w-full max-w-sm shadow-2xl border border-white/10 overflow-hidden animate-slide-up">
+      <div className="bg-[#050505] rounded-[2.5rem] w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+        <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
 
-        {/* Кнопка закрытия */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-2">
-          <h2 className="text-ds-text font-bold text-xl">
-            {mode === 'choose' ? 'Присоединиться к серверу' :
-             mode === 'create' ? 'Создать сервер' : 'Войти по коду приглашения'}
-          </h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-colors">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 pt-8 pb-2">
+          <div className="flex items-center gap-2 text-ds-accent vibe-glow-blue bg-ds-accent/10 p-2 rounded-xl">
+             <Globe size={18} />
+          </div>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-90"
+          >
+            <X size={24} />
           </button>
         </div>
 
-        <div className="px-6 pb-6">
+        <div className="px-8 pb-10">
+          {/* Title Area */}
+          <div className="mb-8">
+            <h2 className="text-white font-black text-2xl uppercase tracking-tighter leading-tight">
+              {mode === 'choose' ? 'Новый мир' :
+               mode === 'create' ? 'Создать' : 'Вступить'}
+            </h2>
+            <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.2em] mt-1">
+              {mode === 'choose' ? 'Выбери свой путь VIBE' :
+               mode === 'create' ? 'Создай своё пространство' : 'Присоединяйся к сообществу'}
+            </p>
+          </div>
 
-          {/* Выбор режима */}
-          {mode === 'choose' && (
-            <div className="space-y-3 mt-4">
-              <p className="text-ds-muted text-sm mb-5">Создай своё пространство или войди на уже существующий сервер.</p>
-
-              <button
-                onClick={() => setMode('create')}
-                className="w-full flex items-center gap-4 p-4 bg-ds-bg hover:bg-ds-hover rounded-xl border border-ds-divider/50 hover:border-ds-accent transition-all group"
-              >
-                <div className="w-12 h-12 rounded-full bg-ds-accent/20 flex items-center justify-center group-hover:bg-ds-accent/30 transition-colors">
-                  <svg className="w-6 h-6 text-ds-accent" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <p className="text-ds-text font-semibold">Создать сервер</p>
-                  <p className="text-ds-muted text-xs mt-0.5">Создай своё пространство для общения</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setMode('join')}
-                className="w-full flex items-center gap-4 p-4 bg-ds-bg hover:bg-ds-hover rounded-xl border border-ds-divider/50 hover:border-ds-green transition-all group"
-              >
-                <div className="w-12 h-12 rounded-full bg-ds-green/20 flex items-center justify-center group-hover:bg-ds-green/30 transition-colors">
-                  <svg className="w-6 h-6 text-ds-green" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <p className="text-ds-text font-semibold">Войти по коду</p>
-                  <p className="text-ds-muted text-xs mt-0.5">Введи код от друга и присоединяйся</p>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* Создание сервера */}
-          {mode === 'create' && (
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-ds-muted uppercase tracking-wider mb-2">
-                  Название сервера
-                </label>
-                <input
-                  type="text"
-                  value={serverName}
-                  onChange={e => setServerName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                  placeholder="Мой крутой сервер"
-                  maxLength={50}
-                  autoFocus
-                  className="w-full bg-ds-bg border border-ds-divider rounded-xl px-4 py-3 text-ds-text text-sm placeholder-ds-muted/50 focus:outline-none focus:border-ds-accent focus:ring-1 focus:ring-ds-accent transition-colors"
-                />
-              </div>
-              {error && <p className="text-ds-red text-xs">{error}</p>}
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => { setMode('choose'); setError(null); }} className="flex-1 py-2.5 bg-ds-hover hover:bg-ds-divider text-ds-text text-sm font-semibold rounded-xl transition-colors">
-                  Назад
-                </button>
+          {/* Mode Tabs / Content */}
+          <div className="space-y-4">
+            {mode === 'choose' && (
+              <div className="flex flex-col gap-4 animate-fade-in">
                 <button
-                  onClick={handleCreate}
-                  disabled={loading || !serverName.trim()}
-                  className="flex-1 py-2.5 bg-ds-accent hover:bg-ds-accent/90 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-lg shadow-ds-accent/20"
+                  onClick={() => setMode('create')}
+                  className="group flex items-center gap-4 p-5 bg-white/[0.02] hover:bg-ds-accent/5 border border-white/5 hover:border-ds-accent/30 rounded-3xl transition-all"
                 >
-                  {loading ? 'Создание...' : 'Создать'}
+                  <div className="w-14 h-14 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue group-hover:scale-110 transition-transform">
+                    <Plus size={28} strokeWidth={3} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">Создать сервер</p>
+                    <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mt-0.5">Властное пространство</p>
+                  </div>
                 </button>
-              </div>
-            </div>
-          )}
 
-          {/* Вход по коду */}
-          {mode === 'join' && (
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-ds-muted uppercase tracking-wider mb-2">
-                  Код приглашения
-                </label>
-                <input
-                  type="text"
-                  value={inviteCode}
-                  onChange={e => setInviteCode(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleJoin()}
-                  placeholder="a3f7d9bc"
-                  maxLength={8}
-                  autoFocus
-                  className="w-full bg-ds-bg border border-ds-divider rounded-xl px-4 py-3 text-ds-text text-sm placeholder-ds-muted/50 focus:outline-none focus:border-ds-green focus:ring-1 focus:ring-ds-green transition-colors font-mono tracking-widest uppercase"
-                />
-              </div>
-              {error && <p className="text-ds-red text-xs">{error}</p>}
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => { setMode('choose'); setError(null); }} className="flex-1 py-2.5 bg-ds-hover hover:bg-ds-divider text-ds-text text-sm font-semibold rounded-xl transition-colors">
-                  Назад
-                </button>
                 <button
-                  onClick={handleJoin}
-                  disabled={loading || !inviteCode.trim()}
-                  className="flex-1 py-2.5 bg-ds-green hover:bg-ds-green/90 text-black text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-lg shadow-ds-green/20"
+                  onClick={() => setMode('join')}
+                  className="group flex items-center gap-4 p-5 bg-white/[0.02] hover:bg-ds-accent/5 border border-white/5 hover:border-ds-accent/30 rounded-3xl transition-all"
                 >
-                  {loading ? 'Проверка...' : 'Войти'}
+                  <div className="w-14 h-14 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue group-hover:scale-110 transition-transform">
+                    <Link size={28} strokeWidth={3} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">Войти по коду</p>
+                    <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mt-0.5">Ключ от сообщества</p>
+                  </div>
                 </button>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Create Flow */}
+            {mode === 'create' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Название</p>
+                  <input
+                    type="text" value={serverName} onChange={e => setServerName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                    placeholder="Моя Вселенная Vibe"
+                    autoFocus
+                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
+                  />
+                </div>
+                {error && <p className="text-ds-red text-[10px] font-black uppercase text-center">{error}</p>}
+                <div className="flex gap-3">
+                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
+                    <ArrowLeft size={20} />
+                  </button>
+                  <button
+                    onClick={handleCreate} disabled={loading || !serverName.trim()}
+                    className="flex-1 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
+                  >
+                    {loading ? 'СОЗДАНИЕ...' : 'СОЗДАТЬ СЕРВЕР'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Join Flow */}
+            {mode === 'join' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Код приглашения</p>
+                  <input
+                    type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                    placeholder="КЛЮЧ ХХХХ"
+                    autoFocus
+                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-black tracking-[0.3em] uppercase placeholder:tracking-normal focus:border-ds-accent/30 transition-all outline-none"
+                  />
+                </div>
+                {error && <p className="text-ds-red text-[10px] font-black uppercase text-center">{error}</p>}
+                <div className="flex gap-3">
+                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
+                    <ArrowLeft size={20} />
+                  </button>
+                  <button
+                    onClick={handleJoin} disabled={loading || !inviteCode.trim()}
+                    className="flex-1 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
+                  >
+                    {loading ? 'ПРОВЕРКА...' : 'ВОЙТИ НА СЕРВЕР'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

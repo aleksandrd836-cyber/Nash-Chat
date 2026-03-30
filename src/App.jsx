@@ -109,10 +109,19 @@ export default function App() {
 
   if (auth.loading) {
     return (
-      <div className="min-h-screen bg-ds-servers flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-ds-muted text-sm">Загрузка...</p>
+      <div className="min-h-screen bg-[#020202] flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-ds-accent/10 rounded-full blur-[120px] animate-pulse-soft opacity-30" />
+        </div>
+        <div className="flex flex-col items-center gap-6 relative z-10">
+          <div className="relative">
+             <div className="w-16 h-16 border-[5px] border-white/5 border-t-ds-accent rounded-full animate-spin shadow-[0_0_20px_rgba(0,240,255,0.3)]" />
+             <div className="absolute inset-0 vibe-glow-blue blur-sm rounded-full opacity-50" />
+          </div>
+          <div className="text-center">
+             <h1 className="text-white font-black text-2xl tracking-[0.2em] mb-1">VIBE</h1>
+             <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] animate-pulse">Загрузка системы...</p>
+          </div>
         </div>
       </div>
     );
@@ -167,18 +176,20 @@ export default function App() {
         />
       ) : (
         // Заглушка если сервер не выбран
-        <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col">
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-ds-hover flex items-center justify-center">
-              <span className="text-3xl">🏠</span>
+        <div className="w-60 flex-shrink-0 bg-[#0a0a0a] flex flex-col border-r border-white/5 relative">
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center animate-fade-in">
+            <div className="w-20 h-20 rounded-3xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
+               <Globe size={40} strokeWidth={2} />
             </div>
-            <p className="text-ds-text font-semibold">Выбери или создай сервер</p>
-            <p className="text-ds-muted text-xs">Нажми «+» слева чтобы создать сервер или войти по коду от друга</p>
+            <div>
+               <p className="text-white font-black uppercase tracking-tight text-sm">Начни Путешествие</p>
+               <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.15em] mt-2 leading-relaxed">Создай свой сервер или вступи по коду от друга</p>
+            </div>
             <button
               onClick={() => setServerEntryOpen(true)}
-              className="mt-2 px-4 py-2 bg-ds-accent hover:bg-ds-accent/90 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-ds-accent/20"
+              className="w-full py-4 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue"
             >
-              Создать / Войти
+              СОЗДАТЬ / ВОЙТИ
             </button>
           </div>
 
@@ -205,23 +216,29 @@ export default function App() {
       <main className="flex-1 flex min-w-0 overflow-hidden">
         {!selectedServer ? (
           // Экран приветствия когда нет сервера
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
-            <div className="w-20 h-20 rounded-full bg-ds-sidebar flex items-center justify-center">
-              <span className="text-4xl">👋</span>
+          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-[#050505] relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-ds-accent/5 rounded-full blur-[150px] animate-pulse-soft opacity-30" />
             </div>
-            <div>
-              <p className="text-ds-text text-xl font-bold">Привет, {displayUsername}!</p>
-              <p className="text-ds-muted text-sm mt-1">Создай свой сервер или войди по коду друга</p>
+            <div className="relative group">
+               <div className="w-32 h-32 rounded-[3rem] bg-black/40 flex items-center justify-center text-ds-accent vibe-glow-blue border-2 border-white/5 relative z-10">
+                  <Sparkles size={64} strokeWidth={1} />
+               </div>
+               <div className="absolute inset-0 vibe-moving-glow blur-md opacity-20" />
+            </div>
+            <div className="relative z-10 max-w-sm">
+              <h2 className="text-white font-black text-4xl tracking-tighter mb-4 uppercase">Привет, {displayUsername}!</h2>
+              <p className="text-white/30 text-xs font-bold leading-relaxed uppercase tracking-widest">
+                 Твоя атмосфера начинается здесь. Настрой сервер и пригласи друзей в мир VIBE.
+              </p>
             </div>
             {!isElectron && (
               <a
                 href={downloadUrl}
-                className="mt-4 flex items-center gap-3 px-6 py-3 bg-ds-green hover:bg-ds-green/90 text-white font-bold rounded-xl transition-all shadow-xl shadow-ds-green/20 group"
+                className="relative z-10 px-8 py-4 bg-ds-accent text-black font-black uppercase tracking-widest text-xs rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-2xl shadow-ds-accent/30 vibe-glow-blue group flex items-center gap-3"
               >
-                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
-                </svg>
-                Скачать Vibe для Windows
+                <Download size={20} strokeWidth={3} className="group-hover:-translate-y-1 transition-transform" />
+                СКАЧАТЬ ДЛЯ WINDOWS
               </a>
             )}
           </div>
@@ -234,23 +251,23 @@ export default function App() {
             onClose={handleCloseDM}
           />
         ) : !selectedChannel ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
-            <div className="w-20 h-20 rounded-full bg-ds-sidebar flex items-center justify-center">
-              <span className="text-4xl">👋</span>
+          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-[#050505] relative animate-fade-in">
+            <div className="w-28 h-28 rounded-[2.5rem] bg-black/40 flex items-center justify-center text-white/10 border border-white/5 relative overflow-hidden group">
+               <div className="absolute inset-0 vibe-moving-glow opacity-5" />
+               <Hash size={56} strokeWidth={1} />
             </div>
-            <div>
-              <p className="text-ds-text text-xl font-bold">Добро пожаловать на сервер «{selectedServer.name}»!</p>
-              <p className="text-ds-muted text-sm mt-1">Выбери канал слева, чтобы начать общение</p>
+            <div className="max-w-xs">
+              <h3 className="text-white font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>
+              <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
+                 Выбери текстовый или голосовой канал слева, чтобы окунуться в общение.
+              </p>
             </div>
             {!isElectron && (
               <a
                 href={downloadUrl}
-                className="mt-2 flex items-center gap-3 px-6 py-3 bg-ds-green hover:bg-ds-green/90 text-white font-bold rounded-xl transition-all shadow-xl shadow-ds-green/20 group"
+                className="px-6 py-3 border border-white/10 hover:border-white/20 text-white/30 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95"
               >
-                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
-                </svg>
-                Скачать Vibe для Windows
+                НУЖНО ПРИЛОЖЕНИЕ? ТЫКАЙ СЮДА
               </a>
             )}
           </div>

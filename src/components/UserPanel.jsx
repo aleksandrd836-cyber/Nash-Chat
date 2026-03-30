@@ -10,43 +10,46 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
   const { imageUrl } = getUserAvatar(username);
 
   return (
-    <div className="h-14 bg-ds-servers flex-shrink-0 flex items-center px-1.5 gap-1.5 border-t border-ds-divider/30 overflow-hidden">
+    <div className="h-14 bg-ds-sidebar flex-shrink-0 flex items-center px-2 gap-2 border-t border-white/5 overflow-hidden">
       {/* Avatar */}
-      <div className={`relative flex-shrink-0 w-8 h-8 rounded-full bg-ds-bg shadow-[inset_0_0_8px_rgba(0,0,0,0.2)] flex items-center justify-center transition-all duration-150
-        ${isSpeaking ? 'ring-2 ring-ds-green' : 'ring-1 ring-white/5'}`}
+      <div className={`relative flex-shrink-0 w-9 h-9 rounded-full bg-black/40 shadow-inner flex items-center justify-center transition-all duration-300
+        ${isSpeaking ? 'ring-2 ring-ds-accent vibe-glow-blue scale-105' : 'ring-1 ring-white/10'}`}
       >
         <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
-          <img src={imageUrl} alt={username} className="w-[48px] h-[48px] max-w-none select-none" />
+          <img src={imageUrl} alt={username} className="w-full h-full object-cover select-none" />
         </div>
-        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-ds-green border-2 border-ds-servers z-10" />
+        <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-ds-green border-2 border-ds-sidebar z-10 shadow-sm" />
       </div>
 
       {/* Username & Status */}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <p className="text-ds-text text-[13px] font-bold truncate leading-none mb-0.5" style={userColor ? { color: userColor } : {}}>
+        <p className="text-white text-[13.5px] font-bold truncate leading-none mb-1" style={userColor ? { color: userColor } : {}}>
           {username}
         </p>
-        <p className={`text-[9px] font-medium leading-none truncate ${activeChannelId ? 'text-ds-green' : 'text-ds-muted'}`}>
-          {activeChannelId ? 'В голосовом' : 'Онлайн'}
-        </p>
+        <div className="flex items-center gap-1.5 overflow-hidden">
+          <div className={`w-1.5 h-1.5 rounded-full ${activeChannelId ? 'bg-ds-accent animate-pulse' : 'bg-ds-muted/50'}`} />
+          <p className={`text-[10px] font-bold uppercase tracking-wider truncate ${activeChannelId ? 'text-ds-accent' : 'text-ds-muted'}`}>
+            {activeChannelId ? 'Connected' : 'Online'}
+          </p>
+        </div>
       </div>
 
-      {/* Controls Container */}
-      <div className="flex items-center gap-0">
+      {/* Controls Container - "Floating" Style */}
+      <div className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/5 shadow-inner">
         {activeChannelId && (
           <>
             {/* Mute */}
             <button
               onClick={toggleMute}
               title={isMuted ? 'Включить микрофон' : 'Отключить микрофон'}
-              className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${isMuted ? 'text-ds-red hover:bg-ds-red/10' : 'text-ds-muted hover:text-ds-text hover:bg-ds-hover'}`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isMuted ? 'text-ds-red bg-ds-red/10 hover:bg-ds-red/20 vibe-glow-red animate-pulse' : 'text-white/60 hover:text-ds-accent hover:bg-ds-accent/10 hover:vibe-glow-blue'}`}
             >
               {isMuted ? (
-                <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
                 </svg>
               ) : (
-                <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 15c1.66 0 2.99-1.34 2.99-3L15 6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 15 6.7 12H5c0 3.42 2.72 6.23 6 6.72V22h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
                 </svg>
               )}
@@ -56,15 +59,15 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
             <button
               onClick={toggleDeafen}
               title={isDeafened ? 'Включить звук' : 'Выключить звук'}
-              className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${isDeafened ? 'text-ds-red hover:bg-ds-red/10' : 'text-ds-muted hover:text-ds-text hover:bg-ds-hover'}`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${isDeafened ? 'text-ds-red bg-ds-red/10 hover:bg-ds-red/20 vibe-glow-red animate-pulse' : 'text-white/60 hover:text-ds-accent hover:bg-ds-accent/10 hover:vibe-glow-blue'}`}
             >
               {isDeafened ? (
-                <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12v7c0 1.1.9 2 2 2h3v-8H4v-1c0-4.41 3.59-8 8-8s8 3.59 8 8v1h-3v8h3c1.1 0 2-.9 2-2v-7c0-5.52-4.48-10-10-10zm-6 17H4v-5h2v5zm14 0h-2v-5h2v5z"/>
-                  <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" />
+                  <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2.5" />
                 </svg>
               ) : (
-                <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12v7c0 1.1.9 2 2 2h3v-8H4v-1c0-4.41 3.59-8 8-8s8 3.59 8 8v1h-3v8h3c1.1 0 2-.9 2-2v-7c0-5.52-4.48-10-10-10zm-6 17H4v-5h2v5zm14 0h-2v-5h2v5z"/>
                 </svg>
               )}
@@ -73,11 +76,11 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
             {/* Leave */}
             <button
               onClick={leaveVoiceChannel}
-              title="Выйти"
-              className="w-7 h-7 rounded flex items-center justify-center text-ds-muted hover:text-ds-red hover:bg-ds-red/10 transition-colors"
+              title="Выйти из голосового канала"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-ds-red hover:bg-ds-red/10 transition-all duration-200"
             >
-              <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M16 9v-4l8 7-8 7v-4H8V9h8zM2 3h14v2H4v14h12v2H2V3z"/>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
           </>
@@ -87,13 +90,13 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
         <button
           onClick={onOpenSettings}
           title="Настройки"
-          className="w-7 h-7 rounded flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-colors"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all duration-200"
         >
-          <svg className="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.01 7.01 0 0 0-1.62-.94l-.36-2.54A.484.484 0 0 0 14 2h-4a.484.484 0 0 0-.48.41l-.36 2.54a7.38 7.38 0 0 0-1.62.94l-2.39-.96a.477.477 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.27.41.49.41h4c.22 0 .43-.17.47-.41l.36-2.54a7.38 7.38 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </button>
-
       </div>
     </div>
   );

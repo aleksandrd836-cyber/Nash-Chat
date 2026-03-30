@@ -10,7 +10,7 @@ export function ProfileFooter({
   updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion 
 }) {
   return (
-    <div className="flex flex-col flex-shrink-0">
+    <div className="flex flex-col flex-shrink-0 bg-ds-sidebar border-t border-white/5 relative z-10">
       <UserPanel 
         username={username} 
         userColor={userColor} 
@@ -19,52 +19,55 @@ export function ProfileFooter({
         onOpenSettings={onOpenSettings} 
       />
 
-      <div className="flex items-center gap-2 px-3 pb-2 bg-ds-servers text-ds-muted/50 flex-shrink-0 relative z-10 -mt-1 pt-1">
-        <span className="text-[10px] font-mono select-none">
-          v{isElectron ? (window.electronAPI?.version || '...') : (appVersion || 'web')}
+      <div className="flex items-center gap-2 px-3 pb-2 text-white/20 flex-shrink-0 pt-0.5">
+        <span className="text-[10px] font-mono select-none tracking-tighter opacity-50 hover:opacity-100 transition-opacity">
+          V{isElectron ? (window.electronAPI?.version || '...') : (appVersion || 'WEB')}
         </span>
 
         {isElectron && (
-          <div className="ml-auto pointer-events-auto">
+          <div className="ml-auto flex items-center">
             {updateStatus === 'idle' && (
               <button
                 onClick={onCheckUpdate}
                 title="Проверить обновления"
-                className="text-[10px] hover:text-ds-accent transition-colors cursor-pointer"
+                className="text-[9px] font-bold uppercase tracking-widest hover:text-ds-accent transition-all cursor-pointer opacity-40 hover:opacity-100"
               >
-                ↑ обновления
+                CHECK UPDATE
               </button>
             )}
 
             {updateStatus === 'checking' && (
-              <span className="text-[10px] animate-pulse">проверка...</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest animate-pulse text-ds-accent">SEARCHING...</span>
             )}
 
             {updateStatus === 'uptodate' && (
-              <span className="text-[10px] text-ds-green/70">✓ актуально</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-ds-green/40">LATEST VERSION</span>
             )}
 
             {updateStatus === 'available' && (
               <button
                 onClick={onDownload}
-                className="text-[10px] bg-ds-accent text-white px-2 py-0.5 rounded font-semibold hover:opacity-90"
+                className="text-[10px] bg-ds-accent text-black px-2 py-0.5 rounded-full font-bold hover:brightness-110 vibe-glow-blue transition-all"
               >
-                ↓ v{updateInfo?.version}
+                UPDATE v{updateInfo?.version}
               </button>
             )}
 
             {updateStatus === 'downloading' && (
-              <span className="text-[10px] text-ds-accent animate-pulse">
-                ↓ {updateProgress}%
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
+                   <div className="h-full bg-ds-accent vibe-glow-blue" style={{ width: `${updateProgress}%` }} />
+                </div>
+                <span className="text-[9px] font-bold text-ds-accent">{updateProgress}%</span>
+              </div>
             )}
 
             {updateStatus === 'ready' && (
               <button
                 onClick={onInstall}
-                className="text-[10px] bg-ds-green text-white px-2 py-0.5 rounded font-semibold hover:opacity-90 animate-pulse"
+                className="text-[10px] bg-ds-green text-white px-3 py-1 rounded-full font-bold hover:brightness-110 vibe-glow-blue animate-bounce"
               >
-                ↻ обновить
+                RESTART TO UPDATE
               </button>
             )}
 
@@ -72,9 +75,9 @@ export function ProfileFooter({
               <button
                 onClick={onCheckUpdate}
                 title={updateError || 'Ошибка'}
-                className="text-[10px] text-ds-red/70 hover:text-ds-red"
+                className="text-[9px] font-bold text-ds-red/50 hover:text-ds-red uppercase tracking-widest"
               >
-                ошибка
+                UPDATE FAILED
               </button>
             )}
           </div>

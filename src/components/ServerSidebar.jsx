@@ -33,52 +33,51 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
   }, [currentUserId, fetchServers, refreshTrigger]); // refreshTrigger заставляет перезапросить список
 
   return (
-    <div className="w-[72px] flex-shrink-0 bg-ds-servers flex flex-col items-center py-3 gap-2 overflow-y-auto">
+    <div className="w-[72px] flex-shrink-0 bg-[#050505] flex flex-col items-center py-3 gap-3 overflow-y-auto no-scrollbar border-r border-white/5 select-none">
       {/* Список серверов */}
       {servers.map(server => {
         const isSelected = selectedServerId === server.id;
         const initial = server.name?.[0]?.toUpperCase() ?? '?';
-        // Цвет иконки на основе названия
-        const colors = ['#5865F2', '#57F287', '#FEE75C', '#EB459E', '#ED4245', '#9B59B6', '#E67E22'];
+        // Фирменные цвета серверов (теперь более приглушенные)
+        const colors = ['#5865F2', '#23A55A', '#F0B232', '#EB459E', '#F23F42', '#9B59B6', '#E67E22'];
         const colorIndex = server.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % colors.length;
         const iconColor = colors[colorIndex];
 
         return (
           <div key={server.id} className="relative group flex items-center">
-            {/* Полоска активного сервера */}
-            <div className={`absolute left-0 w-1 rounded-r-full bg-ds-text transition-all duration-200 ${
-              isSelected ? 'h-10' : 'h-5 opacity-0 group-hover:opacity-100'
+            {/* Полоска активного сервера — теперь ВАЙБОВЫЙ циановый неон */}
+            <div className={`absolute left-0 w-1 rounded-r-full bg-ds-accent transition-all duration-300 shadow-[0_0_12px_#00f0ff] ${
+              isSelected ? 'h-10' : 'h-5 opacity-0 group-hover:opacity-100 group-hover:h-6'
             }`} />
 
             <button
               onClick={() => onSelectServer(server)}
               title={server.name}
-              className={`w-12 h-12 rounded-[50%] hover:rounded-[30%] transition-all duration-200 flex items-center justify-center font-bold text-lg text-white shadow-lg ml-3 flex-shrink-0 ${
-                isSelected ? 'rounded-[30%]' : ''
+              className={`w-12 h-12 rounded-[24px] hover:rounded-[14px] transition-all duration-300 flex items-center justify-center font-bold text-lg text-white shadow-xl ml-3 flex-shrink-0 relative overflow-hidden group/btn ${
+                isSelected ? 'rounded-[14px] vibe-glow-blue' : 'bg-ds-sidebar'
               }`}
-              style={{ backgroundColor: iconColor }}
+              style={!isSelected ? { backgroundColor: iconColor } : {}}
             >
               {initial}
+              {isSelected && <div className="absolute inset-0 vibe-moving-glow opacity-30" />}
             </button>
           </div>
         );
       })}
 
       {/* Разделитель */}
-      {servers.length > 0 && (
-        <div className="w-8 h-0.5 bg-ds-divider/50 rounded-full mx-auto my-1 flex-shrink-0" />
-      )}
+      <div className="w-8 h-[2px] bg-white/10 rounded-lg mx-auto my-1 flex-shrink-0" />
 
       {/* Кнопка "+" — создать или войти */}
       <div className="relative group flex items-center flex-shrink-0">
-        <div className="absolute left-0 w-1 rounded-r-full bg-ds-green opacity-0 group-hover:h-5 group-hover:opacity-100 transition-all duration-200 h-0" />
+        <div className="absolute left-0 w-1 rounded-r-full bg-ds-accent opacity-0 group-hover:h-5 group-hover:opacity-100 transition-all duration-300 h-0 shadow-[0_0_10px_#00f0ff]" />
         <button
           onClick={onCreateServer}
           title="Создать или войти на сервер"
-          className="w-12 h-12 rounded-[50%] hover:rounded-[30%] transition-all duration-200 bg-ds-hover hover:bg-ds-green flex items-center justify-center text-ds-green hover:text-white shadow ml-3 group"
+          className="w-12 h-12 rounded-[24px] hover:rounded-[14px] transition-all duration-300 bg-[#1a1b1e] hover:bg-ds-accent text-ds-accent hover:text-white border border-white/5 flex items-center justify-center shadow-lg ml-3 group"
         >
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+          <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
         </button>
       </div>

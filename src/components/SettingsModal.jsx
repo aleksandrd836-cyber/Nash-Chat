@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
 import { notifications } from '../lib/notifications';
+import { 
+  X, User, Mic, Headphones, Bell, Monitor, LogOut, Check, AlertTriangle, 
+  RefreshCw, Download, ChevronRight, Volume2, Shield
+} from 'lucide-react';
 
 /**
  * Модальное окно настроек пользователя.
- * - Привязанная аватарка-смайлик
- * - Смена ника
- * - Выбор микрофона
- * - Тест микрофона (слышишь себя)
+ * Полный редизайн в стиле VIBE.
  */
 export function SettingsModal({ user, username: initialUsername, userColor, onClose, onUsernameChange, onSignOut }) {
   // ── Ник и Цвет ──
@@ -18,30 +19,27 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
   const [nickMsg, setNickMsg]      = useState(null); // { type: 'ok'|'err', text }
 
   // ── Микрофон ──
-  const [devices, setDevices]               = useState([]);  // список микрофонов
-  const [outputDevices, setOutputDevices]   = useState([]);  // список колонок/наушников
+  const [devices, setDevices]               = useState([]);
+  const [outputDevices, setOutputDevices]   = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(() => localStorage.getItem('micDeviceId') ?? '');
   const [selectedOutput, setSelectedOutput] = useState(() => localStorage.getItem('outputDeviceId') ?? '');
   const [testing, setTesting]               = useState(false);
-  const [volume, setVolume]                 = useState(0);   // 0-100 для индикатора
+  const [volume, setVolume]                 = useState(0);
   const testStreamRef  = useRef(null);
   const analyserRef    = useRef(null);
   const animFrameRef   = useRef(null);
-  const gainNodeRef    = useRef(null);
   const audioCtxRef    = useRef(null);
   const [notifSettings, setNotifSettings] = useState(() => notifications.getSettings());
 
   // ── Обновление Приложения ──
-  const [updateStatus, setUpdateStatus] = useState('idle'); // idle | checking | available | downloading | downloaded | error
+  const [updateStatus, setUpdateStatus] = useState('idle');
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateErrorMsg, setUpdateErrorMsg] = useState(null);
   const appVersion = window.electronAPI?.version || 'Web Версия';
 
-  // Загружаем список микрофонов и наушников
   useEffect(() => {
     async function loadDevices() {
       try {
-        // Нужно запросить разрешение, чтобы получить labels
         await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));
         const all = await navigator.mediaDevices.enumerateDevices();
         setDevices(all.filter(d => d.kind === 'audioinput'));
@@ -54,39 +52,15 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     loadDevices();
   }, []);
 
-  // Сохраняем выбранный микрофон в localStorage
   useEffect(() => {
     localStorage.setItem('micDeviceId', selectedDevice);
   }, [selectedDevice]);
 
-  // Сохраняем выбранный выход в localStorage
   useEffect(() => {
     localStorage.setItem('outputDeviceId', selectedOutput);
   }, [selectedOutput]);
 
-  // Стоп теста при закрытии
   useEffect(() => () => stopTest(), []);
-
-  // Подписка на события обновления (только в Electron)
-  useEffect(() => {
-    if (!window.electronAPI) return;
-    
-    const unsubs = [
-      window.electronAPI.onUpdateAvailable(() => setUpdateStatus('available')),
-      window.electronAPI.onUpdateProgress((info) => {
-        setUpdateStatus('downloading');
-        setUpdateProgress(Math.round(info.percent || 0));
-      }),
-      window.electronAPI.onUpdateDownloaded(() => setUpdateStatus('downloaded')),
-      window.electronAPI.onUpdateError((err) => {
-        setUpdateStatus('error');
-        setUpdateErrorMsg(err);
-      })
-    ];
-    // При открытии настроек можно молча проверить
-    // window.electronAPI.checkForUpdates();
-    return () => { /* если бы сделали отписки */ };
-  }, []);
 
   const handleCheckUpdate = async () => {
     if (!window.electronAPI) return;
@@ -94,9 +68,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     setUpdateErrorMsg(null);
     try {
       const res = await window.electronAPI.checkForUpdates();
-      if (!res) setUpdateStatus('idle'); // Если апдейтов нет, оно ничего не вернет (обычно)
-      // В electron-updater если нет обновы, кидается событие update-not-available, 
-      // но мы его не слушаем. Если за 3 сек ничего — скидываем.
+      if (!res) setUpdateStatus('idle');
       setTimeout(() => setUpdateStatus(s => s === 'checking' ? 'idle' : s), 4000);
     } catch (err) {
       setUpdateStatus('error');
@@ -104,15 +76,6 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     }
   };
 
-  const handleDownloadUpdate = () => {
-    if (window.electronAPI) window.electronAPI.downloadUpdate();
-  };
-
-  const handleInstallUpdate = () => {
-    if (window.electronAPI) window.electronAPI.installUpdate();
-  };
-
-  /** Запустить тест микрофона — пользователь слышит себя */
   const startTest = useCallback(async () => {
     stopTest();
     try {
@@ -126,16 +89,8 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
       const ctx   = new AudioContext();
       audioCtxRef.current = ctx;
       const src   = ctx.createMediaStreamSource(stream);
-      const dest  = ctx.createMediaStreamDestination();
+      src.connect(ctx.destination);
 
-      // Gain: задержка + слышим себя
-      const gain  = ctx.createGain();
-      gain.gain.value = 1;
-      gainNodeRef.current = gain;
-      src.connect(gain);
-      gain.connect(ctx.destination); // воспроизводим себя
-
-      // Analyser для индикатора громкости
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       analyserRef.current = analyser;
@@ -148,19 +103,17 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     }
   }, [selectedDevice]);
 
-  /** Анимация индикатора */
   function drawVolume(analyser) {
     const data = new Uint8Array(analyser.frequencyBinCount);
     const loop = () => {
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
-      setVolume(Math.min(100, Math.round(avg * 2)));
+      setVolume(Math.min(100, Math.round(avg * 2.5)));
       animFrameRef.current = requestAnimationFrame(loop);
     };
     animFrameRef.current = requestAnimationFrame(loop);
   }
 
-  /** Остановить тест */
   function stopTest() {
     cancelAnimationFrame(animFrameRef.current);
     testStreamRef.current?.getTracks().forEach(t => t.stop());
@@ -171,11 +124,10 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     setVolume(0);
   }
 
-  /** Сохранить ник и цвет */
   async function saveSettings() {
     try {
       if (!username.trim() || username.trim().length < 2) {
-        setNickMsg({ type: 'err', text: 'Имя должно быть не короче 2 символов' });
+        setNickMsg({ type: 'err', text: 'Минимум 2 символа' });
         return;
       }
       setSavingNick(true);
@@ -183,44 +135,25 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
         data: { username: username.trim(), user_color: color },
       });
       
-      // Обновляем старые сообщения этого пользователя!
-      let messagesError = null;
       if (user?.id && !error) {
-        const [res, profileRes, dmRes] = await Promise.all([
-          supabase
-            .from('messages')
-            .update({ username: `${username.trim()}@@${color}` })
-            .eq('user_id', user.id),
-          supabase
-            .from('profiles')
-            .update({ username: username.trim(), color: color })
-            .eq('id', user.id),
-          supabase
-            .from('direct_messages')
-            .update({ sender_username: username.trim(), sender_color: color })
-            .eq('sender_id', user.id)
+        await Promise.all([
+          supabase.from('messages').update({ username: `${username.trim()}@@${color}` }).eq('user_id', user.id),
+          supabase.from('profiles').update({ username: username.trim(), color: color }).eq('id', user.id),
+          supabase.from('direct_messages').update({ sender_username: username.trim(), sender_color: color }).eq('sender_id', user.id)
         ]);
-        messagesError = res.error || profileRes.error || dmRes.error;
       }
 
       setSavingNick(false);
-      
       if (error) {
-        setNickMsg({ type: 'err', text: 'Ошибка сохранения профиля: ' + error.message });
-      } else if (messagesError) {
-        setNickMsg({ type: 'err', text: 'Профиль сохранен, но ошибка сообщений: ' + messagesError.message });
+        setNickMsg({ type: 'err', text: 'Ошибка сохранения' });
       } else {
-        setNickMsg({ type: 'ok', text: 'Сохранено! Закрываем...' });
+        setNickMsg({ type: 'ok', text: 'Сохранено!' });
         onUsernameChange?.(username.trim(), color);
-        setTimeout(() => {
-          setNickMsg(null);
-          onClose?.();
-        }, 800);
+        setTimeout(() => onClose?.(), 600);
       }
     } catch (err) {
       setSavingNick(false);
-      setNickMsg({ type: 'err', text: 'Критическая ошибка: ' + err.message });
-      alert(err.message);
+      setNickMsg({ type: 'err', text: err.message });
     }
   }
 
@@ -229,318 +162,213 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     setNotifSettings(notifications.getSettings());
   };
 
-  const handleNotifVolume = (val) => {
-    notifications.setVolume(val);
-    setNotifSettings(notifications.getSettings());
-  };
-
-  const { imageUrl, color: avatarColor } = getUserAvatar(username);
+  const { imageUrl } = getUserAvatar(username);
 
   return (
-    // Backdrop
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-ds-sidebar rounded-2xl w-full max-w-lg shadow-2xl border border-white/10 overflow-hidden animate-slide-up">
-
+      <div className="bg-[#050505] rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+        <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
+        
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-ds-divider/50">
-          <h2 className="text-ds-text font-bold text-lg">Настройки пользователя</h2>
+        <div className="flex items-center justify-between px-8 py-6 bg-black/20 backdrop-blur-xl border-b border-white/5 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
+              <Shield size={22} />
+            </div>
+            <div>
+              <h2 className="text-white font-black text-xl uppercase tracking-tighter">Настройки</h2>
+              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.2em] -mt-0.5">Управление аккаунтом VIBE</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-colors"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-90"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
+            <X size={24} />
           </button>
         </div>
 
-        <div className="overflow-y-auto max-h-[80vh] p-6 space-y-8">
-
-          {/* ── Аватар ── */}
-          <section>
-            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Привязанный Аватар</h3>
-            <div className="flex items-center gap-5">
-              {/* Preview */}
-              <div className="w-[120px] h-[120px] rounded-full flex-shrink-0 bg-ds-bg shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center">
-                <img
-                  src={imageUrl}
-                  alt="Аватар профиля"
-                  className="w-full h-full object-cover select-none"
-                />
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-12">
+          
+          {/* Profile Section */}
+          <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <User size={16} className="text-ds-accent" />
+              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Мой профиль</h3>
+            </div>
+            
+            <div className="flex items-center gap-8 p-6 bg-white/[0.02] border border-white/5 rounded-3xl relative group">
+              <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl" />
+              <div className="relative">
+                <div className="w-[120px] h-[120px] rounded-[3rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
+                  <img src={imageUrl} alt="Avatar" className="w-full h-full object-cover" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-ds-accent flex items-center justify-center text-black shadow-lg vibe-glow-blue border-4 border-[#050505]">
+                  <Check size={14} strokeWidth={4} />
+                </div>
               </div>
-              <p className="text-xs text-ds-muted max-w-[200px] leading-relaxed">
-                Твоя уникальная вылитая 3D-аватарка генерируется на основе имени.
-              </p>
-            </div>
-          </section>
-
-          {/* ── Ник ── */}
-          <section>
-            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Имя пользователя</h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveSettings()}
-                placeholder="Твоё имя в чате"
-                className="flex-1 bg-ds-bg border border-ds-divider rounded-lg px-3 py-2 text-ds-text text-sm placeholder-ds-muted/60 focus:outline-none focus:border-ds-accent focus:ring-1 focus:ring-ds-accent transition-colors"
-              />
-              <input
-                type="color"
-                value={color}
-                onChange={e => setColor(e.target.value)}
-                className="w-10 h-10 p-0.5 rounded border border-ds-divider bg-transparent cursor-pointer"
-                title="Цвет ника"
-              />
-              <button
-                onClick={saveSettings}
-                disabled={savingNick}
-                className="px-4 py-2 bg-ds-accent hover:bg-ds-accent/90 text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-60 shadow-sm shadow-ds-accent/30"
-              >
-                {savingNick ? '...' : 'Сохранить'}
-              </button>
-            </div>
-            {nickMsg && (
-              <p className={`text-xs mt-2 ${nickMsg.type === 'ok' ? 'text-ds-green' : 'text-ds-red'}`}>
-                {nickMsg.text}
-              </p>
-            )}
-          </section>
-
-          {/* ── Микрофон ── */}
-          <section>
-            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Микрофон</h3>
-
-            {/* Выбор устройства */}
-            <select
-              value={selectedDevice}
-              onChange={e => {
-                setSelectedDevice(e.target.value);
-                if (testing) { stopTest(); }
-              }}
-              className="w-full bg-ds-bg border border-ds-divider rounded-lg px-3 py-2 text-ds-text text-sm focus:outline-none focus:border-ds-accent transition-colors appearance-none cursor-pointer"
-            >
-              <option value="">По умолчанию (системный)</option>
-              {devices.map(d => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label || `Микрофон ${d.deviceId.slice(0, 8)}`}
-                </option>
-              ))}
-            </select>
-
-            {/* Тест */}
-            <div className="mt-4 p-4 bg-ds-bg rounded-xl border border-ds-divider/50">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-ds-text text-sm font-semibold">Проверка микрофона</p>
-                  <p className="text-ds-muted text-xs mt-0.5">
-                    {testing ? '🔴 Говори — ты слышишь себя' : 'Нажми чтобы услышать свой микрофон'}
-                  </p>
+              <div className="flex-1 space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Имя пользователя</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text" value={username} onChange={e => setUsername(e.target.value)}
+                      className="flex-1 bg-black/40 border border-white/5 rounded-2xl px-4 py-3 text-white text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
+                    />
+                    <input
+                      type="color" value={color} onChange={e => setColor(e.target.value)}
+                      className="w-12 h-12 p-1.5 rounded-2xl bg-black/40 border border-white/5 cursor-pointer"
+                    />
+                  </div>
                 </div>
                 <button
-                  onClick={testing ? stopTest : startTest}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    testing
-                      ? 'bg-ds-red/20 text-ds-red hover:bg-ds-red/30'
-                      : 'bg-ds-green/20 text-ds-green hover:bg-ds-green/30'
-                  }`}
+                  onClick={saveSettings} disabled={savingNick}
+                  className="w-full py-3 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
                 >
-                  {testing ? 'Остановить' : 'Начать тест'}
+                  {savingNick ? 'ПРИМЕНЕНИЕ...' : 'СОХРАНИТЬ ИЗМЕНЕНИЯ'}
                 </button>
+                {nickMsg && (
+                  <p className={`text-[10px] font-black uppercase tracking-widest text-center ${nickMsg.type === 'ok' ? 'text-ds-accent' : 'text-ds-red'}`}>
+                    {nickMsg.text}
+                  </p>
+                )}
               </div>
-
-              {/* Индикатор громкости */}
-              <div className="w-full bg-ds-divider/50 rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-75"
-                  style={{
-                    width: `${volume}%`,
-                    backgroundColor: volume > 70 ? '#ed4245' : volume > 30 ? '#fee75c' : '#57f287',
-                  }}
-                />
-              </div>
-              {testing && (
-                <p className="text-ds-muted text-[10px] mt-1.5 text-center">
-                  Уровень: {volume}%
-                </p>
-              )}
             </div>
           </section>
 
-          {/* ── Наушники / Динамики ── */}
-          <section>
-            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Наушники / Динамики</h3>
-
-            {outputDevices.length === 0 ? (
-              <p className="text-ds-muted text-xs bg-ds-bg border border-ds-divider/50 rounded-lg px-3 py-2">
-                Устройства вывода недоступны (браузер или ОС не поддерживают выбор)
-              </p>
-            ) : (
-              <>
-                <select
-                  value={selectedOutput}
-                  onChange={e => setSelectedOutput(e.target.value)}
-                  className="w-full bg-ds-bg border border-ds-divider rounded-lg px-3 py-2 text-ds-text text-sm focus:outline-none focus:border-ds-accent transition-colors appearance-none cursor-pointer"
-                >
-                  <option value="">По умолчанию (системный)</option>
-                  {outputDevices.map(d => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Устройство вывода ${d.deviceId.slice(0, 8)}`}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-ds-muted text-[11px] mt-2">
-                  Выбранное устройство будет использоваться для воспроизведения голоса в звонках.
-                </p>
-              </>
-            )}
-          </section>
-
-          {/* ── Уведомления ── */}
-          <section className="pb-4">
-            <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-4 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              Уведомления
-            </h3>
-
+          {/* Audio Section */}
+          <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <Mic size={16} className="text-ds-accent" />
+              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Настройки звука</h3>
+            </div>
+            
             <div className="space-y-6">
-              {/* Громкость */}
-              <div className="bg-ds-bg border border-ds-divider/50 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-ds-text">Громкость уведомлений</span>
-                  <span className="text-xs font-mono text-ds-muted">{notifSettings.volume}%</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Микрофон</p>
+                  <select
+                    value={selectedDevice} onChange={e => setSelectedDevice(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-white/60 text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="">(Системный по умолчанию)</option>
+                    {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Микрофон`}</option>)}
+                  </select>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={notifSettings.volume}
-                  onChange={(e) => handleNotifVolume(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-ds-divider rounded-lg appearance-none cursor-pointer accent-ds-accent"
-                />
+                <div className="space-y-2">
+                  <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Вывод</p>
+                  <select
+                    value={selectedOutput} onChange={e => setSelectedOutput(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-white/60 text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="">(Системный по умолчанию)</option>
+                    {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Устройство вывода`}</option>)}
+                  </select>
+                </div>
               </div>
 
-              {/* Список настроек */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  { key: 'enabled_join', label: 'Кто-то зашел в голос' },
-                  { key: 'enabled_leave', label: 'Кто-то вышел из голоса' },
-                  { key: 'enabled_self_join', label: 'Вы зашли в канал' },
-                  { key: 'enabled_self_leave', label: 'Вы вышли из канала' },
-                  { key: 'enabled_stream', label: 'Трансляция экрана' },
-                  { key: 'enabled_dm', label: 'Личные сообщения' },
-                  { key: 'enabled_mute', label: 'Микрофон выключен' },
-                  { key: 'enabled_unmute', label: 'Микрофон включен' },
-                  { key: 'enabled_deafen', label: 'Наушники выключены' },
-                  { key: 'enabled_undeafen', label: 'Наушники включены' },
-                ].map((item) => (
-                  <label key={item.key} className="flex items-center justify-between p-3 bg-ds-bg/50 border border-ds-divider/30 rounded-lg cursor-pointer hover:bg-ds-hover transition-colors group">
-                    <span className="text-xs text-ds-text font-medium">{item.label}</span>
-                    <input
-                      type="checkbox"
-                      checked={notifSettings[item.key]}
-                      onChange={(e) => updateNotifSetting(item.key, e.target.checked)}
-                      className="w-4 h-4 rounded border-ds-divider text-ds-accent focus:ring-ds-accent bg-ds-bg"
-                    />
-                  </label>
-                ))}
+              {/* Mic Test Visualization */}
+              <div className="p-8 bg-black/40 border border-white/5 rounded-[2rem] relative overflow-hidden group">
+                 <div className="absolute inset-0 vibe-moving-glow opacity-10" />
+                 <div className="relative z-10 flex flex-col items-center">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 border-[3px] mb-4
+                      ${testing ? 'bg-ds-accent/10 border-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-white/20'}`}
+                    >
+                      <Mic size={32} className={testing ? 'text-ds-accent' : ''} />
+                    </div>
+                    <button
+                      onClick={testing ? stopTest : startTest}
+                      className={`px-8 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all
+                        ${testing ? 'bg-ds-red text-white shadow-lg shadow-ds-red/20' : 'bg-ds-accent/10 text-ds-accent border border-ds-accent/30 hover:bg-ds-accent/20'}`}
+                    >
+                      {testing ? 'ЗАВЕРШИТЬ ТЕСТ' : 'ПРОВЕРИТЬ МИКРОФОН'}
+                    </button>
+                    
+                    <div className="w-full max-w-xs mt-8 space-y-2">
+                      <div className="flex justify-between font-mono text-[9px] text-white/20 uppercase font-black">
+                        <span>Уровень сигнала</span>
+                        <span className={testing && volume > 0 ? 'text-ds-accent' : ''}>{volume}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-75 rounded-full ${volume > 80 ? 'bg-ds-red' : 'bg-ds-accent vibe-glow-blue'}`}
+                          style={{ width: `${volume}%` }}
+                        />
+                      </div>
+                    </div>
+                 </div>
               </div>
-
-              <button
-                onClick={() => notifications.play('dm')}
-                className="w-full py-2 bg-ds-divider/30 hover:bg-ds-divider/50 text-ds-text text-xs font-semibold rounded-lg transition-all"
-              >
-                Проверить звук уведомления
-              </button>
             </div>
           </section>
 
-          {/* ── Обновление приложения ── */}
-          {window.electronAPI && (
-            <section className="pb-4">
-              <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-4 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Приложение
-              </h3>
-              
-              <div className="bg-ds-bg border border-ds-divider/50 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-ds-text">Текущая версия:</span>
-                  <span className="text-xs font-mono text-ds-muted">{appVersion}</span>
-                </div>
+          {/* Notifications Section */}
+          <section className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <Bell size={16} className="text-ds-accent" />
+              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Уведомления</h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'enabled_join', label: 'Вход участника' },
+                { key: 'enabled_leave', label: 'Выход участника' },
+                { key: 'enabled_stream', label: 'Трансляция экрана' },
+                { key: 'enabled_dm', label: 'Личные сообщения' },
+                { key: 'enabled_mute', label: 'Выкл. микрофон' },
+                { key: 'enabled_unmute', label: 'Вкл. микрофон' },
+              ].map(item => (
+                <label key={item.key} className="flex items-center justify-between px-5 py-4 bg-white/[0.02] border border-white/5 rounded-2xl cursor-pointer hover:bg-white/[0.04] transition-all group">
+                  <span className="text-[11px] font-bold text-white/70 group-hover:text-white transition-colors">{item.label}</span>
+                  <div className="relative inline-flex items-center">
+                    <input
+                      type="checkbox" checked={notifSettings[item.key]}
+                      onChange={e => updateNotifSetting(item.key, e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-10 h-5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white/40 peer-checked:after:bg-black after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-ds-accent peer-checked:vibe-glow-blue" />
+                  </div>
+                </label>
+              ))}
+            </div>
+          </section>
 
-                <div className="mt-4 flex flex-col items-center border-t border-ds-divider/50 pt-4">
-                  {updateStatus === 'idle' && (
-                    <button onClick={handleCheckUpdate} className="px-4 py-2 bg-ds-divider/50 hover:bg-ds-hover text-ds-text text-sm rounded transition-colors w-full">
-                      Проверить обновления
-                    </button>
-                  )}
-                  {updateStatus === 'checking' && (
-                    <p className="text-sm text-ds-muted flex items-center gap-2"><span className="animate-spin text-ds-accent">⟳</span> Проверка...</p>
-                  )}
-                  {updateStatus === 'available' && (
-                    <div className="w-full text-center">
-                      <p className="text-sm text-ds-green mb-3">Доступна новая версия!</p>
-                      <button onClick={handleDownloadUpdate} className="px-4 py-2 bg-ds-accent hover:bg-ds-accent/80 text-white font-bold text-sm rounded shadow w-full transition-all">
-                        Скачать обновление
-                      </button>
-                    </div>
-                  )}
-                  {updateStatus === 'downloading' && (
-                    <div className="w-full">
-                      <div className="flex justify-between text-xs text-ds-muted mb-1">
-                        <span>Загрузка...</span>
-                        <span>{updateProgress}%</span>
-                      </div>
-                      <div className="w-full bg-ds-divider/50 rounded-full h-1.5 overflow-hidden">
-                        <div className="h-full bg-ds-accent transition-all duration-300" style={{ width: `${updateProgress}%` }} />
-                      </div>
-                    </div>
-                  )}
-                  {updateStatus === 'downloaded' && (
-                    <div className="w-full text-center">
-                      <p className="text-sm text-ds-green mb-3">Обновление готово к установке</p>
-                      <button onClick={handleInstallUpdate} className="px-4 py-2 bg-ds-green hover:bg-ds-green/80 text-black font-bold text-sm rounded shadow w-full transition-all">
-                        Перезапустить и установить
-                      </button>
-                    </div>
-                  )}
-                  {updateStatus === 'error' && (
-                    <div className="w-full text-center">
-                      <p className="text-xs text-ds-red mb-2">Ошибка: {updateErrorMsg}</p>
-                      <button onClick={handleCheckUpdate} className="px-4 py-2 bg-ds-divider/30 hover:bg-ds-hover text-ds-text text-xs rounded transition-colors">
-                        Попробовать снова
-                      </button>
-                    </div>
-                  )}
+          {/* App Info Section */}
+          {window.electronAPI && (
+            <section className="animate-fade-in" style={{ animationDelay: '0.4s' }}>
+               <div className="flex items-center gap-2 mb-6">
+                <Monitor size={16} className="text-ds-accent" />
+                <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Приложение</h3>
+              </div>
+              <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Версия сборки</p>
+                  <p className="text-white font-mono text-sm">{appVersion}</p>
                 </div>
+                <button
+                   onClick={handleCheckUpdate}
+                   className={`px-5 py-2.5 rounded-2xl border border-white/10 text-[10px] font-black uppercase tracking-widest transition-all
+                    ${updateStatus === 'checking' ? 'opacity-50 cursor-wait' : 'hover:bg-white/5 hover:border-white/20'}`}
+                >
+                  {updateStatus === 'checking' ? 'ПРОВЕРКА...' : 'ПРОВЕРИТЬ ОБНОВЛЕНИЯ'}
+                </button>
               </div>
             </section>
           )}
 
-            <div className="pt-6 border-t border-ds-divider/30 mt-8 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-ds-text font-bold text-sm">Выход из аккаунта</h3>
-                  <p className="text-ds-muted text-[11px]">Безопасно выйдет из системы на этом устройстве</p>
-                </div>
-                <button
-                  id="settings-logout-btn"
-                  onClick={onSignOut}
-                  className="px-4 py-2 border border-ds-red text-ds-red hover:bg-ds-red hover:text-white rounded-md text-[11px] font-bold transition-all"
-                >
-                  Выйти из аккаунта
-                </button>
-              </div>
-            </div>
+          {/* Logout Section */}
+          <section className="pt-8 border-t border-white/5 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+            <button
+              onClick={onSignOut}
+              className="w-full py-5 rounded-[2rem] border-2 border-ds-red/20 text-ds-red font-black uppercase tracking-[0.2em] text-xs transition-all hover:bg-ds-red hover:text-white hover:border-ds-red active:scale-95 flex items-center justify-center gap-3 group"
+            >
+              <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
+              ВЫЙТИ ИЗ АККАУНТА
+            </button>
+          </section>
 
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMessages } from '../hooks/useMessages';
 import { Message } from './Message';
 import EmojiPicker from 'emoji-picker-react';
+import { Hash, Send, Paperclip, Smile, Download } from 'lucide-react';
 
 const MAX_LENGTH = 2000;
 const MAX_FILE_SIZE_MB = 50;
@@ -134,21 +135,19 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
   const isBusy = sending || uploading;
 
   return (
-    <div className="flex-1 flex flex-col bg-ds-bg min-w-0">
+    <div className="flex-1 flex flex-col bg-ds-bg min-w-0 relative">
       {/* Header */}
-      <div className="h-12 flex items-center px-4 gap-2 border-b border-ds-divider/50 flex-shrink-0 bg-ds-bg/80 backdrop-blur-sm">
-        <span className="text-ds-muted text-lg font-bold select-none">#</span>
-        <span className="text-ds-text font-semibold text-sm">{channel.name}</span>
+      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-10 shadow-lg">
+        <Hash size={20} className="text-ds-accent vibe-glow-blue" />
+        <span className="text-white font-bold text-[15px]">{channel.name}</span>
         
         {!window.electronAPI && (
           <a 
             href={downloadUrl}
-            className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-ds-green hover:bg-ds-green/90 text-white text-[11px] font-bold rounded-md transition-all shadow-lg shadow-ds-green/20 animate-pulse-soft"
+            className="ml-auto flex items-center gap-2 px-4 py-1.5 bg-ds-accent text-black text-[12px] font-bold rounded-full transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:scale-105 active:scale-95"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" />
-            </svg>
-            Скачать на Windows
+            <Download size={16} />
+            УСТАНОВИТЬ VIBE
           </a>
         )}
       </div>
@@ -234,7 +233,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
             </div>
           )}
 
-          <div className="relative bg-ds-input rounded-xl flex items-end gap-2 px-2 py-3 border border-ds-divider/30 focus-within:border-ds-accent/40 transition-colors">
+          <div className="relative bg-ds-input rounded-[18px] flex items-end gap-2 px-3 py-3 border border-white/10 focus-within:vibe-glow-blue focus-within:border-ds-accent/60 transition-all duration-300 shadow-2xl">
             {/* Кнопка скрепки */}
             <input
               ref={fileInputRef}
@@ -247,12 +246,9 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
               type="button"
               onClick={() => fileInputRef.current?.click()}
               title="Прикрепить изображение"
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-all"
+              className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl text-white/40 hover:text-ds-accent hover:bg-ds-accent/10 transition-all"
             >
-              {/* Иконка скрепки */}
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
-              </svg>
+              <Paperclip size={22} strokeWidth={2.5} />
             </button>
 
             <textarea
@@ -261,22 +257,15 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
               value={draft}
               onChange={(e) => setDraft(e.target.value.slice(0, MAX_LENGTH))}
               onKeyDown={handleKeyDown}
-              placeholder={`Написать в #${channel.name}`}
+              placeholder={`Сообщение в #${channel.name}`}
               rows={1}
-              className="flex-1 bg-transparent text-ds-text text-sm placeholder-ds-muted/60 resize-none focus:outline-none leading-relaxed max-h-48 overflow-y-auto"
+              className="flex-1 bg-transparent text-white text-[15px] placeholder-white/20 resize-none focus:outline-none leading-relaxed max-h-48 overflow-y-auto py-1.5"
               style={{ height: 'auto' }}
               onInput={(e) => {
                 e.target.style.height = 'auto';
                 e.target.style.height = Math.min(e.target.scrollHeight, 192) + 'px';
               }}
             />
-
-            {/* Char count if near limit */}
-            {draft.length > MAX_LENGTH * 0.8 && (
-              <span className={`text-xs flex-shrink-0 mb-2 ${draft.length >= MAX_LENGTH ? 'text-ds-red' : 'text-ds-muted'}`}>
-                {MAX_LENGTH - draft.length}
-              </span>
-            )}
 
             {/* Emoji toggle */}
             <div className="relative flex-shrink-0">
@@ -285,40 +274,36 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
                 type="button"
                 onClick={() => setShowEmojiPicker(prev => !prev)}
                 title="Добавить эмодзи"
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-all"
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-white/40 hover:text-ds-accent hover:bg-ds-accent/10 transition-all"
               >
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S7.67 8 8.5 8 10 8.67 10 9.5 9.33 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
-                </svg>
+                <Smile size={22} strokeWidth={2.5} />
               </button>
 
               {showEmojiPicker && (
-                <div ref={pickerRef} className="absolute bottom-[calc(100%+12px)] right-0 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-lg">
+                <div ref={pickerRef} className="absolute bottom-[calc(100%+16px)] right-0 z-50 shadow-[0_0_30px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden animate-slide-up border border-white/5">
                   <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled />
                 </div>
               )}
             </div>
 
-            {/* Кнопка отправки */}
+            {/* Кнопка отправки - Signature Vibe Moving Glow */}
             <button
               id="send-btn"
               type="submit"
               disabled={(!draft.trim() && !attachment) || isBusy}
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-ds-accent hover:bg-ds-accent/90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-ds-accent text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed vibe-glow-blue relative overflow-hidden group/send"
             >
+              {!isBusy && <div className="absolute inset-0 vibe-moving-glow opacity-40 group-hover/send:opacity-70 transition-opacity" />}
               {isBusy ? (
-                <svg className="animate-spin" width="14" height="14" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4"/>
-                  <path className="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
+                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin z-10" />
               ) : (
-                <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
+                <Send size={20} weight="bold" className="z-10" />
               )}
             </button>
           </div>
-          <p className="text-[10px] text-ds-muted/50 mt-1 px-1">Enter — отправить · Shift+Enter — перенос · Ctrl+V — вставить скриншот</p>
+          <p className="text-[10px] text-white/10 font-bold uppercase tracking-widest mt-2 px-2 select-none">
+            Enter to send · Shift+Enter to newline · Ctrl+V to paste
+          </p>
         </form>
       </div>
     </div>

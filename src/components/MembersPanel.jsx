@@ -10,14 +10,14 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
   const offline = members.filter(m => !m.isOnline);
 
   return (
-    <div className="w-56 flex-shrink-0 bg-ds-sidebar flex flex-col border-l border-ds-divider/30">
+    <div className="w-60 flex-shrink-0 bg-[#0a0a0a] flex flex-col border-l border-white/5 shadow-2xl z-10 transition-all duration-300">
       {/* Header */}
-      <div className="h-12 flex items-center px-4 border-b border-ds-divider/50 flex-shrink-0">
-        <span className="text-ds-muted text-[11px] font-semibold uppercase tracking-wider">
-          Участники
+      <div className="h-12 flex items-center px-4 border-b border-white/5 flex-shrink-0 bg-black/20 backdrop-blur-md">
+        <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
+          УЧАСТНИКИ
         </span>
-        <span className="ml-auto text-ds-muted text-[10px] font-mono">
-          {online.length} / {members.length}
+        <span className="ml-auto text-ds-accent text-[10px] font-mono font-bold vibe-glow-blue px-2 py-0.5 rounded-full border border-ds-accent/20 bg-ds-accent/5">
+          {online.length}/{members.length}
         </span>
       </div>
 
@@ -32,8 +32,9 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
             {/* ── Онлайн ── */}
             {online.length > 0 && (
               <div>
-                <p className="text-ds-muted text-[11px] font-semibold uppercase tracking-wider px-2 mb-1">
-                  В сети — {online.length}
+                <p className="text-white/20 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
+                  <span className="w-1 h-1 rounded-full bg-ds-accent vibe-glow-blue" />
+                  В СЕТИ — {online.length}
                 </p>
                 <div className="space-y-0.5">
                   {online.map(m => (
@@ -52,9 +53,10 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
 
             {/* ── Оффлайн ── */}
             {offline.length > 0 && (
-              <div>
-                <p className="text-ds-muted text-[11px] font-semibold uppercase tracking-wider px-2 mb-1">
-                  Не в сети — {offline.length}
+              <div className="mt-4">
+                <p className="text-white/20 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
+                   <span className="w-1 h-1 rounded-full bg-white/10" />
+                   НЕ В СЕТИ — {offline.length}
                 </p>
                 <div className="space-y-0.5">
                   {offline.map(m => (
@@ -88,39 +90,40 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
 
   return (
     <div
-      className={`group flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors duration-150
-        ${!isSelf ? 'hover:bg-ds-hover cursor-pointer' : 'cursor-default'}
-        ${!isOnline ? 'opacity-50' : ''}`}
+      className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 relative overflow-hidden
+        ${!isSelf ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'}
+        ${!isOnline ? 'opacity-40 grayscale-[0.5]' : ''}`}
       onClick={() => !isSelf && onOpenDM?.(member)}
       title={!isSelf ? `Написать ${member.username}` : ''}
     >
+      <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-10 transition-opacity" />
       {/* Avatar + status dot */}
-      <div className="relative flex-shrink-0">
-        <div className="w-8 h-8 rounded-full bg-ds-bg overflow-hidden flex items-center justify-center">
+      <div className="relative flex-shrink-0 z-10">
+        <div className="w-9 h-9 rounded-full bg-black/40 overflow-hidden flex items-center justify-center border border-white/10 shadow-lg">
           <img
             src={imageUrl}
             alt={member.username}
-            className="w-12 h-12 max-w-none select-none"
+            className="w-full h-full object-cover select-none"
           />
         </div>
         {/* Online indicator */}
         <span
-          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-ds-sidebar z-10
-            ${isOnline ? 'bg-ds-green' : 'bg-ds-muted/50'}`}
+          className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-[#0a0a0a] z-20 transition-all duration-300
+            ${isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-white/10'}`}
         />
       </div>
 
       {/* Name */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 z-10">
         <p
-          className="text-sm font-medium truncate"
-          style={member.color ? { color: member.color } : { color: 'var(--ds-text)' }}
+          className="text-[14px] font-bold truncate tracking-tight"
+          style={member.color ? { color: member.color } : { color: '#ffffff' }}
         >
           {member.username}
-          {isSelf && <span className="text-ds-muted font-normal text-[10px] ml-1">(вы)</span>}
+          {isSelf && <span className="text-white/20 font-black text-[9px] ml-2 uppercase tracking-widest">(ВЫ)</span>}
         </p>
-        <p className={`text-[10px] leading-tight ${isOnline ? 'text-ds-green' : 'text-ds-muted/60'}`}>
-          {isOnline ? 'Онлайн' : 'Не в сети'}
+        <p className={`text-[9px] font-black uppercase tracking-widest ${isOnline ? 'text-ds-accent' : 'text-white/10'}`}>
+          {isOnline ? 'В СЕТИ' : 'OFFLINE'}
         </p>
       </div>
 

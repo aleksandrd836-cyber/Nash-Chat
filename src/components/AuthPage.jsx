@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import { 
+  LogIn, UserPlus, Mail, Lock, User, 
+  Sparkles, ShieldCheck, Globe, ArrowRight 
+} from 'lucide-react';
 
 /**
- * Страница авторизации: Вход / Регистрация
- * Регистрация: email + имя пользователя + пароль
- * Вход: email + пароль
+ * Страница авторизации: Вход / Регистрация.
+ * Ультимативный редизайн VIBE: Неоновые свечения, глубокие тени и глассморфизм.
  */
 export function AuthPage({ onSignIn, onSignUp, error, setError }) {
   const [mode, setMode]         = useState('login');
@@ -32,130 +35,156 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
   }
 
   return (
-    <div className="min-h-screen bg-ds-servers flex items-center justify-center p-4">
-      {/* Animated gradient background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-ds-accent/20 rounded-full blur-3xl animate-pulse-soft" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-500/15 rounded-full blur-3xl animate-pulse-soft" style={{ animationDelay: '1s' }} />
+    <div className="min-h-screen bg-[#020202] flex items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* ── Анимированный фон (VIBE AURORA) ── */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-ds-accent/10 rounded-full blur-[150px] animate-pulse-soft opacity-40 shadow-[0_0_100px_rgba(0,240,255,0.1)]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 rounded-full blur-[150px] animate-pulse-soft opacity-30 shadow-[0_0_100px_rgba(147,51,234,0.1)]" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(0,240,255,0.03)_0%,transparent_70%)]" />
       </div>
 
-      <div className="relative w-full max-w-sm animate-slide-up">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-ds-accent mb-3 shadow-lg shadow-ds-accent/40">
-            <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
-              <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.104 18.076.119 18.09.137 18.1a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
-            </svg>
+      <div className="relative w-full max-w-md animate-fade-in">
+        {/* Brand/Logo Section */}
+        <div className="text-center mb-10 group cursor-default">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-ds-accent mb-6 shadow-[0_0_50px_rgba(0,240,255,0.4)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative">
+             <div className="absolute inset-0 rounded-[2.5rem] vibe-moving-glow opacity-50" />
+             <div className="bg-black/10 w-full h-full rounded-[2.5rem] flex items-center justify-center backdrop-blur-sm border-2 border-white/20">
+               <Globe size={40} strokeWidth={2.5} className="text-white drop-shadow-lg" />
+             </div>
           </div>
-          <h1 className="text-2xl font-bold text-ds-text">Vibe</h1>
-          <p className="text-ds-muted text-sm mt-1">Чат для своих</p>
+          <h1 className="text-5xl font-black text-white uppercase tracking-tighter leading-none mb-2">VIBE</h1>
+          <div className="flex items-center justify-center gap-2">
+             <span className="h-[1px] w-4 bg-ds-accent/40" />
+             <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em]">Чат будущего уже здесь</p>
+             <span className="h-[1px] w-4 bg-ds-accent/40" />
+          </div>
         </div>
 
-        {/* Card */}
-        <div className="bg-ds-sidebar rounded-2xl p-8 shadow-2xl border border-white/5">
-          {/* Mode tabs */}
-          <div className="flex bg-ds-bg rounded-xl p-1 mb-6">
+        {/* Auth Card */}
+        <div className="bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-[3rem] p-10 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] relative group overflow-hidden">
+          <div className="absolute inset-0 vibe-moving-glow opacity-[0.03] group-hover:opacity-[0.07] transition-opacity duration-700" />
+          
+          {/* Mode Switcher */}
+          <div className="flex bg-black/60 rounded-[1.5rem] p-1.5 mb-8 border border-white/5 relative z-10">
             <button
               onClick={() => switchMode('login')}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${mode === 'login'
-                  ? 'bg-ds-accent text-white shadow-sm'
-                  : 'text-ds-muted hover:text-ds-text'
+              className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${mode === 'login'
+                  ? 'bg-ds-accent text-black shadow-[0_0_20px_rgba(0,240,255,0.4)]'
+                  : 'text-white/30 hover:text-white/60'
                 }`}
             >
-              Войти
+              <LogIn size={14} strokeWidth={3} />
+              Вход
             </button>
             <button
               onClick={() => switchMode('register')}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${mode === 'register'
-                  ? 'bg-ds-accent text-white shadow-sm'
-                  : 'text-ds-muted hover:text-ds-text'
+              className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${mode === 'register'
+                  ? 'bg-ds-accent text-black shadow-[0_0_20px_rgba(0,240,255,0.4)]'
+                  : 'text-white/30 hover:text-white/60'
                 }`}
             >
+              <UserPlus size={14} strokeWidth={3} />
               Регистрация
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-
-              {/* Email — всегда */}
-              <div>
-                <label className="block text-xs font-semibold text-ds-muted uppercase tracking-wider mb-1.5">
-                  Email
-                </label>
+          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+              {/* Email */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 ml-2">
+                   <Mail size={12} className="text-ds-accent" />
+                   <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                     Электронная почта
+                   </label>
+                </div>
                 <input
-                  id="email-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  className="w-full bg-ds-bg border border-ds-divider rounded-lg px-3 py-2.5 text-ds-text text-sm placeholder-ds-muted/60 focus:outline-none focus:border-ds-accent focus:ring-1 focus:ring-ds-accent transition-colors"
+                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@vibe.app"
                   required
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold placeholder-white/10 focus:border-ds-accent/30 focus:bg-black/60 transition-all outline-none"
                 />
               </div>
 
-              {/* Имя пользователя — только при регистрации */}
+              {/* Username (Register only) */}
               {mode === 'register' && (
-                <div>
-                  <label className="block text-xs font-semibold text-ds-muted uppercase tracking-wider mb-1.5">
-                    Имя пользователя
-                  </label>
+                <div className="space-y-2 animate-slide-up">
+                  <div className="flex items-center gap-2 ml-2">
+                     <User size={12} className="text-ds-accent" />
+                     <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                       Твой никнейм
+                     </label>
+                  </div>
                   <input
-                    id="username-input"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Как тебя называть в чате"
-                    autoComplete="nickname"
-                    className="w-full bg-ds-bg border border-ds-divider rounded-lg px-3 py-2.5 text-ds-text text-sm placeholder-ds-muted/60 focus:outline-none focus:border-ds-accent focus:ring-1 focus:ring-ds-accent transition-colors"
+                    type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+                    placeholder="CyberVibe_2026"
                     required
+                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold placeholder-white/10 focus:border-ds-accent/30 focus:bg-black/60 transition-all outline-none"
                   />
                 </div>
               )}
 
-              {/* Пароль */}
-              <div>
-                <label className="block text-xs font-semibold text-ds-muted uppercase tracking-wider mb-1.5">
-                  Пароль
-                </label>
+              {/* Password */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 ml-2">
+                   <Lock size={12} className="text-ds-accent" />
+                   <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                     Секретный пароль
+                   </label>
+                </div>
                 <input
-                  id="password-input"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  className="w-full bg-ds-bg border border-ds-divider rounded-lg px-3 py-2.5 text-ds-text text-sm placeholder-ds-muted/60 focus:outline-none focus:border-ds-accent focus:ring-1 focus:ring-ds-accent transition-colors"
                   required
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold placeholder-white/10 focus:border-ds-accent/30 focus:bg-black/60 transition-all outline-none"
                 />
               </div>
 
-              {/* Ошибка */}
+              {/* Error Box */}
               {error && (
-                <div className="bg-ds-red/15 border border-ds-red/30 rounded-lg px-3 py-2.5 text-ds-red text-sm animate-fade-in">
-                  {error}
+                <div className="bg-ds-red/10 border border-ds-red/20 rounded-2xl px-4 py-3 flex items-center gap-3 animate-fade-in">
+                   <ShieldCheck size={18} className="text-ds-red flex-shrink-0" />
+                   <p className="text-[11px] text-ds-red font-bold uppercase tracking-tight leading-tight">{error}</p>
                 </div>
               )}
 
-              {/* Кнопка */}
+              {/* Submit Button */}
               <button
-                id="auth-submit-btn"
                 type="submit"
                 disabled={loading}
-                className="w-full bg-ds-accent hover:bg-ds-accent/90 active:scale-[0.98] text-white font-semibold py-2.5 rounded-lg transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-ds-accent/30 mt-2"
+                className="w-full bg-ds-accent text-black font-black uppercase tracking-[0.2em] py-5 rounded-[1.5rem] transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(0,240,255,0.3)] vibe-glow-blue disabled:opacity-40 disabled:cursor-not-allowed mt-4 group overflow-hidden relative"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Загрузка...
-                  </span>
-                ) : mode === 'login' ? 'Войти' : 'Создать аккаунт'}
+                <div className="absolute inset-0 vibe-moving-glow opacity-40 group-hover:opacity-60 transition-opacity" />
+                <span className="relative z-10 flex items-center justify-center gap-3">
+                  {loading ? (
+                    <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {mode === 'login' ? 'ВОЙТИ В VIBE' : 'СОЗДАТЬ АККАУНТ'}
+                      <ArrowRight size={18} strokeWidth={3} className="group-hover:translate-x-2 transition-transform duration-500" />
+                    </>
+                  )}
+                </span>
               </button>
           </form>
+
+          {/* Bottom Info */}
+          <div className="mt-10 text-center relative z-10">
+             <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em]">
+                {mode === 'login' ? 'Нет аккаунта? Давай создадим!' : 'Уже в системе? Тогда возвращайся!'}
+             </p>
+             <button 
+                onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
+                className="text-ds-accent/40 hover:text-ds-accent text-[10px] font-black uppercase tracking-widest mt-2 transition-colors"
+             >
+                {mode === 'login' ? 'РЕГИСТРАЦИЯ' : 'ВХОД В СИСТЕМУ'}
+             </button>
+          </div>
         </div>
+        
+        {/* Footer info */}
+        <p className="text-[9px] text-white/10 font-bold uppercase tracking-[0.3em] text-center mt-8">
+           Safe • Secure • Ultra-Fast • Nash-Chat 2026
+        </p>
       </div>
     </div>
   );

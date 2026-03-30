@@ -159,15 +159,14 @@ export function Sidebar({
     setParticipantVolume?.(userId, num);
   }, [setParticipantVolume]);
 
-  const textChannels  = channels.filter(c => c.type === 'text');
   const voiceChannels = channels.filter(c => c.type === 'voice');
 
   // ── Рендер ──
   return (
-    <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col" onClick={() => { setChanCtx(null); setCtxMenu(null); }}>
+    <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col border-r border-white/5 shadow-2xl relative select-none" onClick={() => { setChanCtx(null); setCtxMenu(null); }}>
       {/* Server header */}
-      <div className="h-12 flex items-center justify-between px-4 border-b border-ds-divider/50 flex-shrink-0">
-        <span className="text-ds-text font-bold text-sm truncate">{selectedServer?.name ?? 'Сервер'}</span>
+      <div className="h-12 flex items-center justify-between px-4 border-b border-white/5 flex-shrink-0 hover:bg-white/5 cursor-pointer transition-colors group">
+        <span className="text-white font-bold text-[15px] truncate">{selectedServer?.name ?? 'Сервер'}</span>
         {isOwner && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenServerSettings?.(); }}
@@ -233,13 +232,15 @@ export function Sidebar({
                         markAsRead(ch.id);
                       }}
                       onContextMenu={(e) => handleChannelCtx(e, ch)}
-                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm font-medium transition-all duration-150 group/item
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[14.5px] transition-all duration-200 group/item relative overflow-hidden
                         ${selectedChannel?.id === ch.id
-                          ? 'bg-ds-active text-ds-text'
-                          : 'text-ds-muted hover:bg-ds-hover hover:text-ds-text'
-                        } ${counts[ch.id] > 0 ? 'text-ds-text font-bold' : ''}`}
+                          ? 'bg-ds-accent/15 text-white vibe-glow-blue border border-ds-accent/30 font-bold'
+                          : 'text-ds-muted hover:bg-white/5 hover:text-white'
+                        } ${counts[ch.id] > 0 ? 'text-white font-bold' : ''}`}
                     >
-                      <span className={`text-base leading-none opacity-70 ${counts[ch.id] > 0 ? 'text-ds-accent' : ''}`}>#</span>
+                      {selectedChannel?.id === ch.id && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-ds-accent rounded-r-full shadow-[0_0_10px_#00f0ff]" />}
+                      
+                      <span className={`text-[17px] leading-none opacity-60 ${counts[ch.id] > 0 || selectedChannel?.id === ch.id ? 'text-ds-accent opacity-100' : ''}`}>#</span>
                       <span className="truncate flex-1 text-left">{ch.name}</span>
                       
                       {/* Бейдж непрочитанных */}
@@ -327,19 +328,20 @@ export function Sidebar({
                       <button
                         onClick={() => onSelectChannel(ch)}
                         onContextMenu={(e) => handleChannelCtx(e, ch)}
-                        className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm font-medium transition-all duration-150
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[14.5px] transition-all duration-200 group/item relative overflow-hidden
                           ${selectedChannel?.id === ch.id
-                            ? 'bg-ds-active text-ds-text'
-                            : 'text-ds-muted hover:bg-ds-hover hover:text-ds-text'
+                            ? 'bg-ds-accent/15 text-white vibe-glow-blue border border-ds-accent/30 font-bold'
+                            : 'text-ds-muted hover:bg-white/5 hover:text-white'
                           }`}
                       >
-                        <svg className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ds-green' : 'opacity-60'}`}
+                        {selectedChannel?.id === ch.id && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-ds-accent rounded-r-full shadow-[0_0_10px_#00f0ff]" />}
+                        <svg className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ds-accent' : 'opacity-60'}`}
                           fill="currentColor" viewBox="0 0 24 24">
                           <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                         </svg>
                         <span className="truncate flex-1 text-left">{ch.name}</span>
                         {chParticipants.length > 0 && (
-                          <span className={`text-[10px] font-semibold ${isActive ? 'text-ds-green' : 'text-ds-muted'}`}>
+                          <span className={`text-[10px] font-bold ${isActive ? 'text-ds-accent' : 'text-ds-muted'}`}>
                             {chParticipants.length}
                           </span>
                         )}
@@ -384,10 +386,12 @@ export function Sidebar({
                               onContextMenu={(e) => handleParticipantCtx(e, p)}
                               title={!isMe ? 'ПКМ для регулировки громкости' : ''}
                             >
-                              <div className="w-[30px] h-[30px] rounded-full bg-ds-bg shadow-[inset_0_0_5px_rgba(0,0,0,0.2)] overflow-hidden flex items-center justify-center flex-shrink-0">
-                                <img src={imageUrl} alt={p.username} className="w-[45px] h-[45px] max-w-none select-none" />
+                              <div className="w-[28px] h-[28px] rounded-full bg-ds-bg shadow-inner overflow-hidden flex items-center justify-center flex-shrink-0 border border-white/5">
+                                <img src={imageUrl} alt={p.username} 
+                                  className={`w-full h-full object-cover select-none transition-all duration-300 ${p.isSpeaking ? 'scale-110' : ''}`} 
+                                />
                               </div>
-                              <span className="text-[11px] text-ds-muted truncate flex-1" style={p.color ? { color: p.color } : {}}>
+                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-ds-accent' : 'text-ds-muted group-hover:text-white'}`}>
                                 {p.username}
                               </span>
 

@@ -3,13 +3,17 @@ import { useDirectMessages } from '../hooks/useDirectMessages';
 import { getUserAvatar } from '../lib/avatar';
 import { Message } from './Message';
 import EmojiPicker from 'emoji-picker-react';
+import { 
+  X, Send, Smile, Paperclip, 
+  MessageSquare, User, Clock, Check, 
+  ChevronLeft, AlertCircle, FileText
+} from 'lucide-react';
 
 const MAX_LENGTH = 2000;
 const MAX_FILE_SIZE_MB = 50;
 
 /**
- * Панель личных сообщений (ЛС) с конкретным пользователем.
- * Синхронизирована по функционалу (эмодзи, файлы) с текстовыми каналами.
+ * Панель личных сообщений (ЛС) в стиле VIBE.
  */
 export function DirectMessagePanel({ currentUser, username, userColor, targetMember, onClose }) {
   const { messages, loading, sending, sendMessage, markMessagesAsRead, uploadFile } = useDirectMessages(
@@ -18,7 +22,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   );
 
   const [draft, setDraft]             = useState('');
-  const [attachment, setAttachment]   = useState(null);   // { file, previewUrl }
+  const [attachment, setAttachment]   = useState(null);
   const [uploading, setUploading]     = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
@@ -27,12 +31,10 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   const fileInputRef                  = useRef(null);
   const pickerRef                     = useRef(null);
 
-  // Автоскролл
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Сброс при смене собеседника
   useEffect(() => {
     setDraft('');
     setAttachment(null);
@@ -40,7 +42,6 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
     inputRef.current?.focus();
   }, [targetMember?.id]);
 
-  // Помечаем открытые сообщения как прочитанные
   useEffect(() => {
     if (messages.length > 0) {
       const hasUnread = messages.some(m => !m.is_read && m.receiver_id === currentUser?.id);
@@ -50,7 +51,6 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
     }
   }, [messages, currentUser?.id, markMessagesAsRead]);
 
-  // Закрытие эмодзи по клику вне
   useEffect(() => {
     function handleClickOutside(event) {
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
@@ -69,7 +69,6 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
     inputRef.current?.focus();
   };
 
-  // Вставка из буфера
   useEffect(() => {
     const handlePaste = (e) => {
       const items = e.clipboardData?.items;
@@ -112,14 +111,11 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
     if ((!draft.trim() && !attachment) || isBusy) return;
 
     let imageUrl = null;
-
     if (attachment) {
       setUploading(true);
       try {
         imageUrl = await uploadFile(attachment.file);
       } catch (err) {
-        console.error('Ошибка загрузки файла:', err);
-        alert('Не удалось загрузить файл. Попробуй ещё раз.');
         setUploading(false);
         return;
       }
@@ -142,65 +138,79 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   const { imageUrl: targetAvatar } = getUserAvatar(targetMember?.username ?? '');
 
   return (
-    <div className="flex-1 flex flex-col bg-ds-bg min-w-0">
+    <div className="flex-1 flex flex-col bg-[#050505] min-w-0 relative">
       {/* Header */}
-      <div className="h-12 flex items-center px-4 gap-3 border-b border-ds-divider/50 flex-shrink-0 bg-ds-bg/80 backdrop-blur-sm">
-        <div className="relative flex-shrink-0">
-          <div className="w-8 h-8 rounded-full bg-ds-sidebar overflow-hidden flex items-center justify-center">
-            <img src={targetAvatar} alt={targetMember?.username} className="w-12 h-12 max-w-none select-none" />
+      <div className="h-14 flex items-center px-6 gap-4 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-20 shadow-lg">
+        <button 
+           onClick={onClose}
+           className="p-2 -ml-2 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all md:hidden"
+        >
+          <ChevronLeft size={24} />
+        </button>
+
+        <div className="relative flex-shrink-0 group cursor-pointer">
+          <div className="w-10 h-10 rounded-2xl bg-black/40 overflow-hidden border border-white/10 shadow-inner group-hover:scale-105 transition-transform">
+            <img src={targetAvatar} alt={targetMember?.username} className="w-full h-full object-cover select-none" />
           </div>
           <span
-            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-ds-bg
-              ${targetMember?.isOnline ? 'bg-ds-green' : 'bg-ds-muted/50'}`}
+            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-[#050505] z-10 transition-all duration-300
+              ${targetMember?.isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-white/10'}`}
           />
         </div>
 
         <div className="flex-1 min-w-0">
           <p
-            className="text-ds-text font-semibold text-sm truncate"
+            className="text-white font-black text-[15px] truncate tracking-tight"
             style={targetMember?.color ? { color: targetMember.color } : {}}
           >
             {targetMember?.username}
           </p>
-          <p className={`text-[10px] leading-tight ${targetMember?.isOnline ? 'text-ds-green' : 'text-ds-muted'}`}>
-            {targetMember?.isOnline ? 'В сети' : 'Не в сети'}
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+             {targetMember?.isOnline ? <Sparkles size={10} className="text-ds-accent" /> : <Clock size={10} className="text-white/20" />}
+             <span className={`text-[9px] font-black uppercase tracking-[0.1em] ${targetMember?.isOnline ? 'text-ds-accent' : 'text-white/20'}`}>
+                {targetMember?.isOnline ? 'В сети' : 'Не в сети'}
+             </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-ds-sidebar rounded-lg">
-          <svg className="w-3.5 h-3.5 text-ds-muted" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
-          </svg>
-          <span className="text-ds-muted text-[10px] font-semibold uppercase tracking-wider">ЛС</span>
+        <div className="flex items-center gap-2 group">
+           <div className="bg-white/5 px-4 py-1.5 rounded-full border border-white/5 flex items-center gap-2">
+              <MessageSquare size={14} className="text-ds-accent" />
+              <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">Личка</span>
+           </div>
+           <button
+             onClick={onClose}
+             className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all"
+             title="Закрыть"
+           >
+             <X size={22} />
+           </button>
         </div>
-
-        <button
-          onClick={onClose}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-colors"
-          title="Закрыть"
-        >
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
-        </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto no-scrollbar py-6 flex flex-col min-h-0">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="flex gap-1 animate-pulse text-ds-muted">Загрузка сообщений...</div>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+             <div className="w-12 h-12 border-[3px] border-ds-accent border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.2)]" />
+             <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.2em] animate-pulse">Загрузка данных...</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className="w-20 h-20 rounded-full bg-ds-sidebar overflow-hidden flex items-center justify-center">
-              <img src={targetAvatar} alt={targetMember?.username} className="w-[120px] h-[120px] max-w-none select-none" />
+          <div className="flex flex-col items-center justify-center h-full gap-8 animate-fade-in p-10">
+            <div className="relative">
+               <div className="w-32 h-32 rounded-[3.5rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl relative z-10 group">
+                 <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-20 transition-opacity" />
+                 <img src={targetAvatar} alt={targetMember?.username} className="w-full h-full object-cover select-none transition-transform duration-700 group-hover:scale-110" />
+               </div>
+               <div className="absolute inset-0 bg-ds-accent/10 blur-[60px] rounded-full animate-pulse-soft" />
             </div>
-            <div className="text-center">
-              <p className="text-ds-text font-bold text-lg" style={targetMember?.color ? { color: targetMember.color } : {}}>
+            <div className="text-center max-w-xs">
+              <h3 className="text-white font-black text-2xl tracking-tighter" style={targetMember?.color ? { color: targetMember.color } : {}}>
                 {targetMember?.username}
+              </h3>
+              <p className="text-white/30 text-xs font-bold mt-2 leading-relaxed">
+                Это самое начало твоей личной истории с этим человеком. Напиши что-нибудь крутое!
               </p>
-              <p className="text-ds-muted text-sm mt-1">Это начало вашего личного чата. Напиши первым!</p>
             </div>
           </div>
         ) : (
@@ -216,69 +226,48 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
             ))}
           </div>
         )}
-        <div ref={bottomRef} />
+        <div ref={bottomRef} className="h-4" />
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-4 flex-shrink-0">
-        <form onSubmit={handleSend}>
-          {/* Превью прикреплённого файла */}
+      <div className="px-6 pb-6 pt-2 flex-shrink-0 relative z-20">
+        <form onSubmit={handleSend} className="relative group">
+          {/* Attachment Preview */}
           {attachment && (
-            <div className="mb-2 relative inline-flex items-center gap-2 p-2 bg-ds-sidebar rounded-xl border border-ds-divider/30">
-              {attachment.file.type.startsWith('video/') ? (
-                <video
-                  src={attachment.previewUrl}
-                  className="h-14 w-14 rounded-lg object-cover"
-                />
-              ) : attachment.file.type.startsWith('image/') ? (
-                <img
-                  src={attachment.previewUrl}
-                  alt="Превью"
-                  className="h-14 w-14 rounded-lg object-cover"
-                />
-              ) : (
-                <div className="h-14 w-14 rounded-lg bg-ds-bg flex items-center justify-center text-ds-muted">
-                  <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-                  </svg>
+            <div className="absolute bottom-full mb-4 left-0 animate-slide-up">
+              <div className="bg-[#121212] rounded-[1.5rem] p-3 border border-white/10 shadow-2xl flex items-center gap-4 min-w-[200px]">
+                {attachment.file.type.startsWith('video/') ? (
+                  <video src={attachment.previewUrl} className="h-16 w-16 rounded-xl object-cover border border-white/10 shadow-lg" />
+                ) : attachment.file.type.startsWith('image/') ? (
+                  <img src={attachment.previewUrl} alt="Preview" className="h-16 w-16 rounded-xl object-cover border border-white/10 shadow-lg" />
+                ) : (
+                  <div className="h-16 w-16 rounded-xl bg-black/40 flex items-center justify-center text-ds-accent vibe-glow-blue">
+                    <FileText size={24} />
+                  </div>
+                )}
+                <div className="pr-10">
+                   <p className="text-white text-[11px] font-black truncate max-w-[120px] uppercase tracking-tighter">{attachment.file.name}</p>
+                   <p className="text-white/20 text-[9px] font-black uppercase mt-1">{(attachment.file.size / 1024).toFixed(1)} KB</p>
                 </div>
-              )}
-              
-              <div className="flex-1 min-w-0 pr-6">
-                <p className="text-ds-text text-xs font-medium truncate max-w-[150px]">{attachment.file.name}</p>
-                <p className="text-ds-muted text-[10px] uppercase">{(attachment.file.size / 1024).toFixed(1)} KB</p>
+                <button
+                  type="button" onClick={removeAttachment}
+                  className="absolute top-2 right-2 w-7 h-7 bg-ds-red/80 hover:bg-ds-red text-white rounded-full flex items-center justify-center transition-all shadow-lg active:scale-90"
+                >
+                  <X size={14} strokeWidth={3} />
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={removeAttachment}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-ds-red rounded-full flex items-center justify-center hover:opacity-90 transition-opacity z-10"
-                title="Убрать"
-              >
-                <svg width="10" height="10" fill="white" viewBox="0 0 24 24">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </svg>
-              </button>
             </div>
           )}
 
-          <div className="relative bg-ds-input rounded-xl flex items-end gap-2 px-2 py-3 border border-ds-divider/30 focus-within:border-ds-accent/40 transition-colors">
-            {/* Кнопка скрепки */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={handleFileChange}
-            />
+          <div className="relative bg-[#121212] rounded-[1.5rem] flex items-end gap-3 p-2.5 border border-white/5 focus-within:border-ds-accent/30 transition-all shadow-2xl group/input">
+            <div className="absolute inset-0 vibe-moving-glow opacity-0 group-focus-within/input:opacity-[0.03] rounded-[1.5rem] pointer-events-none" />
+            
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
             <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Прикрепить файл"
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-all"
+               type="button" onClick={() => fileInputRef.current?.click()}
+               className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl text-white/20 hover:text-ds-accent hover:bg-ds-accent/5 transition-all active:scale-90"
             >
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
-              </svg>
+              <Paperclip size={20} />
             </button>
 
             <textarea
@@ -288,7 +277,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
               onKeyDown={handleKeyDown}
               placeholder={`Написать ${targetMember?.username ?? ''}`}
               rows={1}
-              className="flex-1 bg-transparent text-ds-text text-sm placeholder-ds-muted/60 resize-none focus:outline-none leading-relaxed max-h-48 overflow-y-auto"
+              className="flex-1 bg-transparent text-white text-[14px] font-bold placeholder-white/20 resize-none focus:outline-none leading-[1.6] py-3 max-h-48 scrollbar-hide"
               style={{ height: 'auto' }}
               onInput={(e) => {
                 e.target.style.height = 'auto';
@@ -296,51 +285,47 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
               }}
             />
 
-            {draft.length > MAX_LENGTH * 0.8 && (
-              <span className={`text-xs flex-shrink-0 mb-2 ${draft.length >= MAX_LENGTH ? 'text-ds-red' : 'text-ds-muted'}`}>
-                {MAX_LENGTH - draft.length}
-              </span>
-            )}
-
-            {/* Emoji toggle */}
-            <div className="relative flex-shrink-0">
-              <button
-                id="emoji-toggle-btn"
-                type="button"
-                onClick={() => setShowEmojiPicker(prev => !prev)}
-                title="Добавить эмодзи"
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-ds-muted hover:text-ds-text hover:bg-ds-hover transition-all"
-              >
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S7.67 8 8.5 8 10 8.67 10 9.5 9.33 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
-                </svg>
-              </button>
-
-              {showEmojiPicker && (
-                <div ref={pickerRef} className="absolute bottom-[calc(100%+12px)] right-0 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-lg">
-                  <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled />
-                </div>
-              )}
+            <div className="relative flex items-center gap-1.5 self-center mr-1">
+               <button
+                  id="emoji-toggle-btn"
+                  type="button" onClick={() => setShowEmojiPicker(prev => !prev)}
+                  className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all active:scale-90
+                    ${showEmojiPicker ? 'bg-ds-accent/10 text-ds-accent vibe-glow-blue' : 'text-white/20 hover:text-white/60 hover:bg-white/5'}`}
+               >
+                 <Smile size={22} />
+               </button>
+               {showEmojiPicker && (
+                  <div ref={pickerRef} className="absolute bottom-full right-0 mb-6 z-50 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-3xl overflow-hidden border border-white/10">
+                    <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled />
+                  </div>
+               )}
             </div>
 
             <button
               type="submit"
               disabled={(!draft.trim() && !attachment) || isBusy}
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-ds-accent hover:bg-ds-accent/90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-2xl bg-ds-accent text-black font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-20 disabled:grayscale disabled:scale-100 shadow-lg shadow-ds-accent/20 vibe-glow-blue relative overflow-hidden group/btn"
             >
+              <div className="absolute inset-0 vibe-moving-glow opacity-30 group-hover/btn:opacity-60 transition-opacity" />
               {isBusy ? (
-                <svg className="animate-spin" width="14" height="14" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4" />
-                  <path className="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin z-10" />
               ) : (
-                <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
+                <Send size={20} weight="bold" className="z-10 translate-x-0.5" />
               )}
             </button>
           </div>
-          <p className="text-[10px] text-ds-muted/50 mt-1 px-1">Enter — отправить · Shift+Enter — перенос · Ctrl+V — вставка медиа</p>
+          
+          <div className="flex justify-between items-center mt-3 px-4">
+             <div className="flex items-center gap-4 font-black uppercase text-[8px] tracking-[0.2em] text-white/10">
+                <span className="flex items-center gap-1 opacity-50 hover:opacity-100 transition-opacity"><Check size={8}/> ENTER СЕНД</span>
+                <span className="opacity-50 hover:opacity-100 transition-opacity">CTRL+V МЕДИА</span>
+             </div>
+             {draft.length > MAX_LENGTH * 0.8 && (
+                <span className={`text-[9px] font-black font-mono transition-colors ${draft.length >= MAX_LENGTH ? 'text-ds-red' : 'text-white/20'}`}>
+                  {MAX_LENGTH - draft.length}
+                </span>
+             )}
+          </div>
         </form>
       </div>
     </div>
