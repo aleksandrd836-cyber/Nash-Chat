@@ -297,7 +297,7 @@ function App() {
             {!isElectron && (
               <a
                 href={downloadUrl}
-                className="px-6 py-3 border border-white/10 hover:border-white/20 text-white/50 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95"
+                className="px-8 py-3 border border-ds-accent/30 hover:border-ds-accent/60 text-ds-accent/70 hover:text-ds-accent text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-lg shadow-ds-accent/5 vibe-glow-blue"
               >
                 НУЖНО ПРИЛОЖЕНИЕ? ТЫКАЙ СЮДА
               </a>
