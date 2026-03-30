@@ -44,33 +44,26 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
     setLoading(true);
     setError(null);
     try {
-      // Ищем сервер по коду
-      const { data: server, error: findErr } = await supabase
-        .from('servers')
-        .select('*')
-        .eq('invite_code', inviteCode.trim().toLowerCase())
-        .single();
-      if (findErr || !server) {
-        setError('Сервер с таким кодом не найден.');
+      // Используем RPC-функцию (SECURITY DEFINER) — она обходит RLS и сама добавит участника
+      const { data, error: rpcErr } = await supabase
+        .rpc('join_server_by_invite', { p_invite_code: inviteCode.trim().toLowerCase() });
+
+      if (rpcErr) throw rpcErr;
+
+      if (data?.error === 'not_found') {
+        setError('Сервер с таким кодом не найден. Проверь правильность кода.');
         setLoading(false);
         return;
       }
 
-      // Добавляем участника
-      const { error: memberErr } = await supabase
-        .from('server_members')
-        .insert({ server_id: server.id, user_id: currentUserId, role: 'member' });
-      if (memberErr) {
-        if (memberErr.code === '23505') {
-          setError('Вы уже являетесь участником этого сервера.');
-        } else {
-          throw memberErr;
-        }
+      if (data?.error === 'already_member') {
+        setError('Вы уже являетесь участником этого сервера.');
         setLoading(false);
         return;
       }
 
-      onServerJoined(server);
+      // data содержит { id, name, owner_id, invite_code }
+      onServerJoined(data);
       onClose();
     } catch (e) {
       setError(e.message);
