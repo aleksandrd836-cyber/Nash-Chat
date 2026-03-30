@@ -92,7 +92,7 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
     <div
       className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 relative overflow-hidden
         ${!isSelf ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'}
-        ${!isOnline ? 'opacity-40 grayscale-[0.5]' : ''}`}
+        ${!isOnline ? 'opacity-60 grayscale-[0.3]' : ''}`}
       onClick={() => !isSelf && onOpenDM?.(member)}
       title={!isSelf ? `Написать ${member.username}` : ''}
     >
@@ -109,10 +109,10 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
         {/* Online indicator */}
         <span
           className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-[#0a0a0a] z-20 transition-all duration-300
-            ${isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-white/10'}`}
+            ${isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-white/20'}`}
         />
       </div>
-
+ 
       {/* Name */}
       <div className="flex-1 min-w-0 z-10">
         <p
@@ -120,9 +120,9 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
           style={member.color ? { color: member.color } : { color: '#ffffff' }}
         >
           {member.username}
-          {isSelf && <span className="text-white/20 font-black text-[9px] ml-2 uppercase tracking-widest">(ВЫ)</span>}
+          {isSelf && <span className="text-white/40 font-black text-[9px] ml-2 uppercase tracking-widest">(ВЫ)</span>}
         </p>
-        <p className={`text-[9px] font-black uppercase tracking-widest ${isOnline ? 'text-ds-accent' : 'text-white/10'}`}>
+        <p className={`text-[9px] font-black uppercase tracking-widest ${isOnline ? 'text-ds-accent' : 'text-white/30'}`}>
           {isOnline ? 'В СЕТИ' : 'OFFLINE'}
         </p>
       </div>

@@ -210,7 +210,7 @@ function App() {
             </div>
             <div>
                <p className="text-white font-black uppercase tracking-tight text-sm">Начни Путешествие</p>
-               <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.15em] mt-2 leading-relaxed">Создай свой сервер или вступи по коду от друга</p>
+               <p className="text-[10px] text-white/50 font-black uppercase tracking-[0.15em] mt-2 leading-relaxed">Создай свой сервер или вступи по коду от друга</p>
             </div>
             <button
               onClick={() => setServerEntryOpen(true)}
@@ -259,7 +259,7 @@ function App() {
             </div>
             <div className="relative z-10 max-w-sm">
               <h2 className="text-white font-black text-4xl tracking-tighter mb-4 uppercase">Привет, {displayUsername}!</h2>
-              <p className="text-white/30 text-xs font-bold leading-relaxed uppercase tracking-widest">
+              <p className="text-white/50 text-xs font-bold leading-relaxed uppercase tracking-widest">
                  Твоя атмосфера начинается здесь. Настрой сервер и пригласи друзей в мир VIBE.
               </p>
             </div>
@@ -289,14 +289,14 @@ function App() {
             </div>
             <div className="max-w-xs">
               <h3 className="text-white font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>
-              <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
+              <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
                  Выбери текстовый или голосовой канал слева, чтобы окунуться в общение.
               </p>
             </div>
             {!isElectron && (
               <a
                 href={downloadUrl}
-                className="px-6 py-3 border border-white/10 hover:border-white/20 text-white/30 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95"
+                className="px-6 py-3 border border-white/10 hover:border-white/20 text-white/50 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-2xl transition-all active:scale-95"
               >
                 НУЖНО ПРИЛОЖЕНИЕ? ТЫКАЙ СЮДА
               </a>

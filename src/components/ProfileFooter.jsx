@@ -19,18 +19,18 @@ export function ProfileFooter({
         onOpenSettings={onOpenSettings} 
       />
 
-      <div className="flex items-center gap-2 px-3 pb-2 text-white/20 flex-shrink-0 pt-0.5">
-        <span className="text-[10px] font-mono select-none tracking-tighter opacity-50 hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-2 px-3 pb-2 text-white/40 flex-shrink-0 pt-0.5">
+        <span className="text-[10px] font-mono select-none tracking-tighter opacity-80 hover:opacity-100 transition-opacity">
           V{isElectron ? (window.electronAPI?.version || '...') : (appVersion || 'WEB')}
         </span>
-
+ 
         {isElectron && (
           <div className="ml-auto flex items-center">
             {updateStatus === 'idle' && (
               <button
                 onClick={onCheckUpdate}
                 title="Проверить обновления"
-                className="text-[9px] font-bold uppercase tracking-widest hover:text-ds-accent transition-all cursor-pointer opacity-40 hover:opacity-100"
+                className="text-[9px] font-bold uppercase tracking-widest hover:text-ds-accent transition-all cursor-pointer opacity-70 hover:opacity-100"
               >
                 CHECK UPDATE
               </button>
