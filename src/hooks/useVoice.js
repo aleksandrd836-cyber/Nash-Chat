@@ -344,7 +344,16 @@ export function useVoice() {
       if (status === 'SUBSCRIBED') {
         await channel.track(presencePayload.current);
         if (globalPresence.current) {
-          globalPresence.current.track({ channelId, userId: user.id, username, color, joined_at: Date.now() });
+          globalPresence.current.track({ 
+            channelId, 
+            userId: user.id, 
+            username, 
+            color, 
+            joined_at: Date.now(),
+            isMuted: isMutedRef.current,
+            isDeafened: isDeafenedRef.current,
+            isScreenSharing: false
+          });
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
@@ -381,6 +390,14 @@ export function useVoice() {
       presencePayload.current.isMuted = next;
       realtimeChannel.current?.track(presencePayload.current).catch(() => {});
       
+      if (globalPresence.current) {
+        globalPresence.current.track({ 
+          ...presencePayload.current, 
+          channelId: activeChannelId,
+          joined_at: Date.now() 
+        }).catch(() => {});
+      }
+      
       return next;
     });
   }, []);
@@ -395,6 +412,14 @@ export function useVoice() {
       // Обновляем статус в Presence
       presencePayload.current.isDeafened = next;
       realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+
+      if (globalPresence.current) {
+        globalPresence.current.track({ 
+          ...presencePayload.current, 
+          channelId: activeChannelId,
+          joined_at: Date.now() 
+        }).catch(() => {});
+      }
 
       return next;
     });
@@ -425,6 +450,15 @@ export function useVoice() {
       setIsScreenSharing(true);
       presencePayload.current.isScreenSharing = true;
       realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+      
+      if (globalPresence.current) {
+        globalPresence.current.track({ 
+          ...presencePayload.current, 
+          channelId: activeChannelId,
+          joined_at: Date.now() 
+        }).catch(() => {});
+      }
+      
       notifications.play('self_stream');
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) { console.error('Screen sharing error', err); }
@@ -444,6 +478,15 @@ export function useVoice() {
     setIsScreenSharing(false);
     presencePayload.current.isScreenSharing = false;
     realtimeChannel.current?.track(presencePayload.current).catch(() => {});
+    
+    if (globalPresence.current) {
+      globalPresence.current.track({ 
+        ...presencePayload.current, 
+        channelId: activeChannelId,
+        joined_at: Date.now() 
+      }).catch(() => {});
+    }
+    
     notifications.play('stream_stop');
   }, []);
 

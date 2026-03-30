@@ -292,6 +292,7 @@ export default function App() {
           username={displayUsername}
           userColor={displayColor}
           onClose={() => setSettingsOpen(false)}
+          onSignOut={auth.signOut}
           onUsernameChange={(newName, newColor) => {
             setLocalUsername(newName);
             setLocalColor(newColor || null);

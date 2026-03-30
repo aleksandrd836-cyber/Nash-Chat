@@ -10,7 +10,7 @@ import { notifications } from '../lib/notifications';
  * - Выбор микрофона
  * - Тест микрофона (слышишь себя)
  */
-export function SettingsModal({ user, username: initialUsername, userColor, onClose, onUsernameChange }) {
+export function SettingsModal({ user, username: initialUsername, userColor, onClose, onUsernameChange, onSignOut }) {
   // ── Ник и Цвет ──
   const [username, setUsername]   = useState(initialUsername || '');
   const [color, setColor]         = useState(userColor || '#ffffff');
@@ -525,6 +525,22 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
               </div>
             </section>
           )}
+
+            <div className="pt-6 border-t border-ds-divider/30 mt-8 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-ds-text font-bold text-sm">Выход из аккаунта</h3>
+                  <p className="text-ds-muted text-[11px]">Безопасно выйдет из системы на этом устройстве</p>
+                </div>
+                <button
+                  id="settings-logout-btn"
+                  onClick={onSignOut}
+                  className="px-4 py-2 border border-ds-red text-ds-red hover:bg-ds-red hover:text-white rounded-md text-[11px] font-bold transition-all"
+                >
+                  Выйти из аккаунта
+                </button>
+              </div>
+            </div>
 
         </div>
       </div>
