@@ -13,7 +13,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
     if (!currentUserId) return;
     const { data, error } = await supabase
       .from('server_members')
-      .select('server_id, role, servers(id, name, owner_id)')
+      .select('server_id, role, servers(id, name, owner_id, invite_code)')
       .eq('user_id', currentUserId);
     if (!error && data) {
       setServers(data.map(row => ({ ...row.servers, role: row.role })));

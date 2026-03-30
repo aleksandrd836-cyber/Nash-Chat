@@ -3,15 +3,54 @@ import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
 
 /**
- * Панель управления сервером для его владельца.
- * Позволяет: видеть инвайт-код, управлять участниками, удалить сервер.
+ * Надёжная функция копирования — работает и в браузере, и в Electron
  */
+function copyToClipboard(text) {
+  if (!text) return;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(() => legacyCopy(text));
+  } else {
+    legacyCopy(text);
+  }
+}
+
+function legacyCopy(text) {
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.position = 'fixed';
+  el.style.left = '-9999px';
+  el.style.top = '-9999px';
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  try { document.execCommand('copy'); } catch (e) { console.error('copy failed', e); }
+  document.body.removeChild(el);
+}
+
 export function ServerSettingsModal({ server, currentUserId, onClose, onServerDeleted }) {
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [serverName, setServerName] = useState(server.name);
-  const [savingName, setSavingName] = useState(false);
+  const [members, setMembers]         = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [copied, setCopied]           = useState(false);
+  const [serverName, setServerName]   = useState(server.name);
+  const [savingName, setSavingName]   = useState(false);
+  // Свой state для кода — не мутируем props
+  const [inviteCode, setInviteCode]   = useState(server.invite_code || '');
+  const [codeLoading, setCodeLoading] = useState(!server.invite_code);
+
+  // Если код не пришёл через props — загружаем из БД
+  useEffect(() => {
+    if (!server.invite_code) {
+      supabase
+        .from('servers')
+        .select('invite_code')
+        .eq('id', server.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.invite_code) setInviteCode(data.invite_code);
+          setCodeLoading(false);
+        });
+    }
+  }, [server.id, server.invite_code]);
 
   const fetchMembers = useCallback(async () => {
     const { data, error } = await supabase
@@ -39,30 +78,39 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   async function handleRegenerateCode() {
     if (!window.confirm('Сгенерировать новый код? Старый перестанет работать.')) return;
     const newCode = Math.random().toString(36).substring(2, 10);
-    await supabase.from('servers').update({ invite_code: newCode }).eq('id', server.id);
-    server.invite_code = newCode; // обновляем локально
-    setCopied(false);
+    const { error } = await supabase
+      .from('servers')
+      .update({ invite_code: newCode })
+      .eq('id', server.id);
+    if (!error) {
+      setInviteCode(newCode);
+      setCopied(false);
+    }
   }
 
   async function handleSaveName() {
     if (!serverName.trim() || serverName === server.name) return;
     setSavingName(true);
-    await supabase.from('servers').update({ name: serverName.trim() }).eq('id', server.id);
-    server.name = serverName.trim();
+    const { error } = await supabase
+      .from('servers')
+      .update({ name: serverName.trim() })
+      .eq('id', server.id);
+    if (!error) server.name = serverName.trim();
     setSavingName(false);
   }
 
   async function handleDeleteServer() {
-    if (!window.confirm(`Удалить сервер «${server.name}»? Это удалит ВСЕ каналы и историю. Действие нельзя отменить!`)) return;
+    if (!window.confirm(`Удалить сервер «${server.name}»? Это удалит ВСЕ каналы и историю. Нельзя отменить!`)) return;
     await supabase.from('servers').delete().eq('id', server.id);
     onServerDeleted();
     onClose();
   }
 
-  function copyInviteCode() {
-    navigator.clipboard.writeText(server.invite_code);
+  function handleCopy() {
+    if (!inviteCode) return;
+    copyToClipboard(inviteCode);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   }
 
   return (
@@ -109,32 +157,41 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           <section>
             <h3 className="text-xs font-semibold text-ds-muted uppercase tracking-wider mb-3">Код приглашения</h3>
             <div className="bg-ds-bg border border-ds-divider/50 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <code className="flex-1 text-2xl font-mono font-bold text-ds-accent tracking-widest uppercase text-center">
-                  {server.invite_code}
-                </code>
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={copyInviteCode}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      copied
-                        ? 'bg-ds-green/20 text-ds-green'
-                        : 'bg-ds-hover hover:bg-ds-divider text-ds-text'
-                    }`}
-                  >
-                    {copied ? '✓ Скопировано' : 'Скопировать'}
-                  </button>
-                  <button
-                    onClick={handleRegenerateCode}
-                    className="px-3 py-1.5 bg-ds-hover hover:bg-ds-divider text-ds-muted text-xs font-semibold rounded-lg transition-colors"
-                  >
-                    Обновить
-                  </button>
+              {codeLoading ? (
+                <div className="flex items-center justify-center py-3">
+                  <div className="w-5 h-5 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
                 </div>
-              </div>
-              <p className="text-ds-muted text-xs mt-3 text-center">
-                Отправь этот код другу — он введёт его в приложении для входа на сервер.
-              </p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <code className="flex-1 text-2xl font-mono font-bold text-ds-accent tracking-widest uppercase text-center select-all bg-ds-hover/50 rounded-lg px-3 py-2">
+                      {inviteCode || '—'}
+                    </code>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCopy}
+                      disabled={!inviteCode}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${
+                        copied
+                          ? 'bg-ds-green/20 text-ds-green border border-ds-green/30'
+                          : 'bg-ds-hover hover:bg-ds-divider text-ds-text border border-transparent'
+                      } disabled:opacity-40`}
+                    >
+                      {copied ? '✓ Скопировано!' : '📋 Скопировать'}
+                    </button>
+                    <button
+                      onClick={handleRegenerateCode}
+                      className="px-3 py-2 bg-ds-hover hover:bg-ds-divider text-ds-muted text-sm font-semibold rounded-lg transition-colors border border-transparent"
+                    >
+                      🔄 Обновить
+                    </button>
+                  </div>
+                  <p className="text-ds-muted text-xs mt-3 text-center">
+                    Отправь этот код другу — он введёт его, нажав «+» в левой панели.
+                  </p>
+                </>
+              )}
             </div>
           </section>
 
@@ -146,6 +203,8 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
             <div className="space-y-1">
               {loading ? (
                 <p className="text-ds-muted text-sm text-center py-4">Загрузка...</p>
+              ) : members.length === 0 ? (
+                <p className="text-ds-muted text-sm text-center py-4">Пока никого нет</p>
               ) : members.map(member => {
                 const { imageUrl } = getUserAvatar(member.username ?? '?');
                 const isOwner = member.id === server.owner_id;
@@ -156,7 +215,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                     key={member.id}
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-ds-hover transition-colors group"
                   >
-                    <div className="w-9 h-9 rounded-full bg-ds-bg overflow-hidden flex-shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-ds-bg overflow-hidden flex-shrink-0 flex items-center justify-center">
                       <img src={imageUrl} alt={member.username} className="w-[130%] h-[130%] -mt-[15%] -ml-[15%]" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -178,7 +237,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                         className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-ds-muted hover:text-ds-red hover:bg-ds-red/10 transition-all"
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M10 9V7l-2 2 2 2V9h5v2l2-2-2-2v2h-5zm-5 6h14c.55 0 1-.45 1-1v-1c0-2.33-4.67-3.5-7-3.5S5 10.67 5 13v1c0 .55.45 1 1 1z"/>
+                          <path d="M13 8c0-2.21-1.79-4-4-4S5 5.79 5 8s1.79 4 4 4 4-1.79 4-4zm2 2v2h3v3h2v-3h3v-2h-3V7h-2v3h-3zM1 18v2h16v-2c0-2.66-5.33-4-8-4s-8 1.34-8 4z"/>
                         </svg>
                       </button>
                     )}
