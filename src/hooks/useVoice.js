@@ -42,8 +42,10 @@ export function useVoice() {
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
     let channel;
+    let cancelled = false;
+
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
+      if (!user || cancelled) return;
       channel = supabase.channel('global_voice_presence', {
         config: { presence: { key: user.id } }
       });
@@ -61,12 +63,12 @@ export function useVoice() {
         latestUserPresence.forEach(p => {
           if (!newAll[p.channelId]) newAll[p.channelId] = new Map();
           newAll[p.channelId].set(p.userId, {
-            userId: p.userId, 
-            username: p.username, 
-            color: p.color, 
+            userId: p.userId,
+            username: p.username,
+            color: p.color,
             isScreenSharing: p.isScreenSharing,
-            isMuted: p.isMuted,
-            isDeafened: p.isDeafened
+            isMuted: !!p.isMuted,
+            isDeafened: !!p.isDeafened
           });
         });
         const finalAll = {};
@@ -76,8 +78,17 @@ export function useVoice() {
       channel.subscribe();
       globalPresence.current = channel;
     });
-    return () => { cleanupAll(); };
-  }, [cleanupAll]);
+
+    return () => {
+      cancelled = true;
+      // Только отписываемся от глобального канала — cleanupAll (голосовой) не трогаем здесь
+      if (channel) {
+        channel.untrack().catch(() => {});
+        supabase.removeChannel(channel).catch(() => {});
+      }
+      globalPresence.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const createPeerConnection = useCallback((remoteUserId) => {
     if (peerConns.current[remoteUserId]) return peerConns.current[remoteUserId];
