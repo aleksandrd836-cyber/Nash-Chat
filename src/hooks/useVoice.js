@@ -40,20 +40,6 @@ export function useVoice() {
   const iceDisconnectTimers = useRef({}); // Таймеры для отложенного закрытия при disconnected
   const autoMutedByDeafenRef = useRef(false);
 
-  // EFFECT: При изменении списка участников — проверяем, не «завис» ли у нас чей-то audio в паузе.
-  // Мы ТОЛЬКО вызываем play() — никогда не меняем audio.muted здесь.
-  // Это безопасный резерв для случая, когда браузер остановил audio из-за тихого трека (mute/unmute).
-  useEffect(() => {
-    participants.forEach(p => {
-      if (currentUserRef.current && p.userId === currentUserRef.current.id) return;
-      const audio = audioElements.current[p.userId];
-      if (audio && !audio.muted && audio.paused) {
-        console.log(`[Voice] Auto-resuming paused audio for ${p.username}`);
-        audio.play().catch(() => {});
-      }
-    });
-  }, [participants]);
-
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
     let channel;
@@ -142,30 +128,33 @@ export function useVoice() {
           const audio = new Audio();
           audio.autoplay = true;
           audio.muted = isDeafenedRef.current;
-          // Сохранённая громкость
           const savedVol = localStorage.getItem(`vol_${remoteUserId}`);
           if (savedVol !== null) audio.volume = Math.min(2, Number(savedVol) / 100);
-          // Прикрепляем к DOM чтобы браузер не удалил элемент как мусор
           audio.style.display = 'none';
           document.body.appendChild(audio);
           audioElements.current[remoteUserId] = audio;
-
-          // МГНОВЕННЫЙ АВТОРЕСТАРТ: если браузер поставил audio на паузу
-          // (например, потому что трек был disabled и стал тихим),
-          // мы немедленно перезапускаем воспроизведение.
-          audio.onpause = () => {
-            if (!audio.muted) {
-              console.log(`[Voice] audio.onpause — перезапуск для ${remoteUserId}`);
-              audio.play().catch(() => {});
-            }
-          };
         }
         const audio = audioElements.current[remoteUserId];
-        // Всегда обновляем srcObject и всегда вызываем play().
-        // Некоторые браузеры останавливают воспроизведение после renegotiation WebRTC.
         if (audio.srcObject?.id !== stream.id) {
           audio.srcObject = stream;
         }
+
+        // ── Ключевое исправление: слушаем WebRTC-события трека ──
+        // track.onunmute срабатывает ТОЧНО когда отправитель включает микрофон (t.enabled = true)
+        // Это правильный триггер для перезапуска воспроизведения на стороне получателя.
+        track.onunmute = () => {
+          const a = audioElements.current[remoteUserId];
+          if (a && !a.muted) {
+            console.log(`[Voice] track.onunmute от ${remoteUserId} — перезапуск`);
+            a.play().catch(() => {});
+          }
+        };
+        // track.onmute — трек замолчал (отправитель нажал мут)
+        // Ничего не делаем — браузер сам обработает тишину.
+        track.onmute = () => {
+          console.log(`[Voice] track.onmute от ${remoteUserId}`);
+        };
+
         audio.play().catch(() => {
           const unlock = () => { audio.play().catch(() => {}); document.removeEventListener('click', unlock); };
           document.addEventListener('click', unlock);
@@ -357,8 +346,9 @@ export function useVoice() {
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
       newPresences.forEach(p => { 
         if (p.userId !== user.id) {
-          createPeerConnection(p.userId); 
-          notifications.play('join');
+          createPeerConnection(p.userId);
+          // Звук 'join' убран — Supabase иногда триггерит 'join' при обновлении presence (напр. мют),
+          // что вызывало звон у всех участников при каждом мюте/анмюте.
         }
       });
       syncParticipants(channel);
@@ -366,7 +356,7 @@ export function useVoice() {
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
       leftPresences.forEach(p => {
         closePeer(p.userId);
-        if (p.userId !== user.id) notifications.play('leave');
+        // Звук 'leave' убран по той же причине.
       });
       syncParticipants(channel);
     });
