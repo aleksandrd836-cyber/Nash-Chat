@@ -4,10 +4,11 @@ import { getUserAvatar } from '../lib/avatar';
 import { Message } from './Message';
 import EmojiPicker from 'emoji-picker-react';
 import { 
-  X, Send, Smile, Paperclip, 
+  X, Send, Smile, Paperclip, Sparkles,
   MessageSquare, User, Clock, Check, 
   ChevronLeft, AlertCircle, FileText
 } from 'lucide-react';
+
 
 const MAX_LENGTH = 2000;
 const MAX_FILE_SIZE_MB = 50;

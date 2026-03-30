@@ -15,6 +15,8 @@ import { ServerEntryModal } from './components/ServerEntryModal';
 import { UserPanel } from './components/UserPanel';
 import { ProfileFooter } from './components/ProfileFooter';
 import { ServerSettingsModal } from './components/ServerSettingsModal';
+import { Globe, Sparkles, Hash, Download } from 'lucide-react';
+
 
 export default function App() {
   const auth  = useAuth();
