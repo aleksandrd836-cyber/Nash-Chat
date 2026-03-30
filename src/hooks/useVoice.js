@@ -328,6 +328,13 @@ export function useVoice() {
     const audioCtx = new AudioContextClass();
     audioContextRef.current = audioCtx;
     
+    // КРИТИЧНО: AudioContext может стартовать в suspended после async getUserMedia.
+    // В suspended режиме destination.stream не производит аудио-фреймы!
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    console.log('[Voice] AudioContext state:', audioCtx.state);
+    
     const source = audioCtx.createMediaStreamSource(stream);
     const gainNode = audioCtx.createGain();
     const destination = audioCtx.createMediaStreamDestination();
@@ -336,18 +343,21 @@ export function useVoice() {
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
     analyser.smoothingTimeConstant = 0.3;
-    // Подключаем анализатор ПАРАЛЛЕЛЬНО к gain — он слушает сырой микрофон
-    source.connect(analyser);
     
-    // Устанавливаем начальное состояние микрофона согласно стейту
+    // Цепочка: source → analyser → gainNode → destination
+    // AnalyserNode пропускает аудио насквозь + анализирует его
+    source.connect(analyser);
+    analyser.connect(gainNode);
+    
     const shouldBeMuted = isMutedRef.current || isDeafenedRef.current;
     gainNode.gain.value = shouldBeMuted ? 0 : 1;
     
-    source.connect(gainNode);
     gainNode.connect(destination);
     
     localGainNodeRef.current = gainNode;
     localStream.current = destination.stream;
+    console.log('[Voice] Pipeline ready, tracks:', destination.stream.getAudioTracks().length, 'active:', destination.stream.active);
+
 
     // Настоящий VAD: проверяем уровень громкости с микрофона каждые 100мс
     const VAD_THRESHOLD = 0.015; // Порог громкости (0-1). Ниже = тишина.
