@@ -49,15 +49,15 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
       <div className="relative w-full max-w-md animate-fade-in">
         {/* Brand/Logo Section */}
         <div className="text-center mb-10 group cursor-default">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2.5rem] bg-ds-sidebar/30 mb-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative border border-white/10 overflow-hidden">
-             <div className="absolute inset-0 vibe-moving-glow opacity-20" />
-             <div className="absolute inset-0 bg-gradient-to-br from-ds-accent/10 to-transparent opacity-50" />
-              <div className="w-full h-full flex items-center justify-center backdrop-blur-xl relative z-10">
-                <svg viewBox="0 0 24 24" className="w-12 h-12 drop-shadow-[0_0_15px_rgba(0,240,255,0.8)] animate-vibe-pulse">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2.5rem] bg-ds-sidebar/40 mb-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative border border-white/10">
+             <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-[2.5rem]" />
+             <div className="absolute inset-0 bg-gradient-to-br from-ds-accent/20 to-transparent opacity-50 rounded-[2.5rem]" />
+             <div className="relative z-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" className="drop-shadow-[0_0_20px_rgba(0,240,255,0.9)] animate-vibe-pulse">
                   <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
                 </svg>
-              </div>
-           </div>
+             </div>
+          </div>
            <h1 className="text-5xl font-black text-ds-text uppercase tracking-tighter leading-none mb-2">VIBE</h1>
            <div className="flex items-center justify-center gap-2">
               <span className="h-[1px] w-4 bg-ds-accent/40" />
