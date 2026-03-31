@@ -16,7 +16,7 @@ import { ServerEntryModal } from './components/ServerEntryModal';
 import { UserPanel } from './components/UserPanel';
 import { ProfileFooter } from './components/ProfileFooter';
 import { ServerSettingsModal } from './components/ServerSettingsModal';
-import { Globe, Sparkles, Hash, Download, PlusCircle, Compass, Zap, Activity, Star, Users } from 'lucide-react';
+import { Globe, Sparkles, Hash, Download, PlusCircle, Compass, Zap, Activity, Star, Users, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /** Global React Error Boundary — вместо чёрного экрана показывает ошибку */
 class ErrorBoundary extends React.Component {
