@@ -10,7 +10,8 @@ import { notifications } from '../lib/notifications';
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:global.stun.twilio.com:3478' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
 ];
 
 export function useVoice() {
@@ -219,29 +220,12 @@ export function useVoice() {
 
       if (state === 'failed' || state === 'closed') {
         // Соединение окончательно упало — сразу закрываем
-        if (iceDisconnectTimers.current[remoteUserId]) {
-          clearTimeout(iceDisconnectTimers.current[remoteUserId]);
-          delete iceDisconnectTimers.current[remoteUserId];
-        }
-        closePeer(remoteUserId);
+        closePeer(remoteUserId, true);
       } else if (state === 'disconnected') {
-        // 'disconnected' — временное состояние, WebRTC сам восстанавливается.
-        // Даём 8 секунд на самовосстановление, только потом закрываем.
-        if (!iceDisconnectTimers.current[remoteUserId]) {
-          iceDisconnectTimers.current[remoteUserId] = setTimeout(() => {
-            if (pc.iceConnectionState === 'disconnected') {
-              console.warn(`[WebRTC] Соединение с ${remoteUserId} не восстановилось — закрываю.`);
-              closePeer(remoteUserId);
-            }
-            delete iceDisconnectTimers.current[remoteUserId];
-          }, 8000);
-        }
-      } else if (state === 'connected' || state === 'completed') {
-        // Соединение восстановилось — отменяем таймер закрытия
-        if (iceDisconnectTimers.current[remoteUserId]) {
-          clearTimeout(iceDisconnectTimers.current[remoteUserId]);
-          delete iceDisconnectTimers.current[remoteUserId];
-        }
+        // 'disconnected' — временное состояние. 
+        // Мы больше не закрываем его по таймеру, а позволяем syncParticipants 
+        // решить, нужно ли переподключение, если связь не восстановится.
+        console.warn(`[WebRTC] Соединение с ${remoteUserId} временно потеряно (disconnected)`);
       }
     };
 
@@ -347,9 +331,19 @@ export function useVoice() {
         isScreenSharing: p.isScreenSharing, isSpeaking: p.isSpeaking,
         isMuted: p.isMuted, isDeafened: p.isDeafened
       });
+      
+      // ── САМОВОССТАНОВЛЕНИЕ (Self-Healing) ──
+      // Если пользователя видим, но соединения нет (и это не я), создаем его.
+      // Чтобы не спамить обеими сторонами, инициатором выступает тот, чей ID "больше".
+      if (p.userId !== currentUserRef.current?.id && !peerConns.current[p.userId]) {
+        if (currentUserRef.current?.id > p.userId) {
+          console.log(`[Self-Healing] Обнаружен онлайн-участник ${p.userId} без PeerConnection. Инициирую связь...`);
+          createPeerConnection(p.userId, channel);
+        }
+      }
     });
     setParticipants(Array.from(seen.values()));
-  }, []);
+  }, [createPeerConnection, activeChannelId]);
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color) => {
     if (activeChannelId) await leaveVoiceChannel();
@@ -465,8 +459,13 @@ export function useVoice() {
             clearTimeout(ghostPeersRef.current[p.userId]);
             delete ghostPeersRef.current[p.userId];
           } else {
-            console.log(`[Presence] Новый пользователь в канале: ${p.userId}`);
-            createPeerConnection(p.userId, channel);
+            // Инициируем соединение только если мой ID больше (инициатор)
+            if (user.id > p.userId) {
+              console.log(`[Presence] Я инициатор для ${p.userId}. Создаю PeerConnection`);
+              createPeerConnection(p.userId, channel);
+            } else {
+              console.log(`[Presence] Ожидаю Offer от инициатора ${p.userId}`);
+            }
           }
         }
       });
@@ -487,7 +486,7 @@ export function useVoice() {
           closePeer(p.userId, true);
           delete ghostPeersRef.current[p.userId];
           syncParticipants(channel);
-        }, 5000);
+        }, 15000); // 15 секунд вместо 5
       });
     });
 
