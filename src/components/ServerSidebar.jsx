@@ -6,7 +6,7 @@ import { getUserAvatar } from '../lib/avatar';
  * Вертикальная панель серверов слева.
  * Отображает иконки серверов участника и кнопку "+" для создания/вступления.
  */
-export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, refreshTrigger }) {
+export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, onHomeClick, refreshTrigger }) {
   const [servers, setServers] = useState([]);
 
   const fetchServers = useCallback(async () => {
@@ -34,6 +34,36 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
 
   return (
     <div className="w-[72px] flex-shrink-0 bg-ds-servers/92 backdrop-blur-[40px] flex flex-col items-center py-3 gap-3 overflow-y-auto no-scrollbar select-none">
+      
+      {/* Vibe Logo Button / Home */}
+      <div className="relative group flex items-center mb-1">
+        {/* Полоска активного "логотипа" (когда на главной) */}
+        {!selectedServerId && (
+          <div className="absolute left-0 w-1 h-10 rounded-r-full bg-ds-accent transition-all duration-300 shadow-[0_0_12px_#00f0ff]" />
+        )}
+        
+        <button
+          onClick={onHomeClick}
+          title="Vibe — Главная"
+          className={`w-12 h-12 transition-all duration-300 flex items-center justify-center shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2
+            ${!selectedServerId 
+              ? 'rounded-[14px] bg-ds-sidebar text-ds-accent vibe-glow-blue border-ds-accent' 
+              : 'rounded-[24px] hover:rounded-[14px] bg-ds-servers/40 backdrop-blur-md text-ds-accent/80 hover:text-ds-accent border-white/5 hover:border-ds-accent/40'
+            }`}
+        >
+          {/* Иконка Звезды Vibe */}
+          <svg viewBox="0 0 24 24" className={`w-7 h-7 drop-shadow-[0_0_8px_rgba(0,240,255,0.4)] group-hover/btn:drop-shadow-[0_0_15px_rgba(0,240,255,0.8)] transition-all duration-300 ${!selectedServerId ? 'vibe-logo-glow animate-vibe-pulse' : 'vibe-logo-glow opacity-80 group-hover:opacity-100'}`}>
+            <path fill="currentColor" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
+          </svg>
+          
+          {/* Внутренняя анимация свечения */}
+          <div className="absolute inset-0 vibe-moving-glow opacity-[0.15] pointer-events-none" />
+        </button>
+      </div>
+
+      {/* Разделитель */}
+      <div className="w-8 h-[2px] bg-ds-divider/40 rounded-lg mx-auto mb-1 flex-shrink-0" />
+
       {/* Список серверов */}
       {servers.map(server => {
         const isSelected = selectedServerId === server.id;

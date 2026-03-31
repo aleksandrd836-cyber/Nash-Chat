@@ -217,6 +217,7 @@ function App() {
         selectedServerId={selectedServer?.id}
         onSelectServer={handleSelectServer}
         onCreateServer={() => setServerEntryOpen(true)}
+        onHomeClick={() => { setSelectedServer(null); setActiveDM(null); }}
         refreshTrigger={serverRefresh}
       />
 
