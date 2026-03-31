@@ -15,7 +15,7 @@ import { ServerEntryModal } from './components/ServerEntryModal';
 import { UserPanel } from './components/UserPanel';
 import { ProfileFooter } from './components/ProfileFooter';
 import { ServerSettingsModal } from './components/ServerSettingsModal';
-import { Globe, Sparkles, Hash, Download } from 'lucide-react';
+import { Globe, Sparkles, Hash, Download, PlusCircle, Compass, Zap, Activity, Star, Users } from 'lucide-react';
 
 /** Global React Error Boundary — вместо чёрного экрана показывает ошибку */
 class ErrorBoundary extends React.Component {
@@ -277,32 +277,93 @@ function App() {
 
       {/* ── Основной контент ── */}
       <main className="flex-1 flex min-w-0 overflow-hidden">
-        {!selectedServer ? (
-          // Экран приветствия когда нет сервера
-          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative overflow-hidden">
-            <div className="relative group/glow">
-               <div className="w-32 h-32 rounded-[3.5rem] bg-black/40 flex items-center justify-center border-2 border-white/10 relative z-10 overflow-hidden shadow-2xl transition-transform hover:scale-105 duration-500">
-                  <svg viewBox="0 0 24 24" className="w-16 h-16 drop-shadow-[0_0_20px_rgba(0,240,255,0.8)]">
-                    <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
-                  </svg>
-                  <div className="absolute inset-0 vibe-moving-glow opacity-20" />
-               </div>
-               <div className="absolute inset-[-10px] bg-ds-accent/10 blur-2xl rounded-full opacity-40 animate-vibe-pulse" />
-            </div>
-            <div className="relative z-10 max-w-sm">
-              <h2 className="text-ds-text font-black text-4xl tracking-tighter mb-4 uppercase">Привет, {displayUsername}!</h2>
-              <p className="text-ds-muted text-xs font-bold leading-relaxed uppercase tracking-widest">
-                 Твоя атмосфера начинается здесь. Настрой сервер и пригласи друзей в мир VIBE.
+        {!selectedServer && !activeDM ? (
+          // Экран ХАБА когда нет сервера
+          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-transparent relative overflow-hidden animate-fade-in group">
+            {/* Фрагменты атмосферы */}
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-ds-accent/5 rounded-full blur-[120px] animate-vibe-pulse pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px] animate-aurora-shift pointer-events-none" />
+            <div className="absolute inset-0 vibe-moving-glow opacity-[0.02] pointer-events-none" />
+
+            {/* Заголовок */}
+            <div className="relative z-10 text-center mb-12 transform group-hover:scale-[1.02] transition-transform duration-700">
+              <div className="w-24 h-24 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative mx-auto mb-8 shadow-2xl group/star">
+                 <div className="absolute inset-0 vibe-moving-glow opacity-20" />
+                 <Star size={56} className="text-ds-accent vibe-logo-glow transition-all duration-500 group-hover/star:scale-110" fill="currentColor" strokeWidth={1} />
+              </div>
+              <h2 className="text-ds-text font-black text-5xl tracking-tighter mb-4 uppercase drop-shadow-[0_0_15px_rgba(var(--ds-accent-rgb),0.3)]">
+                Привет, <span className="text-ds-accent">{displayUsername}</span>!
+              </h2>
+              <p className="text-ds-muted text-[11px] font-black uppercase tracking-[0.3em] max-w-sm mx-auto leading-relaxed opacity-60">
+                 Твоя персональная станция ожидания. Настрой всё под себя и начинай общение.
               </p>
             </div>
-            {!isElectron && (
-              <a
-                href={downloadUrl}
-                className="relative z-10 px-8 py-4 bg-ds-accent text-black font-black uppercase tracking-widest text-xs rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-2xl shadow-ds-accent/30 vibe-glow-blue group flex items-center gap-3"
+
+            {/* Сетка карточек */}
+            <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4 animate-slide-up">
+              
+              {/* Карточка 1: Создать */}
+              <button 
+                onClick={() => setServerEntryOpen(true)}
+                className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
               >
-                <Download size={20} strokeWidth={3} className="group-hover:-translate-y-1 transition-transform" />
-                СКАЧАТЬ ДЛЯ WINDOWS
-              </a>
+                <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-accent/5 to-transparent rounded-[2rem]" />
+                <div className="w-16 h-16 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20 group-hover/card:scale-110 transition-transform">
+                  <PlusCircle size={32} />
+                </div>
+                <div className="text-center">
+                  <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-2">Создать мир</h4>
+                  <p className="text-[10px] text-ds-muted font-bold uppercase tracking-tight opacity-50">Начни своё приключение прямо сейчас</p>
+                </div>
+              </button>
+
+              {/* Карточка 2: Обновления */}
+              <div className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+                <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-purple-500/5 to-transparent rounded-[2rem]" />
+                <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20 group-hover/card:scale-110 transition-transform">
+                  <Zap size={32} />
+                </div>
+                <div className="text-center w-full">
+                  <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-3">Что нового</h4>
+                  <div className="space-y-1.5 opacity-60">
+                    <p className="text-[9px] font-black uppercase tracking-tighter text-ds-accent">V2.1: Статус Создателя</p>
+                    <p className="text-[9px] font-black uppercase tracking-tighter text-white">Улучшена светлая тема</p>
+                    <p className="text-[9px] font-black uppercase tracking-tighter text-white/50">Плавность Хаба</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Карточка 3: Статистика */}
+              <div className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+                <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-green/5 to-transparent rounded-[2rem]" />
+                <div className="w-16 h-16 rounded-2xl bg-ds-green/10 flex items-center justify-center text-ds-green border border-ds-green/20 group-hover/card:scale-110 transition-transform vibe-glow-green">
+                  <Globe size={32} />
+                </div>
+                <div className="text-center">
+                   <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-3">Статистика</h4>
+                   <div className="flex flex-col gap-1 items-center">
+                     <span className="text-[14px] font-black text-ds-green tracking-tighter">42 Участника</span>
+                     <span className="text-[9px] text-ds-muted font-bold uppercase tracking-[0.2em] opacity-50">В сети по всему миру</span>
+                   </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Футер-кнопка */}
+            {!isElectron && (
+              <div className="mt-16 animate-fade-in delay-500">
+                <a
+                  href={downloadUrl}
+                  className="group relative px-10 py-5 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-2xl animate-vibe-btn overflow-hidden block"
+                >
+                  <div className="absolute inset-0 vibe-moving-glow opacity-30 group-hover:opacity-100 transition-opacity" />
+                  <span className="relative z-10 flex items-center gap-3">
+                    <Download size={20} strokeWidth={3} />
+                    СКАЧАТЬ ДЛЯ WINDOWS
+                  </span>
+                </a>
+              </div>
             )}
           </div>
         ) : activeDM ? (
