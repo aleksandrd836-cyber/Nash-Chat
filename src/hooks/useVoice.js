@@ -420,19 +420,28 @@ export function useVoice() {
   const startScreenShare = useCallback(async (quality = '720p', user = null, sourceId = null) => {
     try {
       console.log('[WebRTC] Starting screen share, sourceId:', sourceId);
-      const constraints = {
-        video: sourceId ? {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: sourceId,
-            maxWidth: 1920,
-            maxHeight: 1080
+      
+      let constraints;
+      if (sourceId) {
+        // МАКСИМАЛЬНО упрощенный формат для Electron (без лишних ограничений)
+        constraints = {
+          audio: false, 
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId
+            }
           }
-        } : true,
-        audio: true
-      };
+        };
+      } else {
+        // Стандарт для браузера
+        constraints = { video: true, audio: false };
+      }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setVoiceError(null); 
+      const stream = sourceId 
+        ? await navigator.mediaDevices.getUserMedia(constraints)
+        : await navigator.mediaDevices.getDisplayMedia(constraints);
       screenStreamRef.current = stream; setIsScreenSharing(true);
       setVoiceError(null); // Сбрасываем старые ошибки
       
@@ -447,6 +456,9 @@ export function useVoice() {
     } catch (err) { 
       console.error('Screen sharing error', err);
       setVoiceError(`Не удалось запустить трансляцию: ${err.message}`);
+      setIsScreenSharing(false);
+      screenStreamRef.current = null;
+      stopScreenShare(); // Финальная очистка
     }
   }, [updatePresenceStatus, stopScreenShare]);
 
