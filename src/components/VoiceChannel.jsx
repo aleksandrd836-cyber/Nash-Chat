@@ -69,6 +69,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     requestScreenView,
     voiceError,
     clearVoiceError,
+    serverStatus,
   } = voice;
 
   const isInThisChannel = activeChannelId === channel?.id;
@@ -137,12 +138,16 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
         <span className="text-white font-bold text-[15px]">{channel.name}</span>
         {isInThisChannel && (
           <div className="ml-2 flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-ds-accent text-[10px] font-bold uppercase tracking-widest">
+             <span className="flex items-center gap-1.5 text-ds-accent text-[10px] font-bold uppercase tracking-widest leading-none">
               <span className="w-1.5 h-1.5 rounded-full bg-ds-accent shadow-[0_0_8px_#00f0ff] animate-pulse" />
               ПОДКЛЮЧЕНО
             </span>
-            {voice.ping !== null && (
-              <span className="text-white/30 text-[10px] font-mono font-bold uppercase tracking-widest animate-fade-in">
+            <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest leading-none ${serverStatus === 'online' ? 'text-white/20' : 'text-ds-red animate-pulse'}`}>
+              <span className={`w-1 h-1 rounded-full ${serverStatus === 'online' ? 'bg-white/20' : 'bg-ds-red shadow-[0_0_8px_#ff0000]'}`} />
+              SERVER: {serverStatus}
+            </span>
+            {voice.ping !== null && serverStatus === 'online' && (
+              <span className="text-white/30 text-[10px] font-mono font-bold uppercase tracking-widest animate-fade-in leading-none">
                 PING — {voice.ping} MS
               </span>
             )}
