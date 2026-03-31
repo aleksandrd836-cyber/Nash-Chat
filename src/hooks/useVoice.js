@@ -128,15 +128,20 @@ export function useVoice() {
 
     pc.onnegotiationneeded = async () => {
       try {
+        if (makingOfferRef.current[remoteUserId]) return;
         makingOfferRef.current[remoteUserId] = true;
-        await pc.setLocalDescription();
-        const offerPayload = { 
+        
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        const payload = { 
           type: 'broadcast', event: 'offer', 
           payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: pc.localDescription } 
         };
-        (realtimeChannel.current || signalingChannel).send(offerPayload);
+        const chan = realtimeChannel.current || signalingChannel;
+        if (chan) chan.send(payload);
       } catch (err) {
-        setVoiceError(`[Negotiation] ${err.message}`);
+        console.warn(`[WebRTC] Negotiation error with ${remoteUserId}:`, err);
       } finally {
         makingOfferRef.current[remoteUserId] = false;
       }
@@ -177,20 +182,26 @@ export function useVoice() {
 
     pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
-      if (state === 'failed') closePeer(remoteUserId, true);
-      else if (state === 'disconnected') {
+      if (state === 'failed') {
+        closePeer(remoteUserId, true);
+      } else if (state === 'disconnected') {
         setVoiceError(`[Network] Попытка восстановления связи с ${remoteUserId}...`);
-        pc.restartIce();
-        if (iceDisconnectTimers.current[remoteUserId]) clearTimeout(iceDisconnectTimers.current[remoteUserId]);
+        pc.restartIce().catch(() => {});
+        
         iceDisconnectTimers.current[remoteUserId] = setTimeout(() => {
           if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+            console.log(`[WebRTC] Watchdog trigger for ${remoteUserId}`);
             closePeer(remoteUserId, true);
+            if (realtimeChannel.current) syncParticipants(realtimeChannel.current);
           }
-          delete iceDisconnectTimers.current[remoteUserId];
-        }, 5000);
+        }, 8000);
       } else if (state === 'connected' || state === 'completed') {
         setVoiceError(null);
         ignoreOfferRef.current[remoteUserId] = false;
+        if (iceDisconnectTimers.current[remoteUserId]) {
+          clearTimeout(iceDisconnectTimers.current[remoteUserId]);
+          delete iceDisconnectTimers.current[remoteUserId];
+        }
       }
     };
 
@@ -289,15 +300,22 @@ export function useVoice() {
           const collision = pc.signalingState !== 'stable' || makingOfferRef.current[payload.from];
           ignoreOfferRef.current[payload.from] = !polite && collision;
           if (ignoreOfferRef.current[payload.from]) return;
-          if (collision) await pc.setLocalDescription({ type: 'rollback' });
+          if (collision) {
+            console.log(`[WebRTC] Rollback offer from ${payload.from}`);
+            await pc.setLocalDescription({ type: 'rollback' });
+          }
+          
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          await pc.setLocalDescription();
-          channel.send({ type: 'broadcast', event: 'answer', payload: { from: user.id, to: payload.from, sdp: pc.localDescription } });
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          
+          channel.send({ 
+            type: 'broadcast', event: 'answer', 
+            payload: { from: user.id, to: payload.from, sdp: pc.localDescription } 
+          });
         } catch (err) {
-          setVoiceError(`[Signaling] ${err.message}`);
-          // Если ошибка в структуре SDP (m-lines), пересоздаем соединение
-          if (err.message.includes('m-lines') || err.message.includes('SDP')) {
-            console.warn('[WebRTC] SDP Mismatch detected, forcing recreate...');
+          console.error('[WebRTC] Error handling offer:', err);
+          if (err.message.includes('m-lines') || err.message.includes('order')) {
             closePeer(payload.from, true);
           }
         }
