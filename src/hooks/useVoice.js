@@ -232,17 +232,32 @@ export function useVoice() {
         // Соединение окончательно упало — сразу закрываем
         closePeer(remoteUserId, true);
       } else if (state === 'disconnected') {
-        // 'disconnected' — временное состояние. 
-        // Мы инициируем ICE Restart, чтобы WebRTC сам попробовал найти новый путь 
-        // без закрытия PeerConnection (это сохранит трансляцию экрана и голос).
         console.warn(`[WebRTC] Связь с ${remoteUserId} потеряна. Пробую ICE Restart...`);
         setVoiceError(`[Network] Попытка восстановления связи с ${remoteUserId}...`);
+        
         try {
           pc.restartIce();
         } catch (err) {
           console.error(`[WebRTC] Ошибка ICE Restart:`, err);
-          setVoiceError(`[Network] Ошибка ICE Restart: ${err.message}`);
         }
+
+        // Если за 5 секунд связь не восстановилась — рубим и пусть Self-healing создаст заново
+        if (iceDisconnectTimers.current[remoteUserId]) clearTimeout(iceDisconnectTimers.current[remoteUserId]);
+        iceDisconnectTimers.current[remoteUserId] = setTimeout(() => {
+          if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+            console.log(`[WebRTC] Восстановление ${remoteUserId} не удалось. Пересоздаю...`);
+            setVoiceError(`[Network] Связь потеряна. Переподключение...`);
+            closePeer(remoteUserId, true);
+          }
+          delete iceDisconnectTimers.current[remoteUserId];
+        }, 5000);
+
+      } else if (state === 'connected' || state === 'completed') {
+        if (iceDisconnectTimers.current[remoteUserId]) {
+          clearTimeout(iceDisconnectTimers.current[remoteUserId]);
+          delete iceDisconnectTimers.current[remoteUserId];
+        }
+        setVoiceError(null); // Ошибка исправлена сама собой
       } else if (state === 'failed') {
         setVoiceError(`[Connection] Критическая ошибка связи с ${remoteUserId}. Попробуйте перезайти.`);
       }
@@ -833,8 +848,12 @@ export function useVoice() {
       tracks.forEach(t => t.stop());
       screenStreamRef.current = null;
       setIsScreenSharing(false);
-      updatePresenceStatus({ isScreenSharing: false });
-      notifications.play('stream_stop');
+      
+      // Даем WebRTC 300мс на завершение переговоров перед обновлением Presence
+      setTimeout(() => {
+        updatePresenceStatus({ isScreenSharing: false });
+        notifications.play('stream_stop');
+      }, 300);
     }
   }, [updatePresenceStatus]);
 
