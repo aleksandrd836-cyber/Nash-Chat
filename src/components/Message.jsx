@@ -229,7 +229,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         </svg>
       </button>
       {showEmojiPicker && (
-        <div ref={pickerRef} className="absolute z-[100] bottom-full right-0 mb-2 shadow-2xl transition-all">
+        <div ref={pickerRef} className="absolute z-[100] bottom-full left-0 mb-2 shadow-2xl transition-all">
           <EmojiPicker onEmojiClick={handleEmojiClick} theme={document.documentElement.classList.contains('light-theme') ? 'light' : 'dark'} skinTonesDisabled />
         </div>
       )}
@@ -239,12 +239,11 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
   if (isSameAuthor) {
     return (
       <div className="group relative flex items-start gap-3 px-4 py-0.5 hover:bg-ds-hover/30 rounded transition-colors">
-        <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-ds-bg p-0.5 rounded-lg border border-ds-divider/20 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-          {reactionBtn}
+        {/* Reaction on hover in gutter */}
+        <div className="w-[42px] flex-shrink-0 flex items-center justify-center">
+           {reactionBtn}
         </div>
-        <div className="w-[60px] flex-shrink-0 flex items-center justify-end">
-          <span className="text-[10px] text-ds-muted hidden group-hover:block">{time}</span>
-        </div>
+        
         <div className="flex-1 min-w-0 pr-20">
           {msg.content && (
             <div className="flex items-end gap-2">
@@ -259,22 +258,29 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
           {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} />}
           <ReactionList reactions={reactions} userId={currentUserId} onToggle={toggleReaction} />
         </div>
+
+        {/* Time on hover on far right */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+           <span className="text-[10px] text-ds-muted font-bold tracking-tighter bg-ds-bg/40 backdrop-blur-md px-2 py-0.5 rounded-lg border border-ds-divider/20">{time}</span>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="group relative flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in">
-      <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-ds-input p-1 rounded-xl border border-ds-divider/30 opacity-0 group-hover:opacity-100 transition-all shadow-2xl">
-        {reactionBtn}
+      {/* Reaction on hover in gutter area (slightly shifted up) */}
+      <div className="w-[42px] h-[42px] flex-shrink-0 relative">
+        <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none rounded-full flex items-center justify-center border border-ds-divider/30" />
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+           {reactionBtn}
+        </div>
       </div>
-      <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 bg-ds-bg/40 shadow-inner overflow-hidden flex items-center justify-center border border-ds-divider/30">
-        <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none" />
-      </div>
+      
       <div className="flex-1 min-w-0 pr-20">
         <div className="flex items-baseline gap-2 mb-0.5">
           <span className="font-bold text-[14.5px] tracking-tight" style={{ color: displayColor }}>{realName}</span>
-          <span className="text-[10px] text-ds-muted font-bold uppercase tracking-widest" title={fullTime}>{time}</span>
+          {/* Main header time removed from inline position to follow user request for right alignment on hover */}
         </div>
         {msg.content && (
           <div className="flex items-end gap-2 text-[15px] leading-relaxed">
@@ -288,6 +294,11 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         )}
         {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} />}
         <ReactionList reactions={reactions} userId={currentUserId} onToggle={toggleReaction} />
+      </div>
+
+      {/* Time on hover on far right */}
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+         <span className="text-[10px] text-ds-muted font-bold tracking-tighter bg-ds-bg/40 backdrop-blur-md px-2 py-0.5 rounded-lg border border-ds-divider/20">{time}</span>
       </div>
     </div>
   );
