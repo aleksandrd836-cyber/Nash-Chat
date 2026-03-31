@@ -137,8 +137,9 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
   return (
     <div className="flex-1 flex flex-col bg-ds-servers" onClick={() => setCtxMenu(null)}>
       {/* Header */}
-      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-10 shadow-lg">
-        <Mic size={20} className="text-ds-accent vibe-glow-blue" />
+      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-ds-sidebar/40 backdrop-blur-[40px] z-10 shadow-lg relative">
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-ds-accent/20 to-transparent opacity-30" />
+        <Mic size={20} className="text-ds-accent vibe-glow-blue relative z-10" />
         <span className="text-ds-text font-bold text-[15px]">{channel.name}</span>
         {isInThisChannel && (
           <div className="ml-2 flex items-center gap-4">
@@ -303,7 +304,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   className={`w-14 h-14 rounded-2xl transition-all duration-300 flex items-center justify-center border
                     ${isMuted
                       ? 'bg-ds-red/10 border-ds-red/30 text-ds-red vibe-glow-red'
-                      : 'bg-ds-input/40 border-white/5 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
+                      : 'bg-ds-sidebar/40 border-white/10 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
                     }`}
                 >
                   {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -315,7 +316,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   className={`w-14 h-14 rounded-2xl transition-all duration-300 flex items-center justify-center border
                     ${isDeafened
                       ? 'bg-ds-red/10 border-ds-red/30 text-ds-red vibe-glow-red'
-                      : 'bg-[#121212] border-white/5 text-white/50 hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
+                      : 'bg-ds-sidebar/40 border-white/10 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
                     }`}
                 >
                   <div className="slashed-container">
@@ -336,11 +337,11 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
 
               {!isScreenSharing ? (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="bg-ds-input rounded-2xl border border-white/5 px-4 flex items-center group focus-within:border-ds-accent/30 transition-all flex-1">
+                  <div className="bg-ds-sidebar/40 rounded-2xl border border-white/10 px-4 flex items-center group focus-within:border-ds-accent/30 transition-all flex-1 backdrop-blur-md">
                     <select 
                       value={quality} 
                       onChange={e => setQuality(e.target.value)}
-                      className="bg-transparent text-white/40 text-[11px] font-black uppercase tracking-widest outline-none cursor-pointer appearance-none w-full h-12"
+                      className="bg-transparent text-ds-text text-[11px] font-black uppercase tracking-widest outline-none cursor-pointer appearance-none w-full h-12"
                     >
                       <option value="1080p">1080P</option>
                       <option value="720p">720P</option>
@@ -355,9 +356,9 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                         startScreenShare(quality, user);
                       }
                     }}
-                    className="flex-[2] h-12 rounded-2xl bg-ds-accent/5 hover:bg-ds-accent/10 text-ds-accent border border-ds-accent/20 font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2"
+                    className="flex-[2] h-12 rounded-2xl bg-ds-accent/20 hover:bg-ds-accent/30 text-ds-accent border border-ds-accent/40 font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-ds-accent/5"
                   >
-                    <Monitor size={18} />
+                    <Monitor size={18} strokeWidth={3} />
                     ТРАНСЛЯЦИЯ
                   </button>
                 </div>
