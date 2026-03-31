@@ -224,7 +224,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                       <p className="text-sm font-bold truncate text-white" style={member.color ? { color: member.color } : {}}>
                         {member.username}
                         {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(member.id) && (
-                          <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle">
+                          <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
                             СОЗДАТЕЛЬ
                           </span>
                         )}

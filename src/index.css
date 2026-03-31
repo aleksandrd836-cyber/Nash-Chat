@@ -34,6 +34,9 @@ html.light-theme {
   --ds-header: 255, 255, 255;
   --ds-divider: 227, 229, 232;
   --ds-mention: 201, 204, 209;
+  
+  --ds-accent-rgb: 0, 110, 245;
+  --ds-accent: #006ef5;
 }
 
 @layer base {
@@ -69,12 +72,17 @@ html.light-theme {
   }
 
   .vibe-glow-blue {
-    box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 5px rgba(0, 240, 255, 0.2);
-    border-color: rgba(0, 240, 255, 0.5);
+    box-shadow: 0 0 15px rgba(var(--ds-accent-rgb), 0.3), inset 0 0 5px rgba(var(--ds-accent-rgb), 0.2);
+    border-color: rgba(var(--ds-accent-rgb), 0.5);
+  }
+
+  .light-theme .vibe-glow-blue {
+    box-shadow: 0 2px 10px rgba(0, 110, 245, 0.2);
+    border-color: rgba(0, 110, 245, 0.4);
   }
 
   .vibe-moving-glow {
-    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(var(--ds-accent-rgb), 0.2), transparent);
     background-size: 200% 100%;
     animation: glowMove 3s linear infinite;
   }
@@ -265,5 +273,19 @@ html.light-theme select option {
 }
 
 html.light-theme .vibe-vertical-divider {
-  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.1), transparent);
+  background: linear-gradient(to bottom, 
+    transparent 0%, 
+    rgba(0, 110, 245, 0.3) 10%, 
+    rgba(0, 110, 245, 0.6) 50%, 
+    rgba(0, 110, 245, 0.3) 90%, 
+    transparent 100%
+  );
+  box-shadow: 0 0 10px rgba(0, 110, 245, 0.2);
+}
+
+/* СОЗДАТЕЛЬ Badge Boost for Light Theme */
+html.light-theme .vibe-creator-badge {
+  background-color: rgba(0, 110, 245, 0.1);
+  border-color: rgba(0, 110, 245, 0.4);
+  color: #0056b3;
 }

@@ -255,7 +255,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                       <p className="text-white font-black text-lg truncate flex items-center gap-2" style={{ color: p.userId === ownerId ? '#ff4444' : 'white' }}>
                         {p.username}
                         {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(p.userId) && (
-                          <span className="px-2 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[9px] font-black text-ds-accent uppercase tracking-widest vibe-glow-blue shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                          <span className="px-2 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[9px] font-black text-ds-accent uppercase tracking-widest vibe-glow-blue shadow-[0_0_10px_rgba(0,240,255,0.2)] vibe-creator-badge">
                             СОЗДАТЕЛЬ
                           </span>
                         )}
@@ -410,7 +410,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
             <p className="text-ds-text font-black text-base truncate" style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
               {ctxMenu.participant.username}
               {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(ctxMenu.participant.userId) && (
-                <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle">
+                <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
                   СОЗДАТЕЛЬ
                 </span>
               )}

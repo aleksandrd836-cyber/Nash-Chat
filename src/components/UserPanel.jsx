@@ -31,7 +31,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
           <p className="text-ds-text text-[14px] font-black truncate leading-tight tracking-tight flex items-center gap-2" style={{ color: currentUserId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
             {username}
             {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(currentUserId) && (
-              <span className="px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle">
+              <span className="px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
                 СОЗДАТЕЛЬ
               </span>
             )}
