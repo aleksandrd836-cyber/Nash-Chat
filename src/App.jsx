@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import { useVoice } from './hooks/useVoice';
 import { useMembers } from './hooks/useMembers';
 import { useUnreadDMs } from './hooks/useUnreadDMs';
+import { useRecentConversations } from './hooks/useRecentConversations';
 import { AuthPage } from './components/AuthPage';
 import { ServerSidebar } from './components/ServerSidebar';
 import { Sidebar } from './components/Sidebar';
@@ -56,6 +57,17 @@ function App() {
   // ── Серверы ──
   const [selectedServer, setSelectedServer]         = useState(null);
   const [serverEntryOpen, setServerEntryOpen]       = useState(false);
+  const [isDMHubOpen, setIsDMHubOpen] = useState(false);
+  const { conversations: recentConvs, loading: recentLoading } = useRecentConversations(auth.user?.id);
+
+  // Глобальный счетчик непрочитанных ЛС для баджей
+  const unreadDMs = useUnreadDMs(auth.user?.id, null);
+  const totalUnreadDMs = Object.values(unreadDMs.unreadCounts).reduce((a, b) => a + b, 0);
+
+  // Сброс состояния хаба при переключении на сервер
+  useEffect(() => {
+    if (selectedServer) setIsDMHubOpen(false);
+  }, [selectedServer]);
   const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
   const [serverRefresh, setServerRefresh]           = useState(0); // триггер для обновления ServerSidebar
 
@@ -130,7 +142,7 @@ function App() {
   function handleOpenDM(member) {
     setActiveDM(member);
     setSelectedChannel(null);
-    markAsRead(member.id);
+    unreadDMs.markAsRead(member.id);
   }
 
   function handleCloseDM() { setActiveDM(null); }
@@ -143,7 +155,6 @@ function App() {
   }
 
   const { members } = useMembers(auth.user, selectedServer?.id);
-  const { unreadCounts, markAsRead } = useUnreadDMs(auth.user?.id, activeDM?.id);
 
   if (auth.loading) {
     return (
@@ -285,70 +296,122 @@ function App() {
             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px] animate-aurora-shift pointer-events-none" />
             <div className="absolute inset-0 vibe-moving-glow opacity-[0.02] pointer-events-none" />
 
-            {/* Заголовок */}
-            <div className="relative z-10 text-center mb-12 transform group-hover:scale-[1.02] transition-transform duration-700">
-              <div className="w-24 h-24 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative mx-auto mb-8 shadow-2xl group/star">
-                 <div className="absolute inset-0 vibe-moving-glow opacity-20" />
-                 <Star size={56} className="text-ds-accent vibe-logo-glow transition-all duration-500 group-hover/star:scale-110" fill="currentColor" strokeWidth={1} />
-              </div>
-              <h2 className="text-ds-text font-black text-5xl tracking-tighter mb-4 uppercase drop-shadow-[0_0_15px_rgba(var(--ds-accent-rgb),0.3)]">
-                Привет, <span className="text-ds-accent">{displayUsername}</span>!
-              </h2>
-              <p className="text-ds-muted text-[11px] font-black uppercase tracking-[0.3em] max-w-sm mx-auto leading-relaxed opacity-60">
-                 Твоя персональная станция ожидания. Настрой всё под себя и начинай общение.
-              </p>
-            </div>
+            {isDMHubOpen ? (
+              // ── Раздел Личных Сообщений ── 
+              <div className="relative z-10 w-full max-w-4xl flex flex-col items-center animate-slide-up h-full max-h-[70vh]">
+                 <div className="flex items-center justify-between w-full mb-10 px-6">
+                    <button 
+                      onClick={() => setIsDMHubOpen(false)}
+                      className="group flex items-center gap-3 text-ds-muted hover:text-ds-text transition-all bg-white/5 px-4 py-2 rounded-2xl border border-white/5"
+                    >
+                      <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Назад в Хаб</span>
+                    </button>
+                    <h2 className="text-ds-text font-black text-2xl tracking-tighter uppercase mr-auto ml-10">Личные сообщения</h2>
+                 </div>
 
-            {/* Сетка карточек */}
-            <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4 animate-slide-up">
-              
-              {/* Карточка 1: Создать */}
-              <button 
-                onClick={() => setServerEntryOpen(true)}
-                className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
-              >
-                <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-accent/5 to-transparent rounded-[2rem]" />
-                <div className="w-16 h-16 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20 group-hover/card:scale-110 transition-transform">
-                  <PlusCircle size={32} />
-                </div>
-                <div className="text-center">
-                  <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-2">Создать мир</h4>
-                  <p className="text-[10px] text-ds-muted font-bold uppercase tracking-tight opacity-50">Начни своё приключение прямо сейчас</p>
-                </div>
-              </button>
-
-              {/* Карточка 2: Обновления */}
-              <div className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-                <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-purple-500/5 to-transparent rounded-[2rem]" />
-                <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20 group-hover/card:scale-110 transition-transform">
-                  <Zap size={32} />
-                </div>
-                <div className="text-center w-full">
-                  <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-3">Что нового</h4>
-                  <div className="space-y-1.5 opacity-60">
-                    <p className="text-[9px] font-black uppercase tracking-tighter text-ds-accent">V2.1: Статус Создателя</p>
-                    <p className="text-[9px] font-black uppercase tracking-tighter text-white">Улучшена светлая тема</p>
-                    <p className="text-[9px] font-black uppercase tracking-tighter text-white/50">Плавность Хаба</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Карточка 3: Статистика */}
-              <div className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-                <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-green/5 to-transparent rounded-[2rem]" />
-                <div className="w-16 h-16 rounded-2xl bg-ds-green/10 flex items-center justify-center text-ds-green border border-ds-green/20 group-hover/card:scale-110 transition-transform vibe-glow-green">
-                  <Globe size={32} />
-                </div>
-                <div className="text-center">
-                   <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-3">Статистика</h4>
-                   <div className="flex flex-col gap-1 items-center">
-                     <span className="text-[14px] font-black text-ds-green tracking-tighter">42 Участника</span>
-                     <span className="text-[9px] text-ds-muted font-bold uppercase tracking-[0.2em] opacity-50">В сети по всему миру</span>
+                 {recentLoading ? (
+                   <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                     <div className="w-10 h-10 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
+                     <p className="text-[10px] text-ds-muted font-black uppercase tracking-widest">Загрузка переписок...</p>
                    </div>
-                </div>
+                 ) : recentConvs.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-8 opacity-40">
+                       <h1 className="text-ds-text font-black text-7xl tracking-tighter uppercase text-center leading-none">ОЙ.<br/>ТУТ ПУСТО</h1>
+                       <p className="text-ds-muted font-black uppercase tracking-[0.3em] text-[10px]">Пока нет активных диалогов</p>
+                    </div>
+                 ) : (
+                    <div className="w-full space-y-3 overflow-y-auto pr-2 scrollbar-hide">
+                       {recentConvs.map(conv => {
+                         const { imageUrl } = getUserAvatar(conv.username);
+                         return (
+                           <button 
+                             key={conv.id}
+                             onClick={() => { setActiveDM(conv); setIsDMHubOpen(false); }}
+                             className="w-full group/item relative bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 rounded-3xl p-5 flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-2xl"
+                           >
+                             <div className="relative flex-shrink-0">
+                               <img src={imageUrl} alt={conv.username} className="w-14 h-14 rounded-2xl object-cover border border-white/10 group-hover/item:scale-110 transition-transform duration-500" />
+                               {!conv.isRead && <div className="absolute -top-1 -right-1 w-4 h-4 bg-ds-accent rounded-full border-4 border-ds-bg vibe-glow-blue" />}
+                             </div>
+                             <div className="flex-1 text-left min-w-0">
+                               <div className="flex items-center justify-between mb-1">
+                                 <h4 className="text-ds-text font-black text-[15px] truncate" style={conv.color ? { color: conv.color } : {}}>{conv.username}</h4>
+                                 <span className="text-[10px] text-ds-muted font-bold opacity-30">{new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                               </div>
+                               <p className="text-[12px] text-ds-muted font-medium truncate opacity-60 group-hover/item:opacity-100 transition-opacity">
+                                 {conv.lastMessage || 'Нажмите, чтобы начать общение'}
+                               </p>
+                             </div>
+                             <ChevronRight size={20} className="text-ds-muted opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-1 transition-all" />
+                           </button>
+                         );
+                       })}
+                    </div>
+                 )}
               </div>
+            ) : (
+              // ── Главные карточки Хаба ──
+              <>
+                <div className="relative z-10 text-center mb-12 transform group-hover:scale-[1.02] transition-transform duration-700">
+                  <div className="w-24 h-24 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative mx-auto mb-8 shadow-2xl group/star">
+                     <div className="absolute inset-0 vibe-moving-glow opacity-20" />
+                     <Star size={56} className="text-ds-accent vibe-logo-glow transition-all duration-500 group-hover/star:scale-110" fill="currentColor" strokeWidth={1} />
+                  </div>
+                  <h2 className="text-ds-text font-black text-5xl tracking-tighter mb-4 uppercase drop-shadow-[0_0_15px_rgba(var(--ds-accent-rgb),0.3)]">
+                    Привет, <span className="text-ds-accent">{displayUsername}</span>!
+                  </h2>
+                  <p className="text-ds-muted text-[11px] font-black uppercase tracking-[0.3em] max-w-sm mx-auto leading-relaxed opacity-60">
+                     Твоя персональная станция ожидания. Настрой всё под себя и начинай общение.
+                  </p>
+                </div>
 
-            </div>
+                <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4 animate-slide-up">
+                  <button 
+                    onClick={() => setServerEntryOpen(true)}
+                    className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+                  >
+                    <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-accent/5 to-transparent rounded-[2rem]" />
+                    <div className="w-16 h-16 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20 group-hover/card:scale-110 transition-transform">
+                      <PlusCircle size={32} />
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-2">Создать мир</h4>
+                      <p className="text-[10px] text-ds-muted font-bold uppercase tracking-tight opacity-50">Начни своё приключение прямо сейчас</p>
+                    </div>
+                  </button>
+
+                  <div className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+                    <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-purple-500/5 to-transparent rounded-[2rem]" />
+                    <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20 group-hover/card:scale-110 transition-transform">
+                      <Zap size={32} />
+                    </div>
+                    <div className="text-center w-full">
+                      <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-3">Что нового</h4>
+                      <div className="space-y-1.5 opacity-60">
+                        <p className="text-[9px] font-black uppercase tracking-tighter text-ds-accent">V2.1: Статус Создателя</p>
+                        <p className="text-[9px] font-black uppercase tracking-tighter text-white">Улучшена светлая тема</p>
+                        <p className="text-[9px] font-black uppercase tracking-tighter text-white/50">Плавность Хаба</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsDMHubOpen(true)}
+                    className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+                  >
+                    <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-accent/5 to-transparent rounded-[2rem]" />
+                    <div className="w-16 h-16 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20 group-hover/card:scale-110 transition-transform">
+                      <MessageSquare size={32} />
+                    </div>
+                    <div className="text-center">
+                       <h4 className="text-ds-text font-black text-xs uppercase tracking-widest mb-2">Личные сообщения</h4>
+                       <p className="text-[10px] text-ds-muted font-bold uppercase tracking-tight opacity-50">Твои недавние диалоги и переписки</p>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
 
             {/* Футер-кнопка */}
             {!isElectron && (
@@ -365,6 +428,21 @@ function App() {
                 </a>
               </div>
             )}
+            
+            {/* ── Floating Action Button (FAB) ── */}
+            <button
+               onClick={() => { setSelectedServer(null); setIsDMHubOpen(true); }}
+               className="fixed bottom-10 right-10 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
+               title="Личные сообщения"
+            >
+               <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-full" />
+               <MessageSquare size={28} className="relative z-10 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]" />
+               {totalUnreadDMs > 0 && (
+                 <div className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 bg-ds-red text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-ds-bg shadow-lg animate-bounce z-20">
+                   {totalUnreadDMs}
+                 </div>
+               )}
+            </button>
           </div>
         ) : activeDM ? (
           <DirectMessagePanel

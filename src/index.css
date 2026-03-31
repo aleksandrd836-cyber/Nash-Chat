@@ -299,3 +299,51 @@ html.light-theme .vibe-creator-badge {
   border-color: rgba(0, 110, 245, 0.4);
   color: #0056b3;
 }
+
+/* Floating Action Button (FAB) */
+.vibe-fab {
+  box-shadow: 0 0 20px rgba(var(--ds-accent-rgb), 0.4), inset 0 0 10px rgba(var(--ds-accent-rgb), 0.2);
+  border: 1px solid rgba(var(--ds-accent-rgb), 0.5);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.vibe-fab:hover {
+  box-shadow: 0 0 35px rgba(var(--ds-accent-rgb), 0.6), inset 0 0 15px rgba(var(--ds-accent-rgb), 0.3);
+  transform: scale(1.1) translateY(-5px);
+}
+
+.vibe-fab:active {
+  transform: scale(0.95);
+}
+
+.light-theme .vibe-fab {
+  box-shadow: 0 10px 25px rgba(0, 110, 245, 0.25);
+  border-color: rgba(0, 110, 245, 0.4);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.animate-vibe-pulse {
+  animation: pulseSubtle 3s ease-in-out infinite;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
