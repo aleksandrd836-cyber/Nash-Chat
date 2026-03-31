@@ -43,6 +43,7 @@ export function useVoice() {
   // Web Audio API refs для VAD (не для отправки звука!)
   const audioContextRef = useRef(null);
   const originalMicStreamRef = useRef(null);
+  const gainNodesRef = useRef({}); // Узлы усиления для каждого участника
   // Таймеры на удаление "призраков" (чтобы не рвать WebRTC при мерцании Presence)
   const ghostPeersRef = useRef({});
 
@@ -140,11 +141,35 @@ export function useVoice() {
           audio.autoplay = true;
           audio.muted = isDeafenedRef.current;
           const savedVol = localStorage.getItem(`vol_${remoteUserId}`);
-          if (savedVol !== null) audio.volume = Math.min(2, Number(savedVol) / 100);
+          if (savedVol !== null) audio.volume = Math.min(1, Number(savedVol) / 100);
           audio.style.display = 'none';
+          // ВАЖНО: Мы будем использовать GainNode для звука, поэтому сам Audio элемент
+          // оставляем беззвучным (volume=0), чтобы не было эха/дублирования.
+          audio.volume = 0; 
           document.body.appendChild(audio);
           audioElements.current[remoteUserId] = audio;
         }
+
+        // Подключаем Web Audio GainNode для усиления (до 200% и выше)
+        if (!gainNodesRef.current[remoteUserId] && audioContextRef.current) {
+          try {
+            console.log(`[Voice] Создаю GainNode для ${remoteUserId}`);
+            const source = audioContextRef.current.createMediaStreamSource(stream);
+            const gainNode = audioContextRef.current.createGain();
+            
+            // Берем громкость из локального хранилища
+            const savedVol = localStorage.getItem(`vol_${remoteUserId}`);
+            const initialVol = savedVol !== null ? Number(savedVol) / 100 : 1.0;
+            gainNode.gain.value = initialVol;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContextRef.current.destination);
+            gainNodesRef.current[remoteUserId] = gainNode;
+          } catch (e) {
+            console.warn(`[Voice] Ошибка создания GainNode для ${remoteUserId}:`, e);
+          }
+        }
+
         const audio = audioElements.current[remoteUserId];
         if (audio.srcObject?.id !== stream.id) {
           audio.srcObject = stream;
@@ -155,9 +180,13 @@ export function useVoice() {
         // Это правильный триггер для перезапуска воспроизведения на стороне получателя.
         track.onunmute = () => {
           const a = audioElements.current[remoteUserId];
-          if (a && !a.muted) {
+          if (a) {
             console.log(`[Voice] track.onunmute от ${remoteUserId} — перезапуск`);
             a.play().catch(() => {});
+          }
+          // Resume AudioContext if suspended (browser policy)
+          if (audioContextRef.current?.state === 'suspended') {
+            audioContextRef.current.resume();
           }
         };
         // track.onmute — трек замолчал (отправитель нажал мут)
@@ -231,11 +260,17 @@ export function useVoice() {
     }
     if (audioElements.current[userId]) {
       audioElements.current[userId].srcObject = null;
-      // Удаляем элемент из DOM
       if (audioElements.current[userId].parentNode) {
         audioElements.current[userId].parentNode.removeChild(audioElements.current[userId]);
       }
       delete audioElements.current[userId];
+    }
+    // Удаляем GainNode участника
+    if (gainNodesRef.current[userId]) {
+      try {
+        gainNodesRef.current[userId].disconnect();
+        delete gainNodesRef.current[userId];
+      } catch {}
     }
   }, []);
 
@@ -256,6 +291,7 @@ export function useVoice() {
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
     }
+    gainNodesRef.current = {};
 
     if (fakeVADIntervalRef.current) { clearInterval(fakeVADIntervalRef.current); fakeVADIntervalRef.current = null; }
     isSpeakingRef.current = false;
@@ -325,8 +361,8 @@ export function useVoice() {
       const selectedMic = localStorage.getItem('micDeviceId');
       const constraints = {
         audio: selectedMic
-          ? { deviceId: { exact: selectedMic }, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-          : { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+          ? { deviceId: { exact: selectedMic }, echoCancellation: false, noiseSuppression: false, autoGainControl: true }
+          : { echoCancellation: false, noiseSuppression: false, autoGainControl: true },
         video: false
       };
       stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -589,8 +625,22 @@ export function useVoice() {
   const toggleDeafen = useCallback(() => {
     const next = !isDeafenedRef.current;
     
-    // 1. Глушим всех локально
+    // 1. Глушим всех локально (и элементы, и GainNodes)
     Object.values(audioElements.current).forEach(audio => { if (audio) audio.muted = next; });
+    Object.values(gainNodesRef.current).forEach(gain => {
+      if (gain) {
+        gain.gain.setTargetAtTime(next ? 0 : (localStorage.getItem(`vol_default`) || 1), audioContextRef.current?.currentTime || 0, 0.1);
+      }
+    });
+    
+    // ВАЖНО: Нам нужно восстановить реальную громкость каждого участника при разглушении
+    if (!next) {
+      Object.keys(gainNodesRef.current).forEach(uid => {
+        const savedVol = localStorage.getItem(`vol_${uid}`);
+        const vol = savedVol !== null ? Number(savedVol) / 100 : 1.0;
+        gainNodesRef.current[uid].gain.setTargetAtTime(vol, audioContextRef.current.currentTime, 0.1);
+      });
+    }
     
     const updates = { isDeafened: next };
 
@@ -633,10 +683,14 @@ export function useVoice() {
         
         // Принудительно play() у всех аудио-элементов
         Object.values(audioElements.current).forEach(audio => {
-          if (audio && !audio.muted) {
+          if (audio) {
             audio.play().catch(() => {});
           }
         });
+        // Resume AudioContext
+        if (audioContextRef.current?.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
         
         updates.isMuted = false;
       }
@@ -653,8 +707,13 @@ export function useVoice() {
   }, [updatePresenceStatus]);
 
   const setParticipantVolume = useCallback((userId, volumePct) => {
-    const audio = audioElements.current[userId];
-    if (audio) audio.volume = Math.max(0, Math.min(2, volumePct / 100));
+    // 1. Обновляем усиление через GainNode (основной способ)
+    const gainNode = gainNodesRef.current[userId];
+    if (gainNode) {
+      gainNode.gain.setTargetAtTime(volumePct / 100, audioContextRef.current.currentTime, 0.1);
+    }
+    
+    // 2. Также сохраняем в localStorage
     localStorage.setItem(`vol_${userId}`, String(volumePct));
     window.dispatchEvent(new CustomEvent('volumeChanged', { detail: { userId, volumePct } }));
   }, []);
