@@ -507,7 +507,7 @@ function App() {
           currentUserId={auth.user?.id}
           ownerId={selectedServer?.owner_id}
           onOpenDM={handleOpenDM}
-          unreadCounts={unreadCounts}
+          unreadCounts={unreadDMs.unreadCounts}
         />
       )}
 
