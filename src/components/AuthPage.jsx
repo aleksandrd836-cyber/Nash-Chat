@@ -49,10 +49,13 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
       <div className="relative w-full max-w-md animate-fade-in">
         {/* Brand/Logo Section */}
         <div className="text-center mb-10 group cursor-default">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-ds-accent mb-6 shadow-[0_0_50px_rgba(0,240,255,0.4)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative">
-             <div className="absolute inset-0 rounded-[2.5rem] vibe-moving-glow opacity-50" />
-              <div className="bg-ds-sidebar/10 w-full h-full rounded-[2.5rem] flex items-center justify-center backdrop-blur-sm border-2 border-white/20 overflow-hidden">
-                <Sparkles size={48} className="text-ds-accent vibe-logo-glow animate-vibe-pulse" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2.5rem] bg-ds-sidebar/30 mb-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative border border-white/10 overflow-hidden">
+             <div className="absolute inset-0 vibe-moving-glow opacity-20" />
+             <div className="absolute inset-0 bg-gradient-to-br from-ds-accent/10 to-transparent opacity-50" />
+              <div className="w-full h-full flex items-center justify-center backdrop-blur-xl relative z-10">
+                <svg viewBox="0 0 24 24" className="w-12 h-12 drop-shadow-[0_0_15px_rgba(0,240,255,0.8)] animate-vibe-pulse">
+                  <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
+                </svg>
               </div>
            </div>
            <h1 className="text-5xl font-black text-ds-text uppercase tracking-tighter leading-none mb-2">VIBE</h1>
