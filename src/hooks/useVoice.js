@@ -43,6 +43,8 @@ export function useVoice() {
   // Web Audio API refs для VAD (не для отправки звука!)
   const audioContextRef = useRef(null);
   const originalMicStreamRef = useRef(null);
+  // Таймеры на удаление "призраков" (чтобы не рвать WebRTC при мерцании Presence)
+  const ghostPeersRef = useRef({});
 
   // Глобальный канал присутствия (кто в каком канале)
   useEffect(() => {
@@ -96,7 +98,7 @@ export function useVoice() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const createPeerConnection = useCallback((remoteUserId) => {
+  const createPeerConnection = useCallback((remoteUserId, signalingChannel) => {
     if (peerConns.current[remoteUserId]) return peerConns.current[remoteUserId];
 
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
@@ -118,6 +120,10 @@ export function useVoice() {
           type: 'broadcast', event: 'offer',
           payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: offer },
         });
+        // Если channel еще не в рефе, пробуем использовать переданный
+        if (!realtimeChannel.current && signalingChannel) {
+          signalingChannel.send({ type: 'broadcast', event: 'offer', payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: offer } });
+        }
       } catch (err) { console.error(`[WebRTC] Offer error:`, err); }
     };
 
@@ -169,10 +175,12 @@ export function useVoice() {
 
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) {
-        realtimeChannel.current?.send({
-          type: 'broadcast', event: 'ice',
-          payload: { from: currentUserRef.current.id, to: remoteUserId, candidate },
-        });
+        const icePayload = { type: 'broadcast', event: 'ice', payload: { from: currentUserRef.current.id, to: remoteUserId, candidate } };
+        if (realtimeChannel.current) {
+          realtimeChannel.current.send(icePayload);
+        } else if (signalingChannel) {
+          signalingChannel.send(icePayload);
+        }
       }
     };
 
@@ -212,9 +220,15 @@ export function useVoice() {
     return pc;
   }, []);
 
-  const closePeer = useCallback((userId) => {
-    peerConns.current[userId]?.close();
-    delete peerConns.current[userId];
+  const closePeer = useCallback((userId, force = false) => {
+    // Если не force, проверяем, не запланировано ли уже удаление
+    if (!force && ghostPeersRef.current[userId]) return;
+
+    if (peerConns.current[userId]) {
+      console.log(`[WebRTC] Закрываю соединение с ${userId}`);
+      peerConns.current[userId].close();
+      delete peerConns.current[userId];
+    }
     if (audioElements.current[userId]) {
       audioElements.current[userId].srcObject = null;
       // Удаляем элемент из DOM
@@ -226,7 +240,11 @@ export function useVoice() {
   }, []);
 
   const cleanupAll = useCallback(async () => {
-    Object.keys(peerConns.current).forEach(id => closePeer(id));
+    // Очистка призраков
+    Object.values(ghostPeersRef.current).forEach(t => clearTimeout(t));
+    ghostPeersRef.current = {};
+
+    Object.keys(peerConns.current).forEach(id => closePeer(id, true));
     localStream.current?.getTracks().forEach(t => t.stop());
     localStream.current = null;
 
@@ -307,8 +325,8 @@ export function useVoice() {
       const selectedMic = localStorage.getItem('micDeviceId');
       const constraints = {
         audio: selectedMic
-          ? { deviceId: { exact: selectedMic }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-          : { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          ? { deviceId: { exact: selectedMic }, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          : { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
         video: false
       };
       stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -405,24 +423,41 @@ export function useVoice() {
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
       newPresences.forEach(p => { 
         if (p.userId !== user.id) {
-          createPeerConnection(p.userId);
-          // Звук 'join' убран — Supabase иногда триггерит 'join' при обновлении presence (напр. мют),
-          // что вызывало звон у всех участников при каждом мюте/анмюте.
+          // Если это "призрак", отменяем его удаление
+          if (ghostPeersRef.current[p.userId]) {
+            console.log(`[Presence] Пользователь ${p.userId} вернулся (отмена удаления)`);
+            clearTimeout(ghostPeersRef.current[p.userId]);
+            delete ghostPeersRef.current[p.userId];
+          } else {
+            console.log(`[Presence] Новый пользователь в канале: ${p.userId}`);
+            createPeerConnection(p.userId, channel);
+          }
         }
       });
       syncParticipants(channel);
     });
+
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
       leftPresences.forEach(p => {
-        closePeer(p.userId);
-        // Звук 'leave' убран по той же причине.
+        if (p.userId === user.id) return;
+        
+        console.log(`[Presence] Пользователь ${p.userId} вышел (назначаю "призраком" на 5с)`);
+        
+        // Flicker Protection: ждем 5 секунд перед реальным удалением
+        if (ghostPeersRef.current[p.userId]) clearTimeout(ghostPeersRef.current[p.userId]);
+        
+        ghostPeersRef.current[p.userId] = setTimeout(() => {
+          console.log(`[Presence] Окончательное удаление ${p.userId} по таймауту`);
+          closePeer(p.userId, true);
+          delete ghostPeersRef.current[p.userId];
+          syncParticipants(channel);
+        }, 5000);
       });
-      syncParticipants(channel);
     });
 
     channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
       if (payload.to !== user.id) return;
-      const pc = createPeerConnection(payload.from);
+      const pc = createPeerConnection(payload.from, channel);
       await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -464,15 +499,15 @@ export function useVoice() {
         };
         await channel.track(payload);
         
+        notifications.play('self_join');
+        
+        // Первый track сразу после подписки
+        channel.track(payload).catch(() => {});
         if (globalPresence.current) {
-          globalPresence.current.track({ 
-            ...payload,
-            channelId
-          }).catch(() => {});
+          globalPresence.current.track({ ...payload, channelId }).catch(() => {});
         }
         setActiveChannelId(channelId);
         setIsConnecting(false);
-        notifications.play('self_join');
       }
     });
 

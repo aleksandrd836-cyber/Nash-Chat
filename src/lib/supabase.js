@@ -10,19 +10,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// Устанавливаем значение по умолчанию при первой загрузке
+if (localStorage.getItem('vibe_remember_me') === null) {
+  localStorage.setItem('vibe_remember_me', 'true');
+}
+
 const customStorage = {
   getItem: (key) => {
-    const useLocal = localStorage.getItem('vibe_remember_me') === 'true';
-    return useLocal ? localStorage.getItem(key) : sessionStorage.getItem(key);
+    const useLocal = localStorage.getItem('vibe_remember_me') !== 'false';
+    // Сначала ищем в localStorage (основное хранилище), потом fallback в sessionStorage
+    if (useLocal) {
+      return localStorage.getItem(key);
+    }
+    return sessionStorage.getItem(key) ?? localStorage.getItem(key);
   },
   setItem: (key, value) => {
-    const useLocal = localStorage.getItem('vibe_remember_me') === 'true';
+    const useLocal = localStorage.getItem('vibe_remember_me') !== 'false';
     if (useLocal) {
        localStorage.setItem(key, value);
     } else {
        sessionStorage.setItem(key, value);
-       // Очищаем из local на случай, если там что-то было раньше
-       localStorage.removeItem(key); 
+       // НЕ удаляем из localStorage — это убивало Realtime
     }
   },
   removeItem: (key) => {
