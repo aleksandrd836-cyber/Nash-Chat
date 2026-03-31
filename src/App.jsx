@@ -151,15 +151,19 @@ function App() {
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-ds-accent/10 rounded-full blur-[120px] animate-pulse-soft opacity-30" />
         </div>
-        <div className="flex flex-col items-center gap-6 relative z-10">
-          <div className="relative">
-             <div className="w-16 h-16 border-[5px] border-white/5 border-t-ds-accent rounded-full animate-spin shadow-[0_0_20px_var(--ds-accent-glow)]" />
-             <div className="absolute inset-0 vibe-glow-blue blur-sm rounded-full opacity-50" />
+        <div className="flex flex-col items-center gap-8 relative z-10">
+          <div className="relative group">
+             <div className="w-24 h-24 border-[4px] border-white/5 border-t-ds-accent rounded-full animate-spin shadow-[0_0_40px_rgba(0,240,255,0.2)]" />
+             <div className="absolute inset-0 flex items-center justify-center">
+                <img src="/logo.png" alt="Vibe Logo" className="w-14 h-14 object-contain animate-pulse shadow-ds-accent/20" />
+             </div>
+             <div className="absolute inset-0 vibe-glow-blue blur-xl rounded-full opacity-30 animate-vibe-pulse" />
           </div>
-          <div className="text-center">
-             <h1 className="text-ds-text font-black text-2xl tracking-[0.2em] mb-1">VIBE</h1>
-             <p className="text-[10px] text-ds-muted/60 font-black uppercase tracking-[0.4em] animate-pulse">Загрузка системы...</p>
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <h2 className="text-ds-text font-black text-2xl tracking-[0.3em] uppercase">VIBE</h2>
+            <div className="h-1 w-12 bg-ds-accent rounded-full animate-pulse-soft" />
           </div>
+          <p className="text-[10px] text-ds-muted/60 font-black uppercase tracking-[0.4em] animate-pulse">Загрузка системы...</p>
         </div>
       </div>
     );
@@ -268,10 +272,11 @@ function App() {
           // Экран приветствия когда нет сервера
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative overflow-hidden">
             <div className="relative group/glow">
-               <div className="w-32 h-32 rounded-[3rem] bg-black/40 flex items-center justify-center text-ds-accent vibe-glow-blue border-2 border-white/5 relative z-10">
-                  <Sparkles size={64} strokeWidth={1} />
+               <div className="w-32 h-32 rounded-[3.5rem] bg-black/40 flex items-center justify-center border-2 border-white/10 relative z-10 overflow-hidden shadow-2xl transition-transform hover:scale-105 duration-500">
+                  <img src="/logo.png" alt="Vibe Logo" className="w-20 h-20 object-contain drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]" />
+                  <div className="absolute inset-0 vibe-moving-glow opacity-20" />
                </div>
-               <div className="absolute inset-0 vibe-moving-glow blur-md opacity-20" />
+               <div className="absolute inset-[-10px] bg-ds-accent/10 blur-2xl rounded-full opacity-40 animate-vibe-pulse" />
             </div>
             <div className="relative z-10 max-w-sm">
               <h2 className="text-ds-text font-black text-4xl tracking-tighter mb-4 uppercase">Привет, {displayUsername}!</h2>
@@ -299,9 +304,9 @@ function App() {
           />
         ) : !selectedChannel ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
-            <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center text-ds-accent/40 border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
+            <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                <div className="absolute inset-0 vibe-moving-glow opacity-10" />
-               <Hash size={56} strokeWidth={2.5} />
+               <img src="/logo.png" alt="Vibe Logo" className="w-14 h-14 object-contain opacity-50 contrast-125" />
             </div>
             <div className="max-w-xs">
               <h3 className="text-ds-text font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>

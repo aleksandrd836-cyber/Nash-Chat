@@ -51,8 +51,8 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
         <div className="text-center mb-10 group cursor-default">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-ds-accent mb-6 shadow-[0_0_50px_rgba(0,240,255,0.4)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative">
              <div className="absolute inset-0 rounded-[2.5rem] vibe-moving-glow opacity-50" />
-              <div className="bg-ds-sidebar/10 w-full h-full rounded-[2.5rem] flex items-center justify-center backdrop-blur-sm border-2 border-white/20">
-                <Globe size={40} strokeWidth={2.5} className="text-white drop-shadow-lg" />
+              <div className="bg-ds-sidebar/10 w-full h-full rounded-[2.5rem] flex items-center justify-center backdrop-blur-sm border-2 border-white/20 overflow-hidden">
+                <img src="/logo.png" alt="Vibe Logo" className="w-12 h-12 object-contain drop-shadow-lg animate-vibe-pulse" />
               </div>
            </div>
            <h1 className="text-5xl font-black text-ds-text uppercase tracking-tighter leading-none mb-2">VIBE</h1>
