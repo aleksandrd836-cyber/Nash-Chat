@@ -116,17 +116,25 @@ export function useVoice() {
     pc.onnegotiationneeded = async () => {
       try {
         if (pc.signalingState !== 'stable') return;
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        realtimeChannel.current?.send({
-          type: 'broadcast', event: 'offer',
-          payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: offer },
-        });
-        // Если channel еще не в рефе, пробуем использовать переданный
-        if (!realtimeChannel.current && signalingChannel) {
-          signalingChannel.send({ type: 'broadcast', event: 'offer', payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: offer } });
-        }
-      } catch (err) { console.error(`[WebRTC] Offer error:`, err); }
+        
+        // Разносим по времени инициацию для разных ID, чтобы не было конфликтов (glare)
+        const delay = currentUserRef.current?.id < remoteUserId ? 500 : 0;
+        
+        setTimeout(async () => {
+          try {
+            if (pc.signalingState !== 'stable') return;
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            const offerPayload = { type: 'broadcast', event: 'offer', payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: offer } };
+            if (realtimeChannel.current) {
+              realtimeChannel.current.send(offerPayload);
+            } else if (signalingChannel) {
+              signalingChannel.send(offerPayload);
+            }
+          } catch (e) { console.warn('[WebRTC] Offer delayed error:', e); }
+        }, delay);
+      } catch (err) { console.error(`[WebRTC] Offer initiation error:`, err); }
     };
 
     pc.ontrack = (event) => {
@@ -333,13 +341,10 @@ export function useVoice() {
       });
       
       // ── САМОВОССТАНОВЛЕНИЕ (Self-Healing) ──
-      // Если пользователя видим, но соединения нет (и это не я), создаем его.
-      // Чтобы не спамить обеими сторонами, инициатором выступает тот, чей ID "больше".
+      // Если пользователя видим, но соединения нет (и это не я)
       if (p.userId !== currentUserRef.current?.id && !peerConns.current[p.userId]) {
-        if (currentUserRef.current?.id > p.userId) {
-          console.log(`[Self-Healing] Обнаружен онлайн-участник ${p.userId} без PeerConnection. Инициирую связь...`);
-          createPeerConnection(p.userId, channel);
-        }
+        console.log(`[Self-Healing] Обнаружен участник ${p.userId} без связи. Восстанавливаю...`);
+        createPeerConnection(p.userId, channel);
       }
     });
     setParticipants(Array.from(seen.values()));
@@ -453,19 +458,13 @@ export function useVoice() {
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
       newPresences.forEach(p => { 
         if (p.userId !== user.id) {
-          // Если это "призрак", отменяем его удаление
           if (ghostPeersRef.current[p.userId]) {
             console.log(`[Presence] Пользователь ${p.userId} вернулся (отмена удаления)`);
             clearTimeout(ghostPeersRef.current[p.userId]);
             delete ghostPeersRef.current[p.userId];
           } else {
-            // Инициируем соединение только если мой ID больше (инициатор)
-            if (user.id > p.userId) {
-              console.log(`[Presence] Я инициатор для ${p.userId}. Создаю PeerConnection`);
-              createPeerConnection(p.userId, channel);
-            } else {
-              console.log(`[Presence] Ожидаю Offer от инициатора ${p.userId}`);
-            }
+            console.log(`[Presence] Новый участник: ${p.userId}. Создаю соединение.`);
+            createPeerConnection(p.userId, channel);
           }
         }
       });
