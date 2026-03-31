@@ -4,14 +4,14 @@ import { getUserAvatar } from '../lib/avatar';
 import { notifications } from '../lib/notifications';
 import { 
   X, User, Mic, Headphones, Bell, Monitor, LogOut, Check, AlertTriangle, 
-  RefreshCw, Download, ChevronRight, Volume2, Shield
+  RefreshCw, Download, ChevronRight, Volume2, Shield, Sun, Moon
 } from 'lucide-react';
 
 /**
  * Модальное окно настроек пользователя.
  * Полный редизайн в стиле VIBE.
  */
-export function SettingsModal({ user, username: initialUsername, userColor, onClose, onUsernameChange, onSignOut }) {
+export function SettingsModal({ user, username: initialUsername, userColor, onClose, onUsernameChange, onSignOut, theme, onThemeChange }) {
   // ── Ник и Цвет ──
   const [username, setUsername]   = useState(initialUsername || '');
   const [color, setColor]         = useState(userColor || '#ffffff');
@@ -302,6 +302,34 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                     </div>
                  </div>
               </div>
+            </div>
+          </section>
+          
+          {/* Appearance Section */}
+          <section className="animate-fade-in" style={{ animationDelay: '0.25s' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <Sun size={16} className="text-ds-accent" />
+              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Внешний вид</h3>
+            </div>
+            
+            <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center justify-between group">
+               <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border ${theme === 'light' ? 'bg-ds-accent/10 border-ds-accent text-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                     {theme === 'light' ? <Sun size={24} /> : <Moon size={24} />}
+                  </div>
+                  <div>
+                    <p className="text-white font-black uppercase tracking-widest text-[11px] mb-1">Светлая тема</p>
+                    <p className="text-[9px] text-white/30 font-bold uppercase tracking-wider">Переключить визуальный режим VIBE</p>
+                  </div>
+               </div>
+               
+               <button 
+                  onClick={() => onThemeChange(theme === 'light' ? 'dark' : 'light')}
+                  className={`relative w-14 h-7 rounded-full transition-all duration-500 p-1 ${theme === 'light' ? 'bg-ds-accent vibe-glow-blue' : 'bg-white/10 overflow-hidden'}`}
+               >
+                  <div className={`w-5 h-5 rounded-full bg-white shadow-lg transition-transform duration-500 transform ${theme === 'light' ? 'translate-x-7' : 'translate-x-0'}`} />
+                  {theme !== 'light' && <div className="absolute inset-0 vibe-moving-glow opacity-30 pointer-events-none" />}
+               </button>
             </div>
           </section>
 

@@ -51,6 +51,7 @@ function App() {
   const [settingsOpen, setSettingsOpen]       = useState(false);
   const [localUsername, setLocalUsername]     = useState(null);
   const [localColor, setLocalColor]           = useState(null);
+  const [theme, setTheme]                     = useState(() => localStorage.getItem('theme') || 'dark');
 
   // ── Серверы ──
   const [selectedServer, setSelectedServer]         = useState(null);
@@ -67,6 +68,16 @@ function App() {
       if (savedColor) setLocalColor(savedColor);
     }
   }, [auth.user]);
+
+  // ── Управление Темой ──
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   // ── Автообновление (Electron) ──
   const [updateStatus,   setUpdateStatus]   = useState('idle');
@@ -343,10 +354,10 @@ function App() {
           onClose={() => setSettingsOpen(false)}
           onSignOut={auth.signOut}
           onUsernameChange={(newName, newColor) => {
-            setLocalUsername(newName);
-            setLocalColor(newColor || null);
             auth.refreshUser?.();
           }}
+          theme={theme}
+          onThemeChange={setTheme}
         />
       )}
 
