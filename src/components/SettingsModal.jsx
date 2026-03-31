@@ -166,14 +166,20 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_120px_rgba(0,0,0,0.8)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+      <div 
+        style={{ backgroundColor: 'rgb(var(--ds-servers))' }}
+        className="rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_150px_rgba(0,0,0,1)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative"
+      >
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30 pointer-events-none" />
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-white/5 bg-ds-bg">
+        <div 
+          style={{ backgroundColor: 'rgb(var(--ds-bg))' }}
+          className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-white/5"
+        >
           <div className="flex flex-col">
             <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">Настройки</h2>
             <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">Управление аккаунтом VIBE</p>
@@ -194,7 +200,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
             <div className="space-y-6">
               <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Мой профиль</h3>
               
-              <div className="flex items-center gap-8 bg-ds-bg/30 p-6 rounded-[2.5rem] border border-white/5 shadow-inner relative group">
+              <div className="flex items-center gap-8 bg-black/40 p-6 rounded-[2.5rem] border border-white/5 shadow-inner relative group">
                 <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl pointer-events-none" />
                 <div className="relative">
                   <div className="w-[120px] h-[120px] rounded-[3rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
@@ -340,7 +346,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                 { key: 'enabled_mute', label: 'Выкл. микрофон' },
                 { key: 'enabled_unmute', label: 'Вкл. микрофон' },
               ].map(item => (
-                <label key={item.key} className="flex items-center justify-between px-5 py-4 bg-white/[0.02] border border-white/5 rounded-2xl cursor-pointer hover:bg-white/[0.04] transition-all group">
+                <label key={item.key} className="flex items-center justify-between px-5 py-4 bg-black/40 border border-white/5 rounded-2xl cursor-pointer hover:bg-black/60 transition-all group">
                   <span className="text-[11px] font-bold text-white/70 group-hover:text-white transition-colors">{item.label}</span>
                   <div className="relative inline-flex items-center">
                     <input
