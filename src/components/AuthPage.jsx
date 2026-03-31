@@ -53,8 +53,8 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
              <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-[2.5rem]" />
              <div className="absolute inset-0 bg-gradient-to-br from-ds-accent/20 to-transparent opacity-50 rounded-[2.5rem]" />
              <div className="relative z-50 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" className="drop-shadow-[0_0_20px_rgba(0,240,255,0.9)] animate-vibe-pulse">
-                  <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
+                <svg viewBox="0 0 24 24" className="w-14 h-14 drop-shadow-[0_0_20px_rgba(0,240,255,0.8)] animate-pulse">
+                   <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
                 </svg>
              </div>
           </div>
