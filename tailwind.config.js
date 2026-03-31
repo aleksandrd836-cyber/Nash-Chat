@@ -4,24 +4,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Discord-inspired dark palette
-        // "VIBE" Redesign Palette (Cyan/OLED)
-        'ds-bg':        '#0b0c0e',  // основной глубокий фон
-        'ds-sidebar':   '#161719',  // боковая панель
-        'ds-servers':   '#050505',  // сервера (самый темный)
-        'ds-input':     '#1e1f22',  // поле ввода
-        'ds-accent':    '#00f0ff',  // основной циановый акцент
+        'ds-bg':        'var(--ds-bg)',
+        'ds-sidebar':   'var(--ds-sidebar)',
+        'ds-servers':   'var(--ds-servers)',
+        'ds-input':     'var(--ds-input)',
+        'ds-accent':    '#00f0ff',  // Акцент оставляем циановым (он хорошо смотрится везде)
         'ds-accent-glow':'rgba(0, 240, 255, 0.4)',
         'ds-green':     '#23A55A',
         'ds-red':       '#F23F42',
         'ds-yellow':    '#F0B232',
-        'ds-text':      '#FFFFFF',  // белый текст для контраста
-        'ds-muted':     '#80848E',
-        'ds-hover':     '#2a2b2f',
-        'ds-active':    '#313338',
-        'ds-header':    '#111214',
-        'ds-divider':   '#2b2d31',
-        'ds-mention':   '#444C6E',  // фон упоминания
+        'ds-text':      'var(--ds-text)',
+        'ds-muted':     'var(--ds-muted)',
+        'ds-hover':     'var(--ds-hover)',
+        'ds-active':    'var(--ds-active)',
+        'ds-header':    'var(--ds-header)',
+        'ds-divider':   'var(--ds-divider)',
+        'ds-mention':   'var(--ds-mention)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -74,37 +74,17 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-[#050505] rounded-[2.5rem] w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-8 pt-8 pb-2">
-          <div className="flex items-center gap-2 text-ds-accent vibe-glow-blue bg-ds-accent/10 p-2 rounded-xl">
-             <Globe size={18} />
-          </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-90"
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="px-8 pb-10">
-          {/* Title Area */}
-          <div className="mb-8">
-            <h2 className="text-white font-black text-2xl uppercase tracking-tighter leading-tight">
-              {mode === 'choose' ? 'Новый мир' :
-               mode === 'create' ? 'Создать' : 'Вступить'}
-            </h2>
-            <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.2em] mt-1">
-              {mode === 'choose' ? 'Выбери свой путь VIBE' :
-               mode === 'create' ? 'Создай своё пространство' : 'Присоединяйся к сообществу'}
-            </p>
+        
+        <div className="p-8 space-y-8">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20 mx-auto mb-4">
+              <Globe size={32} />
+            </div>
+            <h2 className="text-ds-text font-black text-2xl uppercase tracking-tighter">VIBE</h2>
+            <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] mt-1">Создай или присоединись</p>
           </div>
 
           {/* Mode Tabs / Content */}
@@ -113,27 +93,27 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
               <div className="flex flex-col gap-4 animate-fade-in">
                 <button
                   onClick={() => setMode('create')}
-                  className="group flex items-center gap-4 p-5 bg-white/[0.02] hover:bg-ds-accent/5 border border-white/5 hover:border-ds-accent/30 rounded-3xl transition-all"
+                  className="group flex items-center gap-4 p-5 bg-ds-bg/50 hover:bg-ds-accent/5 border border-ds-border hover:border-ds-accent/30 rounded-3xl transition-all"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue group-hover:scale-110 transition-transform">
                     <Plus size={28} strokeWidth={3} />
                   </div>
                   <div className="text-left">
-                    <p className="text-white font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">Создать сервер</p>
-                    <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mt-0.5">Властное пространство</p>
+                    <p className="text-ds-text font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">Создать сервер</p>
+                    <p className="text-[10px] text-ds-muted font-black uppercase tracking-widest mt-0.5">Властное пространство</p>
                   </div>
                 </button>
 
                 <button
                   onClick={() => setMode('join')}
-                  className="group flex items-center gap-4 p-5 bg-white/[0.02] hover:bg-ds-accent/5 border border-white/5 hover:border-ds-accent/30 rounded-3xl transition-all"
+                  className="group flex items-center gap-4 p-5 bg-ds-bg/50 hover:bg-ds-accent/5 border border-ds-border hover:border-ds-accent/30 rounded-3xl transition-all"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue group-hover:scale-110 transition-transform">
                     <Link size={28} strokeWidth={3} />
                   </div>
                   <div className="text-left">
-                    <p className="text-white font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">Войти по коду</p>
-                    <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mt-0.5">Ключ от сообщества</p>
+                    <p className="text-ds-text font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">Войти по коду</p>
+                    <p className="text-[10px] text-ds-muted font-black uppercase tracking-widest mt-0.5">Ключ от сообщества</p>
                   </div>
                 </button>
               </div>
@@ -143,18 +123,18 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
             {mode === 'create' && (
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Название</p>
+                  <p className="text-[10px] font-black text-ds-muted uppercase tracking-[0.2em] ml-2">Название</p>
                   <input
                     type="text" value={serverName} onChange={e => setServerName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                    placeholder="Моя Вселенная Vibe"
+                    placeholder="Ультра Сервер"
                     autoFocus
-                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
+                    className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 transition-all outline-none"
                   />
                 </div>
                 {error && <p className="text-ds-red text-[10px] font-black uppercase text-center">{error}</p>}
                 <div className="flex gap-3">
-                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
+                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-ds-bg/50 border border-ds-border rounded-2xl text-ds-muted hover:text-ds-text transition-all">
                     <ArrowLeft size={20} />
                   </button>
                   <button

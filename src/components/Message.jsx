@@ -228,8 +228,8 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor }) {
         </svg>
       </button>
       {showEmojiPicker && (
-        <div ref={pickerRef} className="absolute z-[100] bottom-full right-0 mb-2 shadow-2xl">
-          <EmojiPicker onEmojiClick={handleEmojiClick} theme="dark" skinTonesDisabled />
+        <div ref={pickerRef} className="absolute z-[100] bottom-full right-0 mb-2 shadow-2xl transition-all">
+          <EmojiPicker onEmojiClick={handleEmojiClick} theme={document.documentElement.classList.contains('light-theme') ? 'light' : 'dark'} skinTonesDisabled />
         </div>
       )}
     </div>
@@ -264,22 +264,22 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor }) {
 
   return (
     <div className="group relative flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in">
-      <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-[#1a1b1e] p-1 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all shadow-2xl">
+      <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-ds-input p-1 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all shadow-2xl">
         {reactionBtn}
       </div>
-      <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 bg-black/40 shadow-inner overflow-hidden flex items-center justify-center border border-white/5">
+      <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 bg-ds-bg/40 shadow-inner overflow-hidden flex items-center justify-center border border-white/5">
         <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 mb-0.5">
           <span className="font-bold text-[14.5px] tracking-tight" style={{ color: displayColor }}>{realName}</span>
-          <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest" title={fullTime}>{time}</span>
+          <span className="text-[10px] text-ds-muted font-bold uppercase tracking-widest" title={fullTime}>{time}</span>
         </div>
         {msg.content && (
           <div className="flex items-end gap-2 text-[15px] leading-relaxed">
-            <p className="text-white/90 break-words whitespace-pre-wrap">{msg.content}</p>
+            <p className="text-ds-text break-words whitespace-pre-wrap opacity-90">{msg.content}</p>
             {isMine && isRead !== undefined && (
-              <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'text-white/20'}`}>
+              <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
                 {isRead ? '✓✓' : '✓'}
               </span>
             )}

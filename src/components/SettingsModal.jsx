@@ -166,10 +166,10 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#050505] rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30 pointer-events-none" />
         
         {/* Header */}
@@ -207,7 +207,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                 <div className="w-[120px] h-[120px] rounded-[3rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
                   <img src={imageUrl} alt="Avatar" className="w-full h-full object-cover" />
                 </div>
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-ds-accent flex items-center justify-center text-black shadow-lg vibe-glow-blue border-4 border-[#050505]">
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-ds-accent flex items-center justify-center text-black shadow-lg vibe-glow-blue border-4 border-ds-bg">
                   <Check size={14} strokeWidth={4} />
                 </div>
               </div>

@@ -124,14 +124,18 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
 
   if (!channel) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#050505]">
-        <p className="text-white/20 font-bold uppercase tracking-widest text-xs">Выбери канал</p>
+      <div className="flex-1 flex items-center justify-center bg-ds-servers">
+        <div className="flex flex-col items-center gap-6 animate-pulse-soft">
+          <div className="w-24 h-24 rounded-full bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
+             <Volume2 size={48} />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#050505]" onClick={() => setCtxMenu(null)}>
+    <div className="flex-1 flex flex-col bg-ds-servers" onClick={() => setCtxMenu(null)}>
       {/* Header */}
       <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-10 shadow-lg">
         <Mic size={20} className="text-ds-accent vibe-glow-blue" />
@@ -331,8 +335,8 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               </div>
 
               {!isScreenSharing ? (
-                <div className="flex gap-2.5 w-full">
-                  <div className="bg-[#121212] rounded-2xl border border-white/5 px-4 flex items-center group focus-within:border-ds-accent/30 transition-all flex-1">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="bg-ds-input rounded-2xl border border-white/5 px-4 flex items-center group focus-within:border-ds-accent/30 transition-all flex-1">
                     <select 
                       value={quality} 
                       onChange={e => setQuality(e.target.value)}
@@ -385,7 +389,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       {ctxMenu && (
         <div
           ref={menuRef}
-          className="fixed z-50 bg-[#0f0f0f]/95 border border-white/10 rounded-3xl shadow-2xl p-6 w-64 animate-fade-in backdrop-blur-2xl"
+          className="fixed z-50 bg-ds-servers/95 border border-white/10 rounded-3xl shadow-2xl p-6 w-64 animate-fade-in backdrop-blur-2xl"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={e => e.stopPropagation()}
         >

@@ -37,7 +37,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#020202] flex items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-ds-bg flex items-center justify-center p-6 relative overflow-hidden font-sans">
       {/* ── Анимированный фон (VIBE AURORA) ── */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-ds-accent/20 rounded-full blur-[120px] animate-vibe-pulse opacity-60 shadow-[0_0_150px_rgba(0,240,255,0.2)]" />
@@ -51,24 +51,24 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
         <div className="text-center mb-10 group cursor-default">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-ds-accent mb-6 shadow-[0_0_50px_rgba(0,240,255,0.4)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative">
              <div className="absolute inset-0 rounded-[2.5rem] vibe-moving-glow opacity-50" />
-             <div className="bg-black/10 w-full h-full rounded-[2.5rem] flex items-center justify-center backdrop-blur-sm border-2 border-white/20">
-               <Globe size={40} strokeWidth={2.5} className="text-white drop-shadow-lg" />
-             </div>
-          </div>
-          <h1 className="text-5xl font-black text-white uppercase tracking-tighter leading-none mb-2">VIBE</h1>
-          <div className="flex items-center justify-center gap-2">
-             <span className="h-[1px] w-4 bg-ds-accent/40" />
-             <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em]">Чат будущего уже здесь</p>
-             <span className="h-[1px] w-4 bg-ds-accent/40" />
-          </div>
+              <div className="bg-ds-sidebar/10 w-full h-full rounded-[2.5rem] flex items-center justify-center backdrop-blur-sm border-2 border-white/20">
+                <Globe size={40} strokeWidth={2.5} className="text-white drop-shadow-lg" />
+              </div>
+           </div>
+           <h1 className="text-5xl font-black text-ds-text uppercase tracking-tighter leading-none mb-2">VIBE</h1>
+           <div className="flex items-center justify-center gap-2">
+              <span className="h-[1px] w-4 bg-ds-accent/40" />
+              <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.4em]">Чат будущего уже здесь</p>
+              <span className="h-[1px] w-4 bg-ds-accent/40" />
+           </div>
         </div>
 
         {/* Auth Card */}
-        <div className="bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-[3rem] p-10 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] relative group overflow-hidden">
+        <div className="bg-ds-sidebar/80 backdrop-blur-3xl rounded-[3rem] p-10 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] relative group overflow-hidden">
           <div className="absolute inset-0 vibe-moving-glow opacity-[0.03] group-hover:opacity-[0.07] transition-opacity duration-700" />
           
           {/* Mode Switcher */}
-          <div className="flex bg-black/60 rounded-[1.5rem] p-1.5 mb-8 border border-white/5 relative z-10">
+          <div className="flex bg-ds-bg/60 rounded-[1.5rem] p-1.5 mb-8 border border-white/5 relative z-10">
             <button
               onClick={() => switchMode('login')}
               className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${mode === 'login'
@@ -96,7 +96,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 ml-2">
                    <Mail size={12} className="text-ds-accent" />
-                   <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                   <label className="text-[10px] font-black text-ds-muted uppercase tracking-widest">
                      Электронная почта
                    </label>
                 </div>
@@ -104,7 +104,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                   type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@vibe.app"
                   required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold placeholder-white/10 focus:border-ds-accent/30 focus:bg-black/60 transition-all outline-none"
+                  className="w-full bg-ds-bg/40 border border-white/5 rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
                 />
               </div>
 
@@ -138,7 +138,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                   type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold placeholder-white/10 focus:border-ds-accent/30 focus:bg-black/60 transition-all outline-none"
+                  className="w-full bg-ds-bg/40 border border-white/5 rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
                 />
               </div>
 

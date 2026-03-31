@@ -139,7 +139,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   const { imageUrl: targetAvatar } = getUserAvatar(targetMember?.username ?? '');
 
   return (
-    <div className="flex-1 flex flex-col bg-[#050505] min-w-0 relative">
+    <div className="flex-1 flex flex-col bg-ds-servers min-w-0 relative">
       {/* Header */}
       <div className="h-14 flex items-center px-6 gap-4 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-20 shadow-lg">
         <button 
@@ -150,11 +150,11 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
         </button>
 
         <div className="relative flex-shrink-0 group cursor-pointer">
-          <div className="w-10 h-10 rounded-2xl bg-black/40 overflow-hidden border border-white/10 shadow-inner group-hover:scale-105 transition-transform">
+          <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-ds-input p-1 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all shadow-2xl">
             <img src={targetAvatar} alt={targetMember?.username} className="w-full h-full object-cover select-none" />
           </div>
           <span
-            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-[#050505] z-10 transition-all duration-300
+            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-ds-bg z-10 transition-all duration-300
               ${targetMember?.isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-white/10'}`}
           />
         </div>
@@ -236,7 +236,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
           {/* Attachment Preview */}
           {attachment && (
             <div className="absolute bottom-full mb-4 left-0 animate-slide-up">
-              <div className="bg-[#121212] rounded-[1.5rem] p-3 border border-white/10 shadow-2xl flex items-center gap-4 min-w-[200px]">
+              <div className="bg-ds-input rounded-[1.5rem] p-3 border border-white/10 shadow-2xl flex items-center gap-4 min-w-[200px]">
                 {attachment.file.type.startsWith('video/') ? (
                   <video src={attachment.previewUrl} className="h-16 w-16 rounded-xl object-cover border border-white/10 shadow-lg" />
                 ) : attachment.file.type.startsWith('image/') ? (
@@ -260,7 +260,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
             </div>
           )}
 
-          <div className="relative bg-[#121212] rounded-[1.5rem] flex items-end gap-3 p-2.5 border border-white/5 focus-within:border-ds-accent/30 transition-all shadow-2xl group/input">
+          <div className="relative bg-ds-input rounded-[1.5rem] flex items-end gap-3 p-2.5 border border-white/5 focus-within:border-ds-accent/30 transition-all shadow-2xl group/input">
             <div className="absolute inset-0 vibe-moving-glow opacity-0 group-focus-within/input:opacity-[0.03] rounded-[1.5rem] pointer-events-none" />
             
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />

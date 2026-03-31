@@ -11,24 +11,24 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
   const { imageUrl } = getUserAvatar(username);
 
   return (
-    <div className="h-auto py-3 bg-black/40 flex-shrink-0 flex flex-col px-3 gap-3 border-t border-white/5 overflow-hidden relative">
+    <div className="h-auto py-3 bg-ds-bg/40 flex-shrink-0 flex flex-col px-3 gap-3 border-t border-white/5 overflow-hidden relative">
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-ds-accent/20 to-transparent opacity-30" />
       
       {/* Top Row: Identity */}
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        <div className={`relative flex-shrink-0 w-10 h-10 rounded-2xl bg-black/60 shadow-inner flex items-center justify-center transition-all duration-300
-          ${isSpeaking ? 'ring-2 ring-[#23A559] shadow-[0_0_8px_rgba(35,165,89,0.5)] scale-105' : 'ring-1 ring-white/10'}`}
+        <div className={`relative flex-shrink-0 w-10 h-10 rounded-2xl bg-ds-sidebar/60 shadow-inner flex items-center justify-center transition-all duration-300
+          ${isSpeaking ? 'ring-2 ring-ds-green shadow-[0_0_8px_rgba(35,165,89,0.5)] scale-105' : 'ring-1 ring-white/10'}`}
         >
           <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center">
             <img src={imageUrl} alt={username} className="w-full h-full object-cover select-none" />
           </div>
-          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-ds-green border-2 border-[#0a0a0a] z-10 shadow-sm" />
+          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-ds-green border-2 border-ds-bg z-10 shadow-sm" />
         </div>
 
         {/* Username & Status */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <p className="text-white text-[14px] font-black truncate leading-tight tracking-tight" style={userColor ? { color: userColor } : {}}>
+          <p className="text-ds-text text-[14px] font-black truncate leading-tight tracking-tight" style={userColor ? { color: userColor } : {}}>
             {username}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -41,7 +41,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
       </div>
 
       {/* Bottom Row: Controls */}
-      <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/5 shadow-2xl">
+      <div className="flex items-center gap-1 bg-ds-bg/40 p-0.5 rounded-lg border border-white/5 shadow-2xl">
         <div className="flex flex-1 items-center gap-0.5">
           {activeChannelId && (
             <>
@@ -49,7 +49,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
               <button
                 onClick={toggleMute}
                 title={isMuted ? 'Включить микрофон' : 'Отключить микрофон'}
-                className={`flex-1 h-8 rounded-md flex items-center justify-center transition-all duration-200 ${isMuted ? 'text-ds-red bg-ds-red/10 hover:bg-ds-red/20 vibe-glow-red animate-pulse' : 'text-white/40 hover:text-ds-accent hover:bg-ds-accent/10 hover:vibe-glow-blue'}`}
+                className={`flex-1 h-8 rounded-md flex items-center justify-center transition-all duration-200 ${isMuted ? 'text-ds-red bg-ds-red/10 hover:bg-ds-red/20 vibe-glow-red animate-pulse' : 'text-ds-muted hover:text-ds-accent hover:bg-ds-accent/10 hover:vibe-glow-blue'}`}
               >
                 {isMuted ? (
                   <MicOff className="w-4 h-4" />
@@ -89,7 +89,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
         <button
           onClick={onOpenSettings}
           title="Настройки"
-          className="w-8 h-8 rounded-md flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all duration-200 flex-shrink-0"
+          className="w-8 h-8 rounded-md flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-white/10 transition-all duration-200 flex-shrink-0"
         >
           <Settings className="w-4.5 h-4.5" />
         </button>

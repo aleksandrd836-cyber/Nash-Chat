@@ -123,23 +123,23 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#050505] rounded-[2.5rem] w-full max-w-lg h-[80vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-lg h-[80vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 bg-black/20 backdrop-blur-xl border-b border-white/5 flex-shrink-0">
+        <div className="flex items-center justify-between px-8 py-6 bg-ds-sidebar/20 backdrop-blur-xl border-b border-white/5 flex-shrink-0">
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
               <Settings size={22} />
             </div>
             <div>
-              <h2 className="text-white font-black text-xl uppercase tracking-tighter">Сервер</h2>
-              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.2em] -mt-0.5">Управление пространством</p>
+              <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">Сервер</h2>
+              <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">Управление пространством</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-90"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-ds-sidebar/5 transition-all active:scale-90"
           >
             <X size={24} />
           </button>
@@ -150,13 +150,13 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           
           {/* General Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em] mb-4 ml-1">Основное</h3>
+            <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">Основное</h3>
             <div className="space-y-1.5">
-              <p className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-2">Название</p>
+              <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest ml-2">Название</p>
               <div className="flex gap-2">
                 <input
                   type="text" value={serverName} onChange={e => setServerName(e.target.value)}
-                  className="flex-1 bg-black/40 border border-white/5 rounded-2xl px-4 py-3 text-white text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
+                  className="flex-1 bg-ds-bg/40 border border-white/5 rounded-2xl px-4 py-3 text-ds-text text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
                 />
                 <button
                   onClick={handleSaveName} disabled={savingName || !serverName.trim() || serverName === server.name}
@@ -171,26 +171,26 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           {/* Invite Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Код доступа</h3>
+              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Код доступа</h3>
               <button onClick={handleRegenerateCode} className="text-ds-accent/60 hover:text-ds-accent transition-colors">
                 <RefreshCw size={14} className={codeLoading ? 'animate-spin' : ''} />
               </button>
             </div>
             
-            <div className="p-8 bg-black/40 border border-white/5 rounded-[2rem] flex flex-col items-center gap-6 relative group">
+            <div className="p-8 bg-ds-bg/40 border border-ds-border rounded-[2rem] flex flex-col items-center gap-6 relative group">
               <div className="absolute inset-0 vibe-moving-glow opacity-10" />
               <div className="flex flex-col items-center gap-2">
                 <div className="w-12 h-12 rounded-full bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue mb-2">
                    <UserPlus size={24} />
                 </div>
-                <code className="text-3xl font-black text-white tracking-[0.3em] uppercase drop-shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+                <code className="text-3xl font-black text-ds-text tracking-[0.3em] uppercase drop-shadow-[0_0_15px_rgba(0,240,255,0.3)]">
                   {inviteCode || '········'}
                 </code>
               </div>
               <button
                 onClick={handleCopy} disabled={!inviteCode}
                 className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center justify-center gap-3
-                  ${copied ? 'bg-ds-accent text-black vibe-glow-blue' : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'}`}
+                  ${copied ? 'bg-ds-accent text-ds-bg vibe-glow-blue' : 'bg-ds-bg/50 text-ds-muted border border-ds-border hover:bg-ds-bg/80'}`}
               >
                 {copied ? <Check size={18} strokeWidth={3} /> : <Copy size={18} />}
                 {copied ? 'КОПИЯ СНЯТА' : 'СКОПИРОВАТЬ КЛЮЧ'}

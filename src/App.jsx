@@ -147,13 +147,13 @@ function App() {
 
   if (auth.loading) {
     return (
-      <div className="min-h-screen bg-[#020202] flex items-center justify-center relative overflow-hidden">
+      <div className="min-h-screen bg-ds-bg flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-ds-accent/10 rounded-full blur-[120px] animate-pulse-soft opacity-30" />
         </div>
         <div className="flex flex-col items-center gap-6 relative z-10">
           <div className="relative">
-             <div className="w-16 h-16 border-[5px] border-white/5 border-t-ds-accent rounded-full animate-spin shadow-[0_0_20px_rgba(0,240,255,0.3)]" />
+             <div className="w-16 h-16 border-[5px] border-white/5 border-t-ds-accent rounded-full animate-spin shadow-[0_0_20px_var(--ds-accent-glow)]" />
              <div className="absolute inset-0 vibe-glow-blue blur-sm rounded-full opacity-50" />
           </div>
           <div className="text-center">
@@ -214,7 +214,7 @@ function App() {
         />
       ) : (
         // Заглушка если сервер не выбран
-        <div className="w-60 flex-shrink-0 bg-[#0a0a0a] flex flex-col border-r border-white/5 relative">
+        <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col border-r border-white/5 relative">
           <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
           <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center animate-fade-in">
             <div className="w-20 h-20 rounded-3xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
@@ -255,7 +255,7 @@ function App() {
       <main className="flex-1 flex min-w-0 overflow-hidden">
         {!selectedServer ? (
           // Экран приветствия когда нет сервера
-          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-[#050505] relative overflow-hidden">
+          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers relative overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
                {/* Core Nebula Glow */}
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] vibe-nebula opacity-50 blur-[100px]" />
@@ -294,8 +294,8 @@ function App() {
             onClose={handleCloseDM}
           />
         ) : !selectedChannel ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-[#050505] relative animate-fade-in">
-            <div className="w-28 h-28 rounded-[2.5rem] bg-black/40 flex items-center justify-center text-ds-accent/40 border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
+          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers relative animate-fade-in">
+            <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center text-ds-accent/40 border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                <div className="absolute inset-0 vibe-moving-glow opacity-10" />
                <Hash size={56} strokeWidth={2.5} />
             </div>
@@ -308,7 +308,7 @@ function App() {
             {!isElectron && (
               <a
                 href={downloadUrl}
-                className="px-8 py-3 border border-ds-accent/30 hover:border-ds-accent/60 text-ds-accent/70 hover:text-ds-accent text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-lg shadow-ds-accent/5 vibe-glow-blue"
+                className={`px-8 py-3 border transition-all active:scale-95 shadow-lg vibe-glow-blue ${'bg-ds-accent text-white shadow-lg shadow-ds-accent/20 border-ds-accent vibe-glow-blue'}`}
               >
                 НУЖНО ПРИЛОЖЕНИЕ? ТЫКАЙ СЮДА
               </a>
