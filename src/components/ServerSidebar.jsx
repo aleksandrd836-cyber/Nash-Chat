@@ -38,28 +38,44 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
       {servers.map(server => {
         const isSelected = selectedServerId === server.id;
         const initial = server.name?.[0]?.toUpperCase() ?? '?';
-        // Фирменные цвета серверов (теперь более приглушенные)
         const colors = ['#5865F2', '#23A55A', '#F0B232', '#EB459E', '#F23F42', '#9B59B6', '#E67E22'];
         const colorIndex = server.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % colors.length;
         const iconColor = colors[colorIndex];
 
         return (
           <div key={server.id} className="relative group flex items-center">
-            {/* Полоска активного сервера — теперь ВАЙБОВЫЙ циановый неон */}
+            {/* Полоска активного сервера — ВАЙБОВЫЙ циановый неон */}
             <div className={`absolute left-0 w-1 rounded-r-full bg-ds-accent transition-all duration-300 shadow-[0_0_12px_#00f0ff] ${
-              isSelected ? 'h-10' : 'h-5 opacity-0 group-hover:opacity-100 group-hover:h-6'
+              isSelected ? 'h-10' : 'h-5 opacity-0 group-hover:opacity-100 group-hover:h-8'
             }`} />
 
             <button
               onClick={() => onSelectServer(server)}
               title={server.name}
-              className={`w-12 h-12 rounded-[24px] hover:rounded-[14px] transition-all duration-300 flex items-center justify-center font-bold text-lg text-white shadow-xl ml-3 flex-shrink-0 relative overflow-hidden group/btn ${
-                isSelected ? 'rounded-[14px] vibe-glow-blue' : 'bg-ds-sidebar'
-              }`}
-              style={!isSelected ? { backgroundColor: iconColor } : {}}
+              className={`w-12 h-12 transition-all duration-500 flex items-center justify-center font-black text-[13px] tracking-tighter shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2
+                ${isSelected 
+                  ? 'rounded-[14px] bg-ds-sidebar text-white vibe-glow-blue border-ds-accent' 
+                  : 'rounded-[18px] hover:rounded-[12px] bg-[#050505]/60 backdrop-blur-md text-white/30 hover:text-white hover:scale-110'
+                }`}
+              style={!isSelected ? { borderColor: `${iconColor}44` } : {}}
             >
-              {initial}
+              {/* Буква (увеличиваем при наведении) */}
+              <span className={`relative z-10 transition-transform duration-500 ${!isSelected ? 'group-hover/btn:scale-125' : ''}`}>
+                {initial}
+              </span>
+
+              {/* Фоновое свечение (только при наведении или выборе) */}
+              <div 
+                className={`absolute inset-0 transition-opacity duration-500 pointer-events-none ${
+                    isSelected ? 'opacity-30' : 'opacity-0 group-hover/btn:opacity-20'
+                }`}
+                style={{ backgroundColor: iconColor }}
+              />
+
               {isSelected && <div className="absolute inset-0 vibe-moving-glow opacity-30" />}
+              {!isSelected && (
+                 <div className="absolute inset-0 border border-white/5 rounded-inherit pointer-events-none" />
+              )}
             </button>
           </div>
         );
