@@ -308,9 +308,10 @@ function App() {
             {!isElectron && (
               <a
                 href={downloadUrl}
-                className={`px-8 py-3 border transition-all active:scale-95 shadow-lg vibe-glow-blue ${'bg-ds-accent text-white shadow-lg shadow-ds-accent/20 border-ds-accent vibe-glow-blue'}`}
+                className="relative px-10 py-4 bg-ds-accent text-black font-black uppercase tracking-widest text-[13px] rounded-full transition-all active:scale-95 shadow-2xl animate-vibe-btn overflow-hidden group"
               >
-                НУЖНО ПРИЛОЖЕНИЕ? ТЫКАЙ СЮДА
+                <div className="absolute inset-0 vibe-moving-glow opacity-40 group-hover:opacity-100 transition-opacity" />
+                <span className="relative z-10">НУЖНО ПРИЛОЖЕНИЕ? ТЫКАЙ СЮДА</span>
               </a>
             )}
           </div>

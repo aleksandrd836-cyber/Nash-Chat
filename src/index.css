@@ -126,6 +126,16 @@ html.light-theme {
   100% { background-position: 0% 200%; opacity: 0.3; }
 }
 
+@keyframes vibe-btn-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 240, 255, 0.6), 0 0 10px rgba(0, 240, 255, 0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
+}
+
+.animate-vibe-btn {
+  animation: vibe-btn-pulse 2s ease-in-out infinite;
+}
+
 .vibe-vertical-divider {
   width: 1px;
   height: 100%;
