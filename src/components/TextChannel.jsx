@@ -137,7 +137,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
   return (
     <div className="flex-1 flex flex-col bg-ds-bg min-w-0 relative">
       {/* Header */}
-      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-ds-bg/40 backdrop-blur-md z-10 shadow-lg">
+      <div className="h-12 flex items-center px-4 gap-2 flex-shrink-0 bg-ds-bg/40 backdrop-blur-md z-10 shadow-lg">
         <Hash size={20} className="text-ds-accent vibe-glow-blue" />
         <span className="text-ds-text font-bold text-[15px]">{channel.name}</span>
         

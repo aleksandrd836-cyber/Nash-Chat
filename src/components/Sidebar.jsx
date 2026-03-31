@@ -174,10 +174,10 @@ export function Sidebar({
 
   // ── Рендер ──
   return (
-    <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col border-r border-white/5 shadow-2xl relative select-none" onClick={() => { setChanCtx(null); setCtxMenu(null); }}>
-      <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
+    <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col shadow-2xl relative select-none" onClick={() => { setChanCtx(null); setCtxMenu(null); }}>
+      <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-80 z-50 pointer-events-none" />
       {/* Server header */}
-      <div className="h-12 flex items-center justify-between px-4 border-b border-white/5 flex-shrink-0 hover:bg-white/2 transition-colors group">
+      <div className="h-12 flex items-center justify-between px-4 flex-shrink-0 hover:bg-white/2 transition-colors group">
         <span className="text-ds-text font-bold text-[15px] truncate">{selectedServer?.name ?? 'Сервер'}</span>
         {isOwner && (
           <button

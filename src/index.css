@@ -14,7 +14,7 @@
   --ds-hover: 42, 43, 47;
   --ds-active: 49, 51, 56;
   --ds-header: 17, 18, 20;
-  --ds-divider: 43, 45, 49;
+  --ds-divider: 25, 26, 30;
   --ds-mention: 68, 76, 110;
   
   --ds-accent-rgb: 0, 240, 255;
@@ -120,12 +120,26 @@ html.light-theme {
   50% { opacity: 0.4; }
 }
 
+@keyframes neon-flow {
+  0% { background-position: 0% 0%; opacity: 0.3; }
+  50% { background-position: 0% 100%; opacity: 0.7; }
+  100% { background-position: 0% 200%; opacity: 0.3; }
+}
+
 .vibe-vertical-divider {
   width: 1px;
   height: 100%;
-  background: linear-gradient(to bottom, transparent, rgba(0, 240, 255, 0.4), transparent);
-  animation: border-pulse 4s ease-in-out infinite;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+  background: linear-gradient(to bottom, 
+    transparent, 
+    rgba(0, 240, 255, 0.1) 15%, 
+    rgba(0, 240, 255, 0.8) 50%, 
+    rgba(0, 240, 255, 0.1) 85%, 
+    transparent
+  );
+  background-size: 100% 200%;
+  animation: neon-flow 3s linear infinite;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+  z-index: 50;
 }
 @keyframes vibe-pulse {
   0%, 100% { transform: scale(1); opacity: 0.4; filter: blur(120px) brightness(1); }
