@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMessages } from '../hooks/useMessages';
 import { Message } from './Message';
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
 import { Hash, Send, Paperclip, Smile, Download } from 'lucide-react';
 
 const MAX_LENGTH = 2000;
@@ -282,7 +282,7 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
 
               {showEmojiPicker && (
                 <div ref={pickerRef} className="absolute bottom-[calc(100%+16px)] right-0 z-50 shadow-[0_0_30px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden animate-slide-up border border-white/5">
-                  <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled />
+                  <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" emojiStyle={EmojiStyle.APPLE} skinTonesDisabled />
                 </div>
               )}
             </div>

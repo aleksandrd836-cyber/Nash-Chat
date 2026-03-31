@@ -1,7 +1,61 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 import { useMessageReactions } from '../hooks/useReactions';
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker, { Emoji, EmojiStyle } from 'emoji-picker-react';
+import { Smile } from 'lucide-react';
+
+/** Константа стиля эмодзи для всего приложения */
+const EMOJI_STYLE = EmojiStyle.APPLE;
+
+/** Регулярное выражение для обнаружения эмодзи */
+const EMOJI_REGEX = /([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2194}-\u{2199}\u{21A9}-\u{21AA}\u{3297}\u{3299}\u{303D}\u{2139}\u{24C2}\u{1F191}-\u{1F19A}\u{E0020}-\u{E007F}\u{203C}\u{2049}\u{00A9}\u{00AE}\u{2122}\u{231A}\u{231B}\u{2328}\u{23CF}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267F}\u{2692}-\u{2694}\u{2696}\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26C8}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}\u{2712}\u{2714}\u{2716}\u{271D}\u{2721}\u{2728}\u{2733}\u{2734}\u{2744}\u{2747}\u{274C}\u{274E}\u{2753}-\u{2755}\u{2757}\u{2763}\u{2764}\u{2795}-\u{2797}\u{27A1}\u{27B0}\u{27BF}\u{2B1B}\u{2B1C}])/gu;
+
+/** Помощник для перевода символа эмодзи в формат unified */
+const unifiedFromEmoji = (emoji) => {
+  if (!emoji) return '';
+  return [...emoji].map(c => c.codePointAt(0).toString(16)).join('-');
+};
+
+/** Рендерит текст сообщения, заменяя эмодзи на компоненты Apple Emoji */
+const MessageContent = ({ content, isJumbo = false }) => {
+  if (!content) return null;
+
+  // Проверяем, состоит ли всё сообщение только из эмодзи (до 27 шт)
+  const emojisOnlyRegex = /^(\s*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2194}-\u{2199}\u{21A9}-\u{21AA}\u{3297}\u{3299}\u{303D}\u{2139}\u{24C2}\u{1F191}-\u{1F19A}\u{E0020}-\u{E007F}\u{203C}\u{2049}\u{00A9}\u{00AE}\u{2122}\u{231A}\u{231B}\u{2328}\u{23CF}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267F}\u{2692}-\u{2694}\u{2696}\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26C8}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}\u{2712}\u{2714}\u{2716}\u{271D}\u{2721}\u{2728}\u{2733}\u{2734}\u{2744}\u{2747}\u{274C}\u{274E}\u{2753}-\u{2755}\u{2757}\u{2763}\u{2764}\u{2795}-\u{2797}\u{27A1}\u{27B0}\u{27BF}\u{2934}\u{2935}\u{2B05}-\u{2B07}\u{2B1B}\u{2B1C}\u{2B50}\u{2B55}\u{3030}\u{303D}\u{3297}\u{3299}]+\s*)+$/u;
+  const isAllEmoji = emojisOnlyRegex.test(content.trim());
+  const emojiSize = isAllEmoji ? 40 : 20;
+
+  // Если это только эмодзи, делаем их крупными и добавляем отступы
+  if (isAllEmoji) {
+    const emojis = content.match(EMOJI_REGEX) || [];
+    return (
+      <div className="flex flex-wrap gap-2 py-1 select-none">
+        {emojis.map((emoji, idx) => (
+          <div key={idx} className="scale-125 transform-gpu">
+            <Emoji unified={unifiedFromEmoji(emoji.trim())} emojiStyle={EMOJI_STYLE} size={emojiSize} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Для смешанного текста разбиваем строку и заменяем эмодзи инлайново
+  const parts = content.split(EMOJI_REGEX);
+  return (
+    <span className="leading-relaxed">
+      {parts.map((part, idx) => {
+        if (EMOJI_REGEX.test(part)) {
+          return (
+            <span key={idx} className="inline-block mx-0.5 align-middle transform translate-y-[-1px]">
+              <Emoji unified={unifiedFromEmoji(part)} emojiStyle={EMOJI_STYLE} size={emojiSize} />
+            </span>
+          );
+        }
+        return part;
+      })}
+    </span>
+  );
+};
 
 /** Компонент для отображения вложения (картинка, видео или файл) */
 function Attachment({ url, fileName }) {
@@ -157,7 +211,9 @@ function ReactionList({ reactions, userId, onToggle }) {
             }
           `}
         >
-          <span>{emoji}</span>
+          <div className="scale-125 transform-gpu">
+             <Emoji unified={unifiedFromEmoji(emoji)} emojiStyle={EMOJI_STYLE} size={16} />
+          </div>
           <span>{meta.count}</span>
         </button>
       ))}
@@ -224,13 +280,16 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 flex items-center justify-center rounded-lg bg-ds-bg border border-ds-divider/30 text-ds-muted hover:text-ds-text hover:bg-ds-hover shadow-lg"
         title="Добавить реакцию"
       >
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S7.67 8 8.5 8 10 8.67 10 9.5 9.33 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
-        </svg>
+        <Smile size={18} strokeWidth={2.5} />
       </button>
       {showEmojiPicker && (
         <div ref={pickerRef} className="absolute z-[100] bottom-full left-0 mb-2 shadow-2xl transition-all">
-          <EmojiPicker onEmojiClick={handleEmojiClick} theme={document.documentElement.classList.contains('light-theme') ? 'light' : 'dark'} skinTonesDisabled />
+          <EmojiPicker 
+             onEmojiClick={handleEmojiClick} 
+             theme={document.documentElement.classList.contains('light-theme') ? 'light' : 'dark'} 
+             emojiStyle={EMOJI_STYLE}
+             skinTonesDisabled 
+          />
         </div>
       )}
     </div>
@@ -247,7 +306,9 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         <div className="flex-1 min-w-0 pr-20">
           {msg.content && (
             <div className="flex items-end gap-2">
-              <p className="text-ds-text text-sm leading-relaxed break-all whitespace-pre-wrap">{msg.content}</p>
+              <p className="text-ds-text text-sm leading-relaxed break-all whitespace-pre-wrap">
+                <MessageContent content={msg.content} />
+              </p>
               {isMine && isRead !== undefined && (
                 <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
                   {isRead ? '✓✓' : '✓'}
@@ -269,22 +330,23 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
 
   return (
     <div className="group relative flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in">
-      {/* Reaction on hover in gutter area (slightly shifted up) */}
-      <div className="w-[42px] h-[42px] flex-shrink-0 relative">
+      <div className="w-[42px] h-[42px] flex-shrink-0">
         <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none rounded-full flex items-center justify-center border border-ds-divider/30" />
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-           {reactionBtn}
-        </div>
       </div>
       
       <div className="flex-1 min-w-0 pr-20">
-        <div className="flex items-baseline gap-2 mb-0.5">
+        <div className="flex items-center gap-3 mb-0.5">
           <span className="font-bold text-[14.5px] tracking-tight" style={{ color: displayColor }}>{realName}</span>
-          {/* Main header time removed from inline position to follow user request for right alignment on hover */}
+          {/* Reaction button next to name on hover for main messages */}
+          <div className="h-0 flex items-center">
+             {reactionBtn}
+          </div>
         </div>
         {msg.content && (
           <div className="flex items-end gap-2 text-[15px] leading-relaxed">
-            <p className="text-ds-text break-all whitespace-pre-wrap opacity-90">{msg.content}</p>
+            <p className="text-ds-text break-all whitespace-pre-wrap opacity-90">
+              <MessageContent content={msg.content} />
+            </p>
             {isMine && isRead !== undefined && (
               <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
                 {isRead ? '✓✓' : '✓'}
