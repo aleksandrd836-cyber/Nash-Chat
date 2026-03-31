@@ -24,6 +24,7 @@ export function useVoice() {
   const [isSpeaking, setIsSpeaking]            = useState(false);
   const [isScreenSharing, setIsScreenSharing]  = useState(false);
   const [remoteScreens, setRemoteScreens]      = useState({});
+  const [voiceError, setVoiceError]            = useState(null);
 
   const isDeafenedRef   = useRef(false);
   const isMutedRef      = useRef(false);
@@ -132,8 +133,8 @@ export function useVoice() {
           signalingChannel.send(offerPayload);
         }
       } catch (err) {
-        console.warn(`[WebRTC] onnegotiationneeded error:`, err);
-      } finally {
+        console.error(`[WebRTC] onnegotiationneeded error:`, err);
+        setVoiceError(`[Negotiation] ${err.message || 'Ошибка создания предложения'}`);
         makingOfferRef.current[remoteUserId] = false;
       }
     };
@@ -235,11 +236,15 @@ export function useVoice() {
         // Мы инициируем ICE Restart, чтобы WebRTC сам попробовал найти новый путь 
         // без закрытия PeerConnection (это сохранит трансляцию экрана и голос).
         console.warn(`[WebRTC] Связь с ${remoteUserId} потеряна. Пробую ICE Restart...`);
+        setVoiceError(`[Network] Попытка восстановления связи с ${remoteUserId}...`);
         try {
           pc.restartIce();
         } catch (err) {
           console.error(`[WebRTC] Ошибка ICE Restart:`, err);
+          setVoiceError(`[Network] Ошибка ICE Restart: ${err.message}`);
         }
+      } else if (state === 'failed') {
+        setVoiceError(`[Connection] Критическая ошибка связи с ${remoteUserId}. Попробуйте перезайти.`);
       }
     };
 
@@ -384,6 +389,7 @@ export function useVoice() {
   const joinVoiceChannel = useCallback(async (channelId, user, username, color) => {
     if (activeChannelId) await leaveVoiceChannel();
     setIsConnecting(true);
+    setVoiceError(null);
 
     // 1. Получаем поток микрофона (с учетом выбранного девайса, если есть)
     let stream;
@@ -547,6 +553,7 @@ export function useVoice() {
         channel.send(answerPayload);
       } catch (err) {
         console.error('[WebRTC] Error handling offer:', err);
+        setVoiceError(`[Signaling] Ошибка приема предложения от ${remoteId}: ${err.message}`);
       }
     });
 
@@ -562,6 +569,7 @@ export function useVoice() {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         } catch (err) {
           console.error('[WebRTC] Error handling answer:', err);
+          setVoiceError(`[Signaling] Ошибка приема ответа от ${remoteId}: ${err.message}`);
         }
       }
     });
@@ -905,9 +913,10 @@ export function useVoice() {
 
   return {
     activeChannelId, participants, allParticipants, ping,
-    isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens,
+    isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens, voiceError,
     joinVoiceChannel, leaveVoiceChannel,
     toggleMute, toggleDeafen, setParticipantVolume,
     startScreenShare, stopScreenShare, requestScreenView,
+    clearVoiceError: () => setVoiceError(null)
   };
 }

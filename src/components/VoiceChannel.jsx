@@ -67,6 +67,8 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     startScreenShare,
     stopScreenShare,
     requestScreenView,
+    voiceError,
+    clearVoiceError,
   } = voice;
 
   const isInThisChannel = activeChannelId === channel?.id;
@@ -159,7 +161,31 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 gap-10 overflow-y-auto no-scrollbar">
+      <div className="flex-1 flex flex-col items-center justify-start p-8 gap-10 overflow-y-auto no-scrollbar relative">
+        
+        {/* Error Alert */}
+        {voiceError && (
+          <div className="w-full max-w-2xl bg-ds-red/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col gap-4 animate-shake shadow-2xl z-50 mb-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <MicOff className="text-white w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-white font-black uppercase tracking-widest text-xs mb-1">Сетевая ошибка</h3>
+                <p className="text-white/90 text-sm font-medium leading-relaxed font-mono break-all">
+                  {voiceError}
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={clearVoiceError}
+              className="bg-white text-ds-red font-black py-2 rounded-xl text-[10px] uppercase tracking-[0.2em] hover:bg-white/90 transition-all active:scale-95"
+            >
+              ПОНЯТНО
+            </button>
+          </div>
+        )}
+
         {/* Channel visual */}
         <div className="text-center">
           <div className="w-32 h-32 rounded-full bg-black/40 border-[3px] border-white/10 flex items-center justify-center mx-auto mb-8 shadow-2xl relative group">
