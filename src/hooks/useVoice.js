@@ -45,6 +45,7 @@ export function useVoice() {
   const audioContextRef = useRef(null);
   const originalMicStreamRef = useRef(null);
   const gainNodesRef = useRef({}); // Узлы усиления для каждого участника
+  const makingOfferRef = useRef({}); // Флаги "я шлю оффер" для каждого участника
   // Таймеры на удаление "призраков" (чтобы не рвать WebRTC при мерцании Presence)
   const ghostPeersRef = useRef({});
 
@@ -122,7 +123,9 @@ export function useVoice() {
         
         setTimeout(async () => {
           try {
-            if (pc.signalingState !== 'stable') return;
+            if (pc.signalingState !== 'stable' || makingOfferRef.current[remoteUserId]) return;
+            
+            makingOfferRef.current[remoteUserId] = true;
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
@@ -132,7 +135,10 @@ export function useVoice() {
             } else if (signalingChannel) {
               signalingChannel.send(offerPayload);
             }
-          } catch (e) { console.warn('[WebRTC] Offer delayed error:', e); }
+          } catch (e) { console.warn('[WebRTC] Offer delayed error:', e); 
+          } finally {
+            makingOfferRef.current[remoteUserId] = false;
+          }
         }, delay);
       } catch (err) { console.error(`[WebRTC] Offer initiation error:`, err); }
     };
@@ -231,9 +237,14 @@ export function useVoice() {
         closePeer(remoteUserId, true);
       } else if (state === 'disconnected') {
         // 'disconnected' — временное состояние. 
-        // Мы больше не закрываем его по таймеру, а позволяем syncParticipants 
-        // решить, нужно ли переподключение, если связь не восстановится.
-        console.warn(`[WebRTC] Соединение с ${remoteUserId} временно потеряно (disconnected)`);
+        // Мы инициируем ICE Restart, чтобы WebRTC сам попробовал найти новый путь 
+        // без закрытия PeerConnection (это сохранит трансляцию экрана и голос).
+        console.warn(`[WebRTC] Связь с ${remoteUserId} потеряна. Пробую ICE Restart...`);
+        try {
+          pc.restartIce();
+        } catch (err) {
+          console.error(`[WebRTC] Ошибка ICE Restart:`, err);
+        }
       }
     };
 
@@ -343,10 +354,35 @@ export function useVoice() {
       // ── САМОВОССТАНОВЛЕНИЕ (Self-Healing) ──
       // Если пользователя видим, но соединения нет (и это не я)
       if (p.userId !== currentUserRef.current?.id && !peerConns.current[p.userId]) {
-        console.log(`[Self-Healing] Обнаружен участник ${p.userId} без связи. Восстанавливаю...`);
-        createPeerConnection(p.userId, channel);
+        // Если он еще в списке "призраков", значит он только что мигнул
+        if (!ghostPeersRef.current[p.userId]) {
+          console.log(`[Self-Healing] Обнаружен участник ${p.userId} без связи. Восстанавливаю...`);
+          createPeerConnection(p.userId, channel);
+        }
       }
     });
+
+    // ── УДАЛЕНИЕ ПО НАСТОЯЩЕМУ ТАЙМАУТУ ──
+    // Если участника больше нет в списке Presence, начинаем долгий отсчет (60 сек)
+    Object.keys(peerConns.current).forEach(uid => {
+      if (!seen.has(uid)) {
+        if (!ghostPeersRef.current[uid]) {
+          console.log(`[Presence] Участник ${uid} пропал из списков. Запуск 60с буфера...`);
+          ghostPeersRef.current[uid] = setTimeout(() => {
+            console.log(`[Presence] Окончательное удаление ${uid} (отсутствует 60с)`);
+            closePeer(uid, true);
+            delete ghostPeersRef.current[uid];
+          }, 60000);
+        }
+      } else {
+        if (ghostPeersRef.current[uid]) {
+          console.log(`[Presence] Участник ${uid} снова в списках (отмена Ghost буфера)`);
+          clearTimeout(ghostPeersRef.current[uid]);
+          delete ghostPeersRef.current[uid];
+        }
+      }
+    });
+
     setParticipants(Array.from(seen.values()));
   }, [createPeerConnection, activeChannelId]);
 
@@ -472,20 +508,10 @@ export function useVoice() {
     });
 
     channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
+      // Мы больше не удаляем соединение по событию leave!
+      // Обработка удаления теперь полностью в syncParticipants (через 60с буфер).
       leftPresences.forEach(p => {
-        if (p.userId === user.id) return;
-        
-        console.log(`[Presence] Пользователь ${p.userId} вышел (назначаю "призраком" на 5с)`);
-        
-        // Flicker Protection: ждем 5 секунд перед реальным удалением
-        if (ghostPeersRef.current[p.userId]) clearTimeout(ghostPeersRef.current[p.userId]);
-        
-        ghostPeersRef.current[p.userId] = setTimeout(() => {
-          console.log(`[Presence] Окончательное удаление ${p.userId} по таймауту`);
-          closePeer(p.userId, true);
-          delete ghostPeersRef.current[p.userId];
-          syncParticipants(channel);
-        }, 15000); // 15 секунд вместо 5
+        console.log(`[Presence] Получен сигнал leave для ${p.userId}. Игнорируем (ждем sync буфер)`);
       });
     });
 
