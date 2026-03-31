@@ -170,7 +170,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-[#050505] rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
-        <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
+        <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30 pointer-events-none" />
         
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 bg-black/20 backdrop-blur-xl border-b border-white/5 flex-shrink-0">
@@ -202,7 +202,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
             </div>
             
             <div className="flex items-center gap-8 p-6 bg-white/[0.02] border border-white/5 rounded-3xl relative group">
-              <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl" />
+              <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl pointer-events-none" />
               <div className="relative">
                 <div className="w-[120px] h-[120px] rounded-[3rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
                   <img src={imageUrl} alt="Avatar" className="w-full h-full object-cover" />
@@ -273,7 +273,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
 
               {/* Mic Test Visualization */}
               <div className="p-8 bg-black/40 border border-white/5 rounded-[2rem] relative overflow-hidden group">
-                 <div className="absolute inset-0 vibe-moving-glow opacity-10" />
+                 <div className="absolute inset-0 vibe-moving-glow opacity-10 pointer-events-none" />
                  <div className="relative z-10 flex flex-col items-center">
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 border-[3px] mb-4
                       ${testing ? 'bg-ds-accent/10 border-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-white/20'}`}
