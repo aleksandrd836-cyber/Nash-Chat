@@ -28,13 +28,17 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
 
         {/* Username & Status */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <p className="text-ds-text text-[14px] font-black truncate leading-tight tracking-tight flex items-center gap-2" style={{ color: currentUserId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
-            {username}
-            {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(currentUserId) && (
-              <span className="px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
+          <p className="text-ds-text text-[14px] font-black truncate leading-tight tracking-tight flex items-center gap-2">
+            <span style={{ color: currentUserId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>{username}</span>
+            {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(currentUserId) ? (
+              <span className="px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge select-none">
                 СОЗДАТЕЛЬ
               </span>
-            )}
+            ) : currentUserId === ownerId ? (
+              <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-[8px] font-black text-amber-500 uppercase tracking-tighter shadow-[0_0_8px_rgba(245,158,11,0.2)] align-middle select-none">
+                АДМИН
+              </span>
+            ) : null}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <div className={`w-1.5 h-1.5 rounded-full ${activeChannelId ? 'bg-ds-green vibe-glow-green animate-pulse' : 'bg-ds-muted'}`} />
