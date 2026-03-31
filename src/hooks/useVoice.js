@@ -50,6 +50,7 @@ export function useVoice() {
   const makingOfferRef = useRef({});
   const ignoreOfferRef = useRef({});
   const ghostPeersRef = useRef({});
+  const isLeavingRef = useRef(false);
 
   // Глобальный канал
   useEffect(() => {
@@ -210,9 +211,9 @@ export function useVoice() {
   }, [closePeer]);
 
   const cleanupAll = useCallback(async () => {
+    isLeavingRef.current = true; // СТАВИМ МЕТКУ: ВЫХОДИМ САМИ
     // 1. Сначала чистим ошибки, чтобы не триггерить UI на закрытие канала
     setVoiceError(null);
-    setServerStatus('online');
     
     Object.values(ghostPeersRef.current).forEach(clearTimeout); ghostPeersRef.current = {};
     Object.keys(peerConns.current).forEach(id => closePeer(id, true));
@@ -263,6 +264,7 @@ export function useVoice() {
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color) => {
     if (activeChannelId) await cleanupAll();
+    isLeavingRef.current = false; // СБРАСЫВАЕМ МЕТКУ: МЫ СНОВА В ИГРЕ
     setIsConnecting(true); setVoiceError(null);
     try {
       const constraints = { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }, video: false };
@@ -365,6 +367,9 @@ export function useVoice() {
           }
           setActiveChannelId(channelId); setIsConnecting(false);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          // ЕСЛИ МЫ ВЫХОДИМ САМИ - НИКАКИХ ОШИБОК
+          if (isLeavingRef.current) return;
+          
           setServerStatus('offline');
           setVoiceError('[Server] Потеряно соединение с сервером (Realtime Offline)');
           setIsConnecting(false);
