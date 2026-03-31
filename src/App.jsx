@@ -306,7 +306,7 @@ function App() {
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
             <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                <div className="absolute inset-0 vibe-moving-glow opacity-10" />
-               <Sparkles size={48} className="text-ds-accent/40 vibe-logo-glow contrast-125" />
+               <Sparkles size={48} className="text-ds-accent/80 vibe-logo-glow contrast-125" />
             </div>
             <div className="max-w-xs">
               <h3 className="text-ds-text font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>
