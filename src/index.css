@@ -131,7 +131,7 @@ select option {
 /* ── Светлая Тема (Умная Инверсия) ── */
 html.light-theme {
   filter: invert(1) hue-rotate(180deg);
-  background-color: #f4f3f1; /* Коррекция фона для чистоты */
+  background-color: #fcfcfc; /* Более чистый белый фон */
 }
 
 /* Элементы, которые НЕ должны инвертироваться (двойная инверсия) */
@@ -139,26 +139,37 @@ html.light-theme img,
 html.light-theme video,
 html.light-theme [style*="background-image"],
 html.light-theme .vibe-glow-blue,
+html.light-theme .vibe-glow-blue *,
 html.light-theme .vibe-moving-glow,
 html.light-theme .vibe-nebula,
 html.light-theme .vibe-aurora,
 html.light-theme .vibe-vertical-divider,
 html.light-theme .slashed-icon-line,
-html.light-theme .vibe-glow-blue *,
-html.light-theme .animate-pulse-soft,
-/* Иконки серверов в сайдбаре (двойная инверсия для сохранения оригинальных цветов) */
-html.light-theme [style*="background-color"]:not(html):not(body):not(.bg-ds-bg):not(.bg-ds-sidebar):not(.bg-ds-servers):not(.bg-\[\#050505\]),
-html.light-theme [style*="border-color"] {
+html.light-theme .animate-pulse-soft {
   filter: invert(1) hue-rotate(180deg);
 }
 
-/* Улучшение читаемости текста в светлой теме */
-html.light-theme .text-white\/20 { color: rgba(0, 0, 0, 0.3) !important; }
-html.light-theme .text-white\/30 { color: rgba(0, 0, 0, 0.4) !important; }
-html.light-theme .text-white\/40 { color: rgba(0, 0, 0, 0.5) !important; }
-html.light-theme .text-white\/50 { color: rgba(0, 0, 0, 0.6) !important; }
-html.light-theme .border-white\/5 { border-color: rgba(0, 0, 0, 0.1) !important; }
-html.light-theme .border-white\/10 { border-color: rgba(0, 0, 0, 0.15) !important; }
-html.light-theme .bg-white\/\[0\.02\] { background-color: rgba(0, 0, 0, 0.03) !important; }
-html.light-theme .bg-white\/5 { background-color: rgba(0, 0, 0, 0.06) !important; }
-html.light-theme .bg-black\/40 { background-color: rgba(255, 255, 255, 0.6) !important; }
+/* Улучшение читаемости текста и контрастности в светлой теме */
+html.light-theme .text-white\/20 { color: rgba(0, 0, 0, 0.4) !important; }
+html.light-theme .text-white\/30 { color: rgba(0, 0, 0, 0.5) !important; }
+html.light-theme .text-white\/40 { color: rgba(0, 0, 0, 0.6) !important; }
+html.light-theme .text-white\/50 { color: rgba(0, 0, 0, 0.8) !important; } /* Сделано заметно темнее */
+html.light-theme .text-ds-muted { color: rgba(0, 0, 0, 0.7) !important; }
+html.light-theme .text-white\/70 { color: rgba(0, 0, 0, 0.9) !important; }
+
+/* Тонкая настройка панелей и рамок */
+html.light-theme .border-white\/5 { border-color: rgba(0, 0, 0, 0.12) !important; }
+html.light-theme .border-white\/10 { border-color: rgba(0, 0, 0, 0.2) !important; }
+html.light-theme .bg-white\/\[0\.02\] { background-color: rgba(0, 0, 0, 0.04) !important; }
+html.light-theme .bg-white\/5 { background-color: rgba(0, 0, 0, 0.08) !important; }
+html.light-theme .bg-black\/40 { background-color: rgba(255, 255, 255, 0.7) !important; }
+html.light-theme .bg-ds-sidebar, 
+html.light-theme .bg-ds-servers, 
+html.light-theme .bg-ds-bg { 
+  background-color: transparent !important; /* Позволяем основному светлому фону просвечивать */
+}
+
+/* Фикс для иконок серверов - чтобы они не были темными */
+html.light-theme .server-sidebar-btn {
+  filter: none !important; /* Убираем лишние фильтры */
+}

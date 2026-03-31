@@ -52,7 +52,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
             <button
               onClick={() => onSelectServer(server)}
               title={server.name}
-              className={`w-12 h-12 transition-all duration-500 flex items-center justify-center font-black text-[13px] tracking-tighter shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2
+              className={`w-12 h-12 transition-all duration-500 flex items-center justify-center font-black text-[13px] tracking-tighter shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2 server-sidebar-btn
                 ${isSelected 
                   ? 'rounded-[14px] bg-ds-sidebar text-white vibe-glow-blue border-ds-accent' 
                   : 'rounded-[18px] hover:rounded-[12px] bg-[#050505]/60 backdrop-blur-md text-white/30 hover:text-white hover:scale-110'
