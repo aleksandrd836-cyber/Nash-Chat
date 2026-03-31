@@ -173,19 +173,14 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30 pointer-events-none" />
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 bg-black/20 backdrop-blur-xl border-b border-white/5 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
-              <Shield size={22} />
-            </div>
-            <div>
-              <h2 className="text-white font-black text-xl uppercase tracking-tighter">Настройки</h2>
-              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.2em] -mt-0.5">Управление аккаунтом VIBE</p>
-            </div>
+        <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-white/5 bg-ds-bg/40 backdrop-blur-md">
+          <div className="flex flex-col">
+            <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">Настройки</h2>
+            <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">Управление аккаунтом VIBE</p>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-90"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-white/5 transition-all active:scale-90"
           >
             <X size={24} />
           </button>
@@ -196,78 +191,78 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
           
           {/* Profile Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <User size={16} className="text-ds-accent" />
-              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Мой профиль</h3>
-            </div>
-            
-            <div className="flex items-center gap-8 p-6 bg-white/[0.02] border border-white/5 rounded-3xl relative group">
-              <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl pointer-events-none" />
-              <div className="relative">
-                <div className="w-[120px] h-[120px] rounded-[3rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
-                  <img src={imageUrl} alt="Avatar" className="w-full h-full object-cover" />
-                </div>
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-ds-accent flex items-center justify-center text-black shadow-lg vibe-glow-blue border-4 border-ds-bg">
-                  <Check size={14} strokeWidth={4} />
-                </div>
-              </div>
-              <div className="flex-1 space-y-4">
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Имя пользователя</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text" value={username} onChange={e => setUsername(e.target.value)}
-                      className="flex-1 bg-black/40 border border-white/5 rounded-2xl px-4 py-3 text-white text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
-                    />
-                    <input
-                      type="color" value={color} onChange={e => setColor(e.target.value)}
-                      className="w-12 h-12 p-1.5 rounded-2xl bg-black/40 border border-white/5 cursor-pointer"
-                    />
+            <div className="space-y-6">
+              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Мой профиль</h3>
+              
+              <div className="flex items-center gap-8 bg-ds-bg/30 p-6 rounded-[2.5rem] border border-white/5 shadow-inner relative group">
+                <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl pointer-events-none" />
+                <div className="relative">
+                  <div className="w-[120px] h-[120px] rounded-[3rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
+                    <img src={imageUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-ds-accent flex items-center justify-center text-black shadow-lg vibe-glow-blue border-4 border-ds-bg">
+                    <Check size={14} strokeWidth={4} />
                   </div>
                 </div>
-                <button
-                  onClick={saveSettings} disabled={savingNick}
-                  className="w-full py-3 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
-                >
-                  {savingNick ? 'ПРИМЕНЕНИЕ...' : 'СОХРАНИТЬ ИЗМЕНЕНИЯ'}
-                </button>
-                {nickMsg && (
-                  <p className={`text-[10px] font-black uppercase tracking-widest text-center ${nickMsg.type === 'ok' ? 'text-ds-accent' : 'text-ds-red'}`}>
-                    {nickMsg.text}
-                  </p>
-                )}
+                <div className="flex-1 space-y-4">
+                  <div className="space-y-2 px-2">
+                    <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest">Имя пользователя</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text" value={username} onChange={e => setUsername(e.target.value)}
+                        className="flex-1 bg-black/40 border border-white/5 rounded-2xl px-4 py-3 text-ds-text text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
+                      />
+                      <input
+                        type="color" value={color} onChange={e => setColor(e.target.value)}
+                        className="w-12 h-12 p-1.5 rounded-2xl bg-black/40 border border-white/5 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={saveSettings} disabled={savingNick}
+                    className="w-full py-3 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
+                  >
+                    {savingNick ? 'ПРИМЕНЕНИЕ...' : 'СОХРАНИТЬ ИЗМЕНЕНИЯ'}
+                  </button>
+                  {nickMsg && (
+                    <p className={`text-[10px] font-black uppercase tracking-widest text-center ${nickMsg.type === 'ok' ? 'text-ds-accent' : 'text-ds-red'}`}>
+                      {nickMsg.text}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </section>
 
           {/* Audio Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <Mic size={16} className="text-ds-accent" />
-              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Настройки звука</h3>
-            </div>
-            
             <div className="space-y-6">
+              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Настройки звука</h3>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Микрофон</p>
-                  <select
-                    value={selectedDevice} onChange={e => setSelectedDevice(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-white/60 text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="">(Системный по умолчанию)</option>
-                    {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Микрофон`}</option>)}
-                  </select>
+                  <p className="text-[9px] font-black text-ds-muted uppercase tracking-[0.2em] ml-2 font-mono">Микрофон</p>
+                  <div className="relative">
+                    <select
+                      value={selectedDevice} onChange={e => setSelectedDevice(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-ds-muted text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
+                    >
+                      <option value="">(Системный по умолчанию)</option>
+                      {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Микрофон`}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Вывод</p>
-                  <select
-                    value={selectedOutput} onChange={e => setSelectedOutput(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-white/60 text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="">(Системный по умолчанию)</option>
-                    {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Устройство вывода`}</option>)}
-                  </select>
+                  <p className="text-[9px] font-black text-ds-muted uppercase tracking-[0.2em] ml-2 font-mono">Вывод</p>
+                  <div className="relative">
+                    <select
+                      value={selectedOutput} onChange={e => setSelectedOutput(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-ds-muted text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
+                    >
+                      <option value="">(Системный по умолчанию)</option>
+                      {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Устройство вывода`}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -276,7 +271,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                  <div className="absolute inset-0 vibe-moving-glow opacity-10 pointer-events-none" />
                  <div className="relative z-10 flex flex-col items-center">
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 border-[3px] mb-4
-                      ${testing ? 'bg-ds-accent/10 border-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-white/20'}`}
+                      ${testing ? 'bg-ds-accent/10 border-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-ds-muted'}`}
                     >
                       <Mic size={32} className={testing ? 'text-ds-accent' : ''} />
                     </div>
@@ -289,7 +284,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                     </button>
                     
                     <div className="w-full max-w-xs mt-8 space-y-2">
-                      <div className="flex justify-between font-mono text-[9px] text-white/20 uppercase font-black">
+                      <div className="flex justify-between font-mono text-[9px] text-ds-muted uppercase font-black">
                         <span>Уровень сигнала</span>
                         <span className={testing && volume > 0 ? 'text-ds-accent' : ''}>{volume}%</span>
                       </div>
@@ -309,17 +304,17 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
           <section className="animate-fade-in" style={{ animationDelay: '0.25s' }}>
             <div className="flex items-center gap-2 mb-6">
               <Sun size={16} className="text-ds-accent" />
-              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Внешний вид</h3>
+              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Внешний вид</h3>
             </div>
             
             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center justify-between group">
                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border ${theme === 'light' ? 'bg-ds-accent/10 border-ds-accent text-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border ${theme === 'light' ? 'bg-ds-accent/10 border-ds-accent text-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-ds-muted'}`}>
                      {theme === 'light' ? <Sun size={24} /> : <Moon size={24} />}
                   </div>
                   <div>
-                    <p className="text-white font-black uppercase tracking-widest text-[11px] mb-1">Светлая тема</p>
-                    <p className="text-[9px] text-white/30 font-bold uppercase tracking-wider">Переключить визуальный режим VIBE</p>
+                    <p className="text-ds-text font-black uppercase tracking-widest text-[11px] mb-1">Светлая тема</p>
+                    <p className="text-[9px] text-ds-muted font-bold uppercase tracking-wider">Переключить визуальный режим VIBE</p>
                   </div>
                </div>
                
@@ -337,7 +332,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
           <section className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <div className="flex items-center gap-2 mb-6">
               <Bell size={16} className="text-ds-accent" />
-              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Уведомления</h3>
+              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Уведомления</h3>
             </div>
             
             <div className="grid grid-cols-2 gap-3">

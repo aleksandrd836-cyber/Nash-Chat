@@ -4,35 +4,36 @@
 @tailwind utilities;
 
 :root {
-  /* Color Palette - Dark Mode (Default) */
-  --ds-bg: #0b0c0e;
-  --ds-sidebar: #161719;
-  --ds-servers: #050505;
-  --ds-input: #1e1f22;
-  --ds-text: #FFFFFF;
-  --ds-muted: #80848E;
-  --ds-hover: #2a2b2f;
-  --ds-active: #313338;
-  --ds-header: #111214;
-  --ds-divider: #2b2d31;
-  --ds-mention: #444C6E;
+  /* Color Palette - Dark Mode (Default) - RGB Components */
+  --ds-bg: 11, 12, 14;
+  --ds-sidebar: 22, 23, 25;
+  --ds-servers: 5, 5, 5;
+  --ds-input: 30, 31, 34;
+  --ds-text: 255, 255, 255;
+  --ds-muted: 128, 132, 142;
+  --ds-hover: 42, 43, 47;
+  --ds-active: 49, 51, 56;
+  --ds-header: 17, 18, 20;
+  --ds-divider: 43, 45, 49;
+  --ds-mention: 68, 76, 110;
   
+  --ds-accent-rgb: 0, 240, 255;
   --ds-accent: #00f0ff;
 }
 
 html.light-theme {
-  /* Color Palette - Light Mode */
-  --ds-bg: #f2f3f5;
-  --ds-sidebar: #ebedef;
-  --ds-servers: #e3e5e8;
-  --ds-input: #ffffff;
-  --ds-text: #060607;
-  --ds-muted: #4e5058;
-  --ds-hover: #dbdee1;
-  --ds-active: #d0d3d7;
-  --ds-header: #ffffff;
-  --ds-divider: #e3e5e8;
-  --ds-mention: #c9ccd1;
+  /* Color Palette - Light Mode - RGB Components */
+  --ds-bg: 242, 243, 245;
+  --ds-sidebar: 235, 237, 239;
+  --ds-servers: 227, 229, 232;
+  --ds-input: 255, 255, 255;
+  --ds-text: 6, 6, 7;
+  --ds-muted: 78, 80, 88;
+  --ds-hover: 219, 222, 225;
+  --ds-active: 208, 211, 215;
+  --ds-header: 255, 255, 255;
+  --ds-divider: 227, 229, 232;
+  --ds-mention: 201, 204, 209;
 }
 
 @layer base {
@@ -42,12 +43,12 @@ html.light-theme {
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: var(--ds-bg);
-    color: var(--ds-text);
+    background-color: rgb(var(--ds-bg));
+    color: rgb(var(--ds-text));
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* Scrollbar styling - Modern & Subtle */
@@ -61,10 +62,10 @@ html.light-theme {
 
 @layer utilities {
   .vibe-glass {
-    background: rgba(22, 23, 25, 0.7);
+    background: rgba(var(--ds-sidebar), 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(var(--ds-text), 0.05);
   }
 
   .vibe-glow-blue {

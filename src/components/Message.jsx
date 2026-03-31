@@ -49,7 +49,7 @@ function Attachment({ url, fileName }) {
               className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
             />
             <button
-              className="absolute top-4 right-4 w-9 h-9 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+              className="absolute top-4 right-4 w-9 h-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/60 transition-colors"
               onClick={() => setFullscreen(false)}
             >
               <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
@@ -88,7 +88,7 @@ function Attachment({ url, fileName }) {
               onClick={(e) => e.stopPropagation()}
             />
             <button
-              className="absolute top-4 right-4 w-9 h-9 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+              className="absolute top-4 right-4 w-9 h-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/60 transition-colors"
               onClick={() => setFullscreen(false)}
             >
               <svg width="18" height="18" fill="white" viewBox="0 0 24 24">
@@ -264,10 +264,10 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor }) {
 
   return (
     <div className="group relative flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in">
-      <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-ds-input p-1 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all shadow-2xl">
+      <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-ds-input p-1 rounded-xl border border-ds-divider/30 opacity-0 group-hover:opacity-100 transition-all shadow-2xl">
         {reactionBtn}
       </div>
-      <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 bg-ds-bg/40 shadow-inner overflow-hidden flex items-center justify-center border border-white/5">
+      <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 bg-ds-bg/40 shadow-inner overflow-hidden flex items-center justify-center border border-ds-divider/30">
         <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none" />
       </div>
       <div className="flex-1 min-w-0">

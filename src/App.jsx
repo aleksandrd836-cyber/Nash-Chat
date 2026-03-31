@@ -157,8 +157,8 @@ function App() {
              <div className="absolute inset-0 vibe-glow-blue blur-sm rounded-full opacity-50" />
           </div>
           <div className="text-center">
-             <h1 className="text-white font-black text-2xl tracking-[0.2em] mb-1">VIBE</h1>
-             <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] animate-pulse">Загрузка системы...</p>
+             <h1 className="text-ds-text font-black text-2xl tracking-[0.2em] mb-1">VIBE</h1>
+             <p className="text-[10px] text-ds-muted/60 font-black uppercase tracking-[0.4em] animate-pulse">Загрузка системы...</p>
           </div>
         </div>
       </div>
@@ -221,8 +221,8 @@ function App() {
                <Globe size={40} strokeWidth={2} />
             </div>
             <div>
-               <p className="text-white font-black uppercase tracking-tight text-sm">Начни Путешествие</p>
-               <p className="text-[10px] text-white/50 font-black uppercase tracking-[0.15em] mt-2 leading-relaxed">Создай свой сервер или вступи по коду от друга</p>
+               <p className="text-ds-text font-black uppercase tracking-tight text-sm">Начни Путешествие</p>
+               <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.15em] mt-2 leading-relaxed">Создай свой сервер или вступи по коду от друга</p>
             </div>
             <button
               onClick={() => setServerEntryOpen(true)}
@@ -270,8 +270,8 @@ function App() {
                <div className="absolute inset-0 vibe-moving-glow blur-md opacity-20" />
             </div>
             <div className="relative z-10 max-w-sm">
-              <h2 className="text-white font-black text-4xl tracking-tighter mb-4 uppercase">Привет, {displayUsername}!</h2>
-              <p className="text-white/50 text-xs font-bold leading-relaxed uppercase tracking-widest">
+              <h2 className="text-ds-text font-black text-4xl tracking-tighter mb-4 uppercase">Привет, {displayUsername}!</h2>
+              <p className="text-ds-muted text-xs font-bold leading-relaxed uppercase tracking-widest">
                  Твоя атмосфера начинается здесь. Настрой сервер и пригласи друзей в мир VIBE.
               </p>
             </div>
@@ -300,8 +300,8 @@ function App() {
                <Hash size={56} strokeWidth={2.5} />
             </div>
             <div className="max-w-xs">
-              <h3 className="text-white font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>
-              <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
+              <h3 className="text-ds-text font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>
+              <p className="text-ds-muted text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
                  Выбери текстовый или голосовой канал слева, чтобы окунуться в общение.
               </p>
             </div>

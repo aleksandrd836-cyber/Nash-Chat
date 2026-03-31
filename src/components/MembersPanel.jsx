@@ -10,11 +10,11 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
   const offline = members.filter(m => !m.isOnline);
 
   return (
-    <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col border-l border-white/5 shadow-2xl z-10 transition-all duration-300 relative">
+    <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col border-l border-ds-divider/30 shadow-2xl z-10 transition-all duration-300 relative">
       <div className="absolute top-0 left-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
       {/* Header */}
-      <div className="h-12 flex items-center px-4 border-b border-white/5 flex-shrink-0 bg-black/20 backdrop-blur-md">
-        <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
+      <div className="h-12 flex items-center px-4 border-b border-ds-divider/30 flex-shrink-0 bg-ds-bg/20 backdrop-blur-md">
+        <span className="text-ds-text/60 text-[10px] font-black uppercase tracking-[0.2em]">
           УЧАСТНИКИ
         </span>
         <span className="ml-auto text-ds-accent text-[10px] font-mono font-bold vibe-glow-blue px-2 py-0.5 rounded-full border border-ds-accent/20 bg-ds-accent/5">
@@ -33,7 +33,7 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
             {/* ── Онлайн ── */}
             {online.length > 0 && (
               <div>
-                <p className="text-white/20 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
+                <p className="text-ds-text/40 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-ds-accent vibe-glow-blue" />
                   В СЕТИ — {online.length}
                 </p>
@@ -55,8 +55,8 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
             {/* ── Оффлайн ── */}
             {offline.length > 0 && (
               <div className="mt-4">
-                <p className="text-white/20 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
-                   <span className="w-1 h-1 rounded-full bg-white/10" />
+                <p className="text-ds-text/40 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
+                   <span className="w-1 h-1 rounded-full bg-ds-text/20" />
                    НЕ В СЕТИ — {offline.length}
                 </p>
                 <div className="space-y-0.5">
@@ -92,7 +92,7 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
   return (
     <div
       className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-300 relative overflow-hidden
-        ${!isSelf ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'}
+        ${!isSelf ? 'hover:bg-ds-text/5 cursor-pointer' : 'cursor-default'}
         ${!isOnline ? 'opacity-60 grayscale-[0.3]' : ''}`}
       onClick={() => !isSelf && onOpenDM?.(member)}
       title={!isSelf ? `Написать ${member.username}` : ''}
@@ -100,7 +100,7 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
       <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-10 transition-opacity" />
       {/* Avatar + status dot */}
       <div className="relative flex-shrink-0 z-10">
-        <div className="w-9 h-9 rounded-full bg-black/40 overflow-hidden flex items-center justify-center border border-white/10 shadow-lg">
+        <div className="w-9 h-9 rounded-full bg-ds-bg/40 overflow-hidden flex items-center justify-center border border-ds-divider/30 shadow-lg">
           <img
             src={imageUrl}
             alt={member.username}
@@ -110,7 +110,7 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
         {/* Online indicator */}
         <span
           className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-ds-sidebar z-20 transition-all duration-300
-            ${isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-white/20'}`}
+            ${isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-ds-text/20'}`}
         />
       </div>
  

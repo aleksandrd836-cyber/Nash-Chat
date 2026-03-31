@@ -137,9 +137,9 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
   return (
     <div className="flex-1 flex flex-col bg-ds-bg min-w-0 relative">
       {/* Header */}
-      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-10 shadow-lg">
+      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-ds-bg/40 backdrop-blur-md z-10 shadow-lg">
         <Hash size={20} className="text-ds-accent vibe-glow-blue" />
-        <span className="text-white font-bold text-[15px]">{channel.name}</span>
+        <span className="text-ds-text font-bold text-[15px]">{channel.name}</span>
         
         {!window.electronAPI && (
           <a 
@@ -166,7 +166,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-4">
             <div className="w-16 h-16 rounded-full bg-ds-sidebar flex items-center justify-center">
-              <span className="text-2xl">#</span>
+              <span className="text-2xl text-ds-text">#</span>
             </div>
             <div>
               <p className="text-ds-text font-bold text-xl">Добро пожаловать в #{channel.name}!</p>
@@ -233,7 +233,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
             </div>
           )}
 
-          <div className="relative bg-ds-input rounded-[18px] flex items-end gap-2 px-3 py-3 border border-white/10 focus-within:vibe-glow-blue focus-within:border-ds-accent/60 transition-all duration-300 shadow-2xl">
+          <div className="relative bg-ds-input rounded-[18px] flex items-end gap-2 px-3 py-3 border border-ds-divider/30 focus-within:vibe-glow-blue focus-within:border-ds-accent/60 transition-all duration-300 shadow-2xl">
             {/* Кнопка скрепки */}
             <input
               ref={fileInputRef}
@@ -259,7 +259,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
               onKeyDown={handleKeyDown}
               placeholder={`Сообщение в #${channel.name}`}
               rows={1}
-              className="flex-1 bg-transparent text-white text-[15px] placeholder-white/20 resize-none focus:outline-none leading-relaxed max-h-48 overflow-y-auto py-1.5"
+              className="flex-1 bg-transparent text-ds-text text-[15px] placeholder-ds-muted/40 resize-none focus:outline-none leading-relaxed max-h-48 overflow-y-auto py-1.5"
               style={{ height: 'auto' }}
               onInput={(e) => {
                 e.target.style.height = 'auto';
@@ -301,7 +301,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
               )}
             </button>
           </div>
-          <p className="text-[10px] text-white/10 font-bold uppercase tracking-widest mt-2 px-2 select-none">
+          <p className="text-[10px] text-ds-muted/20 font-bold uppercase tracking-widest mt-2 px-2 select-none">
             Enter to send · Shift+Enter to newline · Ctrl+V to paste
           </p>
         </form>

@@ -177,8 +177,8 @@ export function Sidebar({
     <div className="w-60 flex-shrink-0 bg-ds-sidebar flex flex-col border-r border-white/5 shadow-2xl relative select-none" onClick={() => { setChanCtx(null); setCtxMenu(null); }}>
       <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
       {/* Server header */}
-      <div className="h-12 flex items-center justify-between px-4 border-b border-white/5 flex-shrink-0 hover:bg-white/5 cursor-pointer transition-colors group">
-        <span className="text-white font-bold text-[15px] truncate">{selectedServer?.name ?? 'Сервер'}</span>
+      <div className="h-12 flex items-center justify-between px-4 border-b border-white/5 flex-shrink-0 hover:bg-white/2 transition-colors group">
+        <span className="text-ds-text font-bold text-[15px] truncate">{selectedServer?.name ?? 'Сервер'}</span>
         {isOwner && (
           <button
             onClick={(e) => { e.stopPropagation(); onOpenServerSettings?.(); }}
@@ -244,11 +244,11 @@ export function Sidebar({
                         markAsRead(ch.id);
                       }}
                       onContextMenu={(e) => handleChannelCtx(e, ch)}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[14.5px] transition-all duration-200 group/item relative overflow-hidden
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[14.5px] transition-all duration-200 group/item relative overflow-hidden
                         ${selectedChannel?.id === ch.id
-                          ? 'bg-ds-accent/15 text-white vibe-glow-blue border border-ds-accent/30 font-bold'
-                          : 'text-ds-muted hover:bg-white/5 hover:text-white'
-                        } ${counts[ch.id] > 0 ? 'text-white font-bold' : ''}`}
+                          ? 'bg-ds-accent/15 text-ds-text vibe-glow-blue border border-ds-accent/30 font-bold'
+                          : 'text-ds-muted hover:bg-ds-hover hover:text-ds-text'
+                        } ${counts[ch.id] > 0 ? 'text-ds-text font-bold' : ''}`}
                     >
                       {selectedChannel?.id === ch.id && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-ds-accent rounded-r-full shadow-[0_0_10px_#00f0ff]" />}
                       
@@ -342,8 +342,8 @@ export function Sidebar({
                         onContextMenu={(e) => handleChannelCtx(e, ch)}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[14.5px] transition-all duration-200 group/item relative overflow-hidden
                           ${selectedChannel?.id === ch.id
-                            ? 'bg-ds-accent/15 text-white vibe-glow-blue border border-ds-accent/30 font-bold'
-                            : 'text-ds-muted hover:bg-white/5 hover:text-white'
+                            ? 'bg-ds-accent/15 text-ds-text vibe-glow-blue border border-ds-accent/30 font-bold'
+                            : 'text-ds-muted hover:bg-ds-hover hover:text-ds-text'
                           }`}
                       >
                         {selectedChannel?.id === ch.id && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-ds-accent rounded-r-full shadow-[0_0_10px_#00f0ff]" />}
@@ -403,7 +403,7 @@ export function Sidebar({
                                   className="w-full h-full object-cover select-none" 
                                 />
                               </div>
-                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-[#23A559]' : 'text-ds-muted group-hover:text-white'}`}>
+                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-ds-green' : 'text-ds-muted group-hover:text-ds-text'}`}>
                                 {p.username}
                               </span>
 

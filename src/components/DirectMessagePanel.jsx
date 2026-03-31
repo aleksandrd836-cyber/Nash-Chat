@@ -139,49 +139,47 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   const { imageUrl: targetAvatar } = getUserAvatar(targetMember?.username ?? '');
 
   return (
-    <div className="flex-1 flex flex-col bg-ds-servers min-w-0 relative">
+    <div className="flex-1 flex flex-col bg-ds-bg min-w-0 relative">
       {/* Header */}
-      <div className="h-14 flex items-center px-6 gap-4 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-20 shadow-lg">
+      <div className="h-14 flex items-center px-6 gap-4 border-b border-ds-border flex-shrink-0 bg-ds-bg/40 backdrop-blur-md z-20 shadow-lg">
         <button 
            onClick={onClose}
-           className="p-2 -ml-2 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all md:hidden"
+           className="p-2 -ml-2 rounded-xl text-ds-muted hover:text-ds-text hover:bg-ds-border transition-all md:hidden"
         >
           <ChevronLeft size={24} />
         </button>
 
         <div className="relative flex-shrink-0 group cursor-pointer">
-          <div className="absolute right-4 -top-3 z-10 flex gap-1 bg-ds-input p-1 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all shadow-2xl">
-            <img src={targetAvatar} alt={targetMember?.username} className="w-full h-full object-cover select-none" />
-          </div>
+          <img src={targetAvatar} alt={targetMember?.username} className="w-10 h-10 rounded-full object-cover border border-ds-border" />
           <span
-            className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-ds-bg z-10 transition-all duration-300
-              ${targetMember?.isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-white/10'}`}
+            className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-ds-bg z-10 transition-all duration-300
+              ${targetMember?.isOnline ? 'bg-ds-accent shadow-[0_0_8px_#00f0ff]' : 'bg-ds-muted/40'}`}
           />
         </div>
 
         <div className="flex-1 min-w-0">
           <p
-            className="text-white font-black text-[15px] truncate tracking-tight"
+            className="text-ds-text font-black text-[15px] truncate tracking-tight"
             style={targetMember?.color ? { color: targetMember.color } : {}}
           >
             {targetMember?.username}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
-             {targetMember?.isOnline ? <Sparkles size={10} className="text-ds-accent" /> : <Clock size={10} className="text-white/20" />}
-             <span className={`text-[9px] font-black uppercase tracking-[0.1em] ${targetMember?.isOnline ? 'text-ds-accent' : 'text-white/20'}`}>
+             {targetMember?.isOnline ? <Sparkles size={10} className="text-ds-accent" /> : <Clock size={10} className="text-ds-muted" />}
+             <span className={`text-[9px] font-black uppercase tracking-[0.1em] ${targetMember?.isOnline ? 'text-ds-accent' : 'text-ds-muted'}`}>
                 {targetMember?.isOnline ? 'В сети' : 'Не в сети'}
              </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 group">
-           <div className="bg-white/5 px-4 py-1.5 rounded-full border border-white/5 flex items-center gap-2">
+           <div className="bg-ds-bg/20 px-4 py-1.5 rounded-full border border-ds-border flex items-center gap-2">
               <MessageSquare size={14} className="text-ds-accent" />
-              <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">Личка</span>
+              <span className="text-ds-muted text-[10px] font-black uppercase tracking-[0.2em]">Личка</span>
            </div>
            <button
              onClick={onClose}
-             className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all"
+             className="w-10 h-10 rounded-2xl flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-ds-border transition-all"
              title="Закрыть"
            >
              <X size={22} />
@@ -194,22 +192,22 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
              <div className="w-12 h-12 border-[3px] border-ds-accent border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.2)]" />
-             <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.2em] animate-pulse">Загрузка данных...</p>
+             <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] animate-pulse">Загрузка данных...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-8 animate-fade-in p-10">
             <div className="relative">
-               <div className="w-32 h-32 rounded-[3.5rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl relative z-10 group">
+               <div className="w-32 h-32 rounded-[3.5rem] bg-ds-input overflow-hidden border-2 border-ds-border shadow-2xl relative z-10 group">
                  <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-20 transition-opacity" />
                  <img src={targetAvatar} alt={targetMember?.username} className="w-full h-full object-cover select-none transition-transform duration-700 group-hover:scale-110" />
                </div>
                <div className="absolute inset-0 bg-ds-accent/10 blur-[60px] rounded-full animate-pulse-soft" />
             </div>
             <div className="text-center max-w-xs">
-              <h3 className="text-white font-black text-2xl tracking-tighter" style={targetMember?.color ? { color: targetMember.color } : {}}>
+              <h3 className="text-ds-text font-black text-2xl tracking-tighter" style={targetMember?.color ? { color: targetMember.color } : {}}>
                 {targetMember?.username}
               </h3>
-              <p className="text-white/30 text-xs font-bold mt-2 leading-relaxed">
+              <p className="text-ds-muted text-xs font-bold mt-2 leading-relaxed">
                 Это самое начало твоей личной истории с этим человеком. Напиши что-нибудь крутое!
               </p>
             </div>
@@ -236,23 +234,23 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
           {/* Attachment Preview */}
           {attachment && (
             <div className="absolute bottom-full mb-4 left-0 animate-slide-up">
-              <div className="bg-ds-input rounded-[1.5rem] p-3 border border-white/10 shadow-2xl flex items-center gap-4 min-w-[200px]">
+              <div className="bg-ds-input rounded-[1.5rem] p-3 border border-ds-border shadow-2xl flex items-center gap-4 min-w-[200px]">
                 {attachment.file.type.startsWith('video/') ? (
-                  <video src={attachment.previewUrl} className="h-16 w-16 rounded-xl object-cover border border-white/10 shadow-lg" />
+                  <video src={attachment.previewUrl} className="h-16 w-16 rounded-xl object-cover border border-ds-border shadow-lg" />
                 ) : attachment.file.type.startsWith('image/') ? (
-                  <img src={attachment.previewUrl} alt="Preview" className="h-16 w-16 rounded-xl object-cover border border-white/10 shadow-lg" />
+                  <img src={attachment.previewUrl} alt="Preview" className="h-16 w-16 rounded-xl object-cover border border-ds-border shadow-lg" />
                 ) : (
-                  <div className="h-16 w-16 rounded-xl bg-black/40 flex items-center justify-center text-ds-accent vibe-glow-blue">
+                  <div className="h-16 w-16 rounded-xl bg-ds-bg flex items-center justify-center text-ds-accent vibe-glow-blue">
                     <FileText size={24} />
                   </div>
                 )}
                 <div className="pr-10">
-                   <p className="text-white text-[11px] font-black truncate max-w-[120px] uppercase tracking-tighter">{attachment.file.name}</p>
-                   <p className="text-white/20 text-[9px] font-black uppercase mt-1">{(attachment.file.size / 1024).toFixed(1)} KB</p>
+                   <p className="text-ds-text text-[11px] font-black truncate max-w-[120px] uppercase tracking-tighter">{attachment.file.name}</p>
+                   <p className="text-ds-muted text-[9px] font-black uppercase mt-1">{(attachment.file.size / 1024).toFixed(1)} KB</p>
                 </div>
                 <button
                   type="button" onClick={removeAttachment}
-                  className="absolute top-2 right-2 w-7 h-7 bg-ds-red/80 hover:bg-ds-red text-white rounded-full flex items-center justify-center transition-all shadow-lg active:scale-90"
+                  className="absolute top-2 right-2 w-7 h-7 bg-ds-red/80 hover:bg-ds-red text-ds-text rounded-full flex items-center justify-center transition-all shadow-lg active:scale-90"
                 >
                   <X size={14} strokeWidth={3} />
                 </button>
@@ -260,13 +258,13 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
             </div>
           )}
 
-          <div className="relative bg-ds-input rounded-[1.5rem] flex items-end gap-3 p-2.5 border border-white/5 focus-within:border-ds-accent/30 transition-all shadow-2xl group/input">
+          <div className="relative bg-ds-input rounded-[1.5rem] flex items-end gap-3 p-2.5 border border-ds-border focus-within:border-ds-accent/30 transition-all shadow-2xl group/input">
             <div className="absolute inset-0 vibe-moving-glow opacity-0 group-focus-within/input:opacity-[0.03] rounded-[1.5rem] pointer-events-none" />
             
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
             <button
                type="button" onClick={() => fileInputRef.current?.click()}
-               className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl text-white/20 hover:text-ds-accent hover:bg-ds-accent/5 transition-all active:scale-90"
+               className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl text-ds-muted hover:text-ds-accent hover:bg-ds-accent/5 transition-all active:scale-90"
             >
               <Paperclip size={20} />
             </button>
@@ -278,7 +276,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
               onKeyDown={handleKeyDown}
               placeholder={`Написать ${targetMember?.username ?? ''}`}
               rows={1}
-              className="flex-1 bg-transparent text-white text-[14px] font-bold placeholder-white/20 resize-none focus:outline-none leading-[1.6] py-3 max-h-48 scrollbar-hide"
+              className="flex-1 bg-transparent text-ds-text text-[14px] font-bold placeholder-ds-muted/40 resize-none focus:outline-none leading-[1.6] py-3 max-h-48 scrollbar-hide"
               style={{ height: 'auto' }}
               onInput={(e) => {
                 e.target.style.height = 'auto';
@@ -291,12 +289,12 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
                   id="emoji-toggle-btn"
                   type="button" onClick={() => setShowEmojiPicker(prev => !prev)}
                   className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all active:scale-90
-                    ${showEmojiPicker ? 'bg-ds-accent/10 text-ds-accent vibe-glow-blue' : 'text-white/20 hover:text-white/60 hover:bg-white/5'}`}
+                    ${showEmojiPicker ? 'bg-ds-accent/10 text-ds-accent vibe-glow-blue' : 'text-ds-muted hover:text-ds-text hover:bg-ds-border'}`}
                >
                  <Smile size={22} />
                </button>
                {showEmojiPicker && (
-                  <div ref={pickerRef} className="absolute bottom-full right-0 mb-6 z-50 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-3xl overflow-hidden border border-white/10">
+                  <div ref={pickerRef} className="absolute bottom-full right-0 mb-6 z-50 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-3xl overflow-hidden border border-ds-border">
                     <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled />
                   </div>
                )}

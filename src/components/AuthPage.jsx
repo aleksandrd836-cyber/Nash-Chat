@@ -73,7 +73,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
               onClick={() => switchMode('login')}
               className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${mode === 'login'
                   ? 'bg-ds-accent text-black shadow-[0_0_20px_rgba(0,240,255,0.4)]'
-                  : 'text-white/30 hover:text-white/60'
+                  : 'text-ds-muted hover:text-ds-text'
                 }`}
             >
               <LogIn size={14} strokeWidth={3} />
@@ -83,7 +83,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
               onClick={() => switchMode('register')}
               className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${mode === 'register'
                   ? 'bg-ds-accent text-black shadow-[0_0_20px_rgba(0,240,255,0.4)]'
-                  : 'text-white/30 hover:text-white/60'
+                  : 'text-ds-muted hover:text-ds-text'
                 }`}
             >
               <UserPlus size={14} strokeWidth={3} />
@@ -113,16 +113,18 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                 <div className="space-y-2 animate-slide-up">
                   <div className="flex items-center gap-2 ml-2">
                      <User size={12} className="text-ds-accent" />
-                     <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                     <label className="text-[10px] font-black text-ds-muted uppercase tracking-widest">
                        Твой никнейм
                      </label>
                   </div>
-                  <input
-                    type="text" value={username} onChange={(e) => setUsername(e.target.value)}
-                    placeholder="CyberVibe_2026"
-                    required
-                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-bold placeholder-white/10 focus:border-ds-accent/30 focus:bg-black/60 transition-all outline-none"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text" value={username} onChange={e => setUsername(e.target.value)}
+                      placeholder="CyberVibe_2026"
+                      required
+                      className="flex-1 bg-ds-bg/40 border border-ds-border rounded-2xl px-4 py-3 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -130,7 +132,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 ml-2">
                    <Lock size={12} className="text-ds-accent" />
-                   <label className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+                   <label className="text-[10px] font-black text-ds-muted uppercase tracking-widest">
                      Секретный пароль
                    </label>
                 </div>
@@ -138,7 +140,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                   type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-ds-bg/40 border border-white/5 rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
+                  className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
                 />
               </div>
 
@@ -152,15 +154,15 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                   <div className={`w-5 h-5 rounded-md border-2 transition-all duration-300 flex items-center justify-center
                     ${rememberMe 
                       ? 'bg-ds-accent border-ds-accent shadow-[0_0_10px_rgba(0,240,255,0.4)]' 
-                      : 'border-white/10 bg-white/5 group-hover:border-white/20'}`}
+                      : 'border-ds-muted/20 bg-ds-bg/40 group-hover:border-ds-muted/40'}`}
                   >
                     {rememberMe && (
-                      <svg className="w-3.5 h-3.5 text-black animate-slide-up" fill="none" stroke="currentColor" strokeWidth="4" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-ds-bg animate-slide-up" fill="none" stroke="currentColor" strokeWidth="4" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
-                  <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${rememberMe ? 'text-ds-accent' : 'text-white/20 group-hover:text-white/40'}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${rememberMe ? 'text-ds-accent' : 'text-ds-muted group-hover:text-ds-text'}`}>
                     Запомнить меня
                   </span>
                 </button>
@@ -196,20 +198,20 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
 
           {/* Bottom Info */}
           <div className="mt-10 text-center relative z-10">
-             <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em]">
+             <p className="text-[9px] text-ds-muted font-black uppercase tracking-[0.2em]">
                 {mode === 'login' ? 'Нет аккаунта? Давай создадим!' : 'Уже в системе? Тогда возвращайся!'}
              </p>
              <button 
                 onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
-                className="text-ds-accent/40 hover:text-ds-accent text-[10px] font-black uppercase tracking-widest mt-2 transition-colors"
+                className="text-ds-accent/60 hover:text-ds-accent text-[10px] font-black uppercase tracking-widest mt-2 transition-colors"
              >
                 {mode === 'login' ? 'РЕГИСТРАЦИЯ' : 'ВХОД В СИСТЕМУ'}
              </button>
           </div>
         </div>
         
-        {/* Footer info */}
-        <p className="text-[9px] text-white/10 font-bold uppercase tracking-[0.3em] text-center mt-8">
+       {/* Footer info */}
+        <p className="text-[9px] text-ds-muted/20 font-bold uppercase tracking-[0.3em] text-center mt-8">
            Safe • Secure • Ultra-Fast • Nash-Chat 2026
         </p>
       </div>

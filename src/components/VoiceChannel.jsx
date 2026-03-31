@@ -139,19 +139,19 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       {/* Header */}
       <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-black/40 backdrop-blur-md z-10 shadow-lg">
         <Mic size={20} className="text-ds-accent vibe-glow-blue" />
-        <span className="text-white font-bold text-[15px]">{channel.name}</span>
+        <span className="text-ds-text font-bold text-[15px]">{channel.name}</span>
         {isInThisChannel && (
           <div className="ml-2 flex items-center gap-4">
              <span className="flex items-center gap-1.5 text-ds-accent text-[10px] font-bold uppercase tracking-widest leading-none">
               <span className="w-1.5 h-1.5 rounded-full bg-ds-accent shadow-[0_0_8px_#00f0ff] animate-pulse" />
               ПОДКЛЮЧЕНО
             </span>
-            <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest leading-none ${serverStatus === 'online' ? 'text-white/20' : 'text-ds-red animate-pulse'}`}>
-              <span className={`w-1 h-1 rounded-full ${serverStatus === 'online' ? 'bg-white/20' : 'bg-ds-red shadow-[0_0_8px_#ff0000]'}`} />
+            <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest leading-none ${serverStatus === 'online' ? 'text-ds-muted/40' : 'text-ds-red animate-pulse'}`}>
+              <span className={`w-1 h-1 rounded-full ${serverStatus === 'online' ? 'bg-ds-muted/40' : 'bg-ds-red shadow-[0_0_8px_#ff0000]'}`} />
               SERVER: {serverStatus}
             </span>
             {voice.ping !== null && serverStatus === 'online' && (
-              <span className="text-white/30 text-[10px] font-mono font-bold uppercase tracking-widest animate-fade-in leading-none">
+              <span className="text-ds-muted/60 text-[10px] font-mono font-bold uppercase tracking-widest animate-fade-in leading-none">
                 PING — {voice.ping} MS
               </span>
             )}
@@ -201,8 +201,8 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
             {isInThisChannel && <div className="absolute inset-0 rounded-full vibe-moving-glow opacity-30 blur-sm" />}
             <Volume2 size={56} className={`${isInThisChannel ? 'text-ds-accent vibe-glow-blue' : 'text-white/10'}`} strokeWidth={1} />
           </div>
-          <h2 className="text-white text-4xl font-black tracking-tighter mb-3">{channel.name}</h2>
-          <div className="flex items-center justify-center gap-2 text-white/30">
+          <h2 className="text-ds-text text-4xl font-black tracking-tighter mb-3">{channel.name}</h2>
+          <div className="flex items-center justify-center gap-2 text-ds-muted">
             <Users size={16} />
             <p className="text-[11px] font-bold uppercase tracking-[0.2em]">
               {isInThisChannel
@@ -251,11 +251,11 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                     )}
                   </div>
                   <div className="text-center min-w-0 w-full">
-                    <p className="text-white font-bold text-sm truncate px-2 drop-shadow-md" style={p.color ? { color: p.color } : {}}>
+                    <p className="text-ds-text font-bold text-sm truncate px-2 drop-shadow-md" style={p.color ? { color: p.color } : {}}>
                       {p.username}
                     </p>
                     {!isMe && vol !== 100 && (
-                      <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mt-0.5">{vol}%</p>
+                      <p className="text-[10px] text-ds-muted font-bold uppercase tracking-widest mt-0.5">{vol}%</p>
                     )}
                     {p.isScreenSharing && !isMe && !stream && (
                       <button 
@@ -303,7 +303,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   className={`w-14 h-14 rounded-2xl transition-all duration-300 flex items-center justify-center border
                     ${isMuted
                       ? 'bg-ds-red/10 border-ds-red/30 text-ds-red vibe-glow-red'
-                      : 'bg-[#121212] border-white/5 text-white/50 hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
+                      : 'bg-ds-input/40 border-white/5 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
                     }`}
                 >
                   {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -401,14 +401,14 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                 className="w-full h-full object-cover"
               />
             </div>
-            <p className="text-white font-black text-base truncate" style={ctxMenu.participant.color ? { color: ctxMenu.participant.color } : {}}>
+            <p className="text-ds-text font-black text-base truncate" style={ctxMenu.participant.color ? { color: ctxMenu.participant.color } : {}}>
               {ctxMenu.participant.username}
             </p>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.2em]">Громкость</p>
+              <p className="text-ds-muted text-[10px] font-black uppercase tracking-[0.2em]">Громкость</p>
               <span className="text-ds-accent text-[11px] font-black tabular-nums vibe-glow-blue border border-ds-accent/30 px-2 py-0.5 rounded-full">
                 {volumes[ctxMenu.participant.userId] ?? 100}%
               </span>

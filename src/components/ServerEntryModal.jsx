@@ -75,7 +75,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-ds-border overflow-hidden animate-slide-up flex flex-col relative">
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
         
         <div className="p-8 space-y-8">
@@ -151,18 +151,18 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
             {mode === 'join' && (
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Код приглашения</p>
+                  <p className="text-[10px] font-black text-ds-muted uppercase tracking-[0.2em] ml-2">Код приглашения</p>
                   <input
                     type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleJoin()}
                     placeholder="КЛЮЧ ХХХХ"
                     autoFocus
-                    className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm font-black tracking-[0.3em] uppercase placeholder:tracking-normal focus:border-ds-accent/30 transition-all outline-none"
+                    className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-black tracking-[0.3em] uppercase placeholder:tracking-normal focus:border-ds-accent/30 transition-all outline-none"
                   />
                 </div>
                 {error && <p className="text-ds-red text-[10px] font-black uppercase text-center">{error}</p>}
                 <div className="flex gap-3">
-                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl text-white/40 hover:text-white transition-all">
+                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-ds-bg/40 border border-ds-border rounded-2xl text-ds-muted hover:text-ds-text transition-all">
                     <ArrowLeft size={20} />
                   </button>
                   <button
