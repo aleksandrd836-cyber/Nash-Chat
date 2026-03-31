@@ -406,6 +406,11 @@ export function Sidebar({
                               </div>
                               <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-ds-green' : 'text-ds-muted group-hover:text-ds-text'}`} style={{ color: p.userId === ownerId ? '#ff4444' : '' }}>
                                 {p.username}
+                                {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(p.userId) && (
+                                  <span className="ml-1 px-1 py-0 rounded bg-ds-accent/10 border border-ds-accent/30 text-[7px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle">
+                                    СОЗДАТЕЛЬ
+                                  </span>
+                                )}
                               </span>
 
                               {/* Статус Мута/Деафена */}
@@ -507,6 +512,11 @@ export function Sidebar({
             </div>
             <p className="text-ds-text font-black text-base truncate" style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
               {ctxMenu.participant.username}
+              {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(ctxMenu.participant.userId) && (
+                <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle">
+                  СОЗДАТЕЛЬ
+                </span>
+              )}
             </p>
           </div>
           <div className="border-t border-ds-divider/40 pt-3">

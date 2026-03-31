@@ -223,6 +223,11 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate text-white" style={member.color ? { color: member.color } : {}}>
                         {member.username}
+                        {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(member.id) && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle">
+                            СОЗДАТЕЛЬ
+                          </span>
+                        )}
                         {isMe && <span className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-2">(ВЫ)</span>}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
