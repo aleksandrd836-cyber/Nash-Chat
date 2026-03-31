@@ -168,7 +168,7 @@ function ReactionList({ reactions, userId, onToggle }) {
 /**
  * Компонент одного сообщения.
  */
-export function Message({ msg, prevMsg, currentUser, currentUserColor }) {
+export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const pickerRef = useRef(null);
 
@@ -197,7 +197,8 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor }) {
   const currentUserId = currentUser?.id;
   const currentUserName = currentUser?.user_metadata?.username ?? currentUser?.email?.split('@')[0];
   const isMine = (currentUserId === authorId) || (currentUserName && currentUserName === realName);
-  const displayColor = (isMine && currentUserColor) ? currentUserColor : (colorStr ?? color);
+  const isAdmin = authorId === ownerId;
+  const displayColor = isAdmin ? '#ff4444' : 'var(--ds-text)';
   const isRead = msg.is_read;
 
   // Закрытие пикера по клику вне

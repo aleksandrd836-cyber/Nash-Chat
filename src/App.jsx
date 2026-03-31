@@ -226,6 +226,7 @@ function App() {
           onInstall={handleInstall}
           appVersion={typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''}
           selectedServer={selectedServer}
+          ownerId={selectedServer?.owner_id}
           isOwner={selectedServer.owner_id === auth.user.id}
           onOpenServerSettings={() => setServerSettingsOpen(true)}
         />
@@ -264,6 +265,8 @@ function App() {
             onDownload={handleDownload}
             onInstall={handleInstall}
             appVersion={typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''}
+            ownerId={null}
+            currentUserId={auth.user?.id}
           />
         </div>
       )}
@@ -334,6 +337,7 @@ function App() {
           <TextChannel
             channel={selectedChannel}
             user={auth.user}
+            ownerId={selectedServer?.owner_id}
             username={displayUsername}
             userColor={displayColor}
             downloadUrl={downloadUrl}
@@ -342,6 +346,7 @@ function App() {
           <VoiceChannel
             channel={selectedChannel}
             user={auth.user}
+            ownerId={selectedServer?.owner_id}
             username={displayUsername}
             userColor={displayColor}
             voice={voice}
@@ -356,6 +361,7 @@ function App() {
           members={members}
           loading={false}
           currentUserId={auth.user?.id}
+          ownerId={selectedServer?.owner_id}
           onOpenDM={handleOpenDM}
           unreadCounts={unreadCounts}
         />
@@ -367,6 +373,7 @@ function App() {
           user={auth.user}
           username={displayUsername}
           userColor={displayColor}
+          ownerId={selectedServer?.owner_id}
           onClose={() => setSettingsOpen(false)}
           onSignOut={auth.signOut}
           onUsernameChange={(newName, newColor) => {

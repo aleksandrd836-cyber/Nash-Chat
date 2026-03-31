@@ -6,7 +6,7 @@ import { Mic, MicOff, Headphones, LogOut, Settings } from 'lucide-react';
  * Нижняя панель пользователя (слева в сайдбаре).
  * Показывает аватар, имя, кнопки голоса и настроек.
  */
-export function UserPanel({ username, userColor, onSignOut, voice, onOpenSettings }) {
+export function UserPanel({ username, userColor, onSignOut, voice, onOpenSettings, ownerId, currentUserId }) {
   const { activeChannelId, isMuted, isDeafened, isSpeaking, toggleMute, toggleDeafen, leaveVoiceChannel } = voice;
   const { imageUrl } = getUserAvatar(username);
 
@@ -28,7 +28,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
 
         {/* Username & Status */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <p className="text-ds-text text-[14px] font-black truncate leading-tight tracking-tight" style={userColor ? { color: userColor } : {}}>
+          <p className="text-ds-text text-[14px] font-black truncate leading-tight tracking-tight" style={{ color: currentUserId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
             {username}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">

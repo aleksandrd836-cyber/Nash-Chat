@@ -137,9 +137,9 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
       
       if (user?.id && !error) {
         await Promise.all([
-          supabase.from('messages').update({ username: `${username.trim()}@@${color}` }).eq('user_id', user.id),
-          supabase.from('profiles').update({ username: username.trim(), color: color }).eq('id', user.id),
-          supabase.from('direct_messages').update({ sender_username: username.trim(), sender_color: color }).eq('sender_id', user.id)
+          supabase.from('messages').update({ username: username.trim() }).eq('user_id', user.id),
+          supabase.from('profiles').update({ username: username.trim() }).eq('id', user.id),
+          supabase.from('direct_messages').update({ sender_username: username.trim() }).eq('sender_id', user.id)
         ]);
       }
 
@@ -166,14 +166,14 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
+      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_120px_rgba(0,0,0,0.8)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30 pointer-events-none" />
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-white/5 bg-ds-bg/40 backdrop-blur-md">
+        <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-white/5 bg-ds-bg">
           <div className="flex flex-col">
             <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">Настройки</h2>
             <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">Управление аккаунтом VIBE</p>
@@ -210,11 +210,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                     <div className="flex gap-2">
                       <input
                         type="text" value={username} onChange={e => setUsername(e.target.value)}
-                        className="flex-1 bg-black/40 border border-white/5 rounded-2xl px-4 py-3 text-ds-text text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
-                      />
-                      <input
-                        type="color" value={color} onChange={e => setColor(e.target.value)}
-                        className="w-12 h-12 p-1.5 rounded-2xl bg-black/40 border border-white/5 cursor-pointer"
+                        className="flex-1 bg-black/20 border border-white/5 rounded-2xl px-4 py-3 text-ds-text text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
                       />
                     </div>
                   </div>

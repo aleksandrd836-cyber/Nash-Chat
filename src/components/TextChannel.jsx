@@ -11,7 +11,7 @@ const MAX_FILE_SIZE_MB = 50;
 /**
  * Текстовый канал — история сообщений + поле ввода с прикреплением файлов
  */
-export function TextChannel({ channel, user, username, userColor, downloadUrl }) {
+export function TextChannel({ channel, user, ownerId, username, userColor, downloadUrl }) {
   const { messages, loading, sending, sendMessage, uploadFile } = useMessages(channel?.id, user?.id);
   const [draft, setDraft]         = useState('');
   const [attachment, setAttachment] = useState(null);   // { file, previewUrl }
@@ -182,6 +182,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
                 prevMsg={messages[i - 1]} 
                 currentUser={user}
                 currentUserColor={userColor}
+                ownerId={ownerId}
               />
             ))}
           </div>

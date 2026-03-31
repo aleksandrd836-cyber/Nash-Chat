@@ -5,7 +5,7 @@ import { getUserAvatar } from '../lib/avatar';
  * Правая боковая панель — список всех участников сервера.
  * Показывает онлайн/оффлайн статус и кнопку написать в ЛС.
  */
-export function MembersPanel({ members, loading, currentUserId, onOpenDM, unreadCounts = {} }) {
+export function MembersPanel({ members, loading, currentUserId, ownerId, onOpenDM, unreadCounts = {} }) {
   const online  = members.filter(m => m.isOnline);
   const offline = members.filter(m => !m.isOnline);
 
@@ -86,7 +86,7 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
   );
 }
 
-function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
+function MemberRow({ member, isOnline, isSelf, ownerId, onOpenDM, unreadCount }) {
   const { imageUrl } = getUserAvatar(member.username);
 
   return (
@@ -118,7 +118,7 @@ function MemberRow({ member, isOnline, isSelf, onOpenDM, unreadCount }) {
       <div className="flex-1 min-w-0 z-10">
         <p
           className="text-[14px] font-bold truncate tracking-tight"
-          style={member.color ? { color: member.color } : { color: '#ffffff' }}
+          style={{ color: member.id === ownerId ? '#ff4444' : 'var(--ds-text)' }}
         >
           {member.username}
           {isSelf && <span className="text-white/40 font-black text-[9px] ml-2 uppercase tracking-widest">(ВЫ)</span>}

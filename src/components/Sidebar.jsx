@@ -15,7 +15,7 @@ import { MicOff, Headphones } from 'lucide-react';
 export function Sidebar({ 
   username, userColor, selectedChannel, onSelectChannel, onSignOut, voice, onOpenSettings, currentUserId,
   updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion,
-  selectedServer, isOwner, onOpenServerSettings
+  selectedServer, isOwner, onOpenServerSettings, ownerId
 }) {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -403,7 +403,7 @@ export function Sidebar({
                                   className="w-full h-full object-cover select-none" 
                                 />
                               </div>
-                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-ds-green' : 'text-ds-muted group-hover:text-ds-text'}`}>
+                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-ds-green' : 'text-ds-muted group-hover:text-ds-text'}`} style={{ color: p.userId === ownerId ? '#ff4444' : '' }}>
                                 {p.username}
                               </span>
 
@@ -454,6 +454,8 @@ export function Sidebar({
         onDownload={onDownload}
         onInstall={onInstall}
         appVersion={appVersion}
+        ownerId={ownerId}
+        currentUserId={currentUserId}
       />
 
       {/* ── Контекстное меню канала ── */}
@@ -502,7 +504,7 @@ export function Sidebar({
             <div className="w-8 h-8 rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0">
               <img src={getUserAvatar(ctxMenu.participant.username).imageUrl} alt={ctxMenu.participant.username} className="w-12 h-12 max-w-none" />
             </div>
-            <p className="text-ds-text text-sm font-semibold truncate" style={ctxMenu.participant.color ? { color: ctxMenu.participant.color } : {}}>
+            <p className="text-ds-text font-black text-base truncate" style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
               {ctxMenu.participant.username}
             </p>
           </div>

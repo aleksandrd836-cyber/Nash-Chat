@@ -49,7 +49,7 @@ function ScreenPlayer({ participant, stream }) {
  * Отображается вместо TextChannel, когда выбран voice-канал.
  * Показывает участников, поддерживает контекстное меню с микшером громкости.
  */
-export function VoiceChannel({ channel, user, username, userColor, voice, downloadUrl }) {
+export function VoiceChannel({ channel, user, username, userColor, voice, downloadUrl, ownerId }) {
   const {
     activeChannelId,
     participants,
@@ -252,7 +252,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                     )}
                   </div>
                   <div className="text-center min-w-0 w-full">
-                    <p className="text-ds-text font-bold text-sm truncate px-2 drop-shadow-md" style={p.color ? { color: p.color } : {}}>
+                    <p className="text-ds-text font-bold text-sm truncate px-2 drop-shadow-md" style={{ color: p.userId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
                       {p.username}
                     </p>
                     {!isMe && vol !== 100 && (
@@ -402,7 +402,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                 className="w-full h-full object-cover"
               />
             </div>
-            <p className="text-ds-text font-black text-base truncate" style={ctxMenu.participant.color ? { color: ctxMenu.participant.color } : {}}>
+            <p className="text-ds-text font-black text-base truncate" style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
               {ctxMenu.participant.username}
             </p>
           </div>

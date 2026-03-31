@@ -7,7 +7,8 @@ import { UserPanel } from './UserPanel';
  */
 export function ProfileFooter({ 
   username, userColor, onSignOut, voice, onOpenSettings,
-  updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion 
+  updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion,
+  ownerId, currentUserId
 }) {
   return (
     <div className="flex flex-col flex-shrink-0 bg-ds-sidebar border-t border-white/5 relative z-10">
@@ -17,6 +18,8 @@ export function ProfileFooter({
         onSignOut={onSignOut} 
         voice={voice} 
         onOpenSettings={onOpenSettings} 
+        ownerId={ownerId}
+        currentUserId={currentUserId}
       />
 
       <div className="flex items-center gap-2 px-3 pb-2 text-ds-muted flex-shrink-0 pt-0.5">
