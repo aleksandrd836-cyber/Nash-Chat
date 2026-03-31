@@ -177,7 +177,18 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-ds-bg">
+    <div className="flex h-screen overflow-hidden bg-ds-bg relative">
+      {/* Global Vibe Atmosphere */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          {/* Core Nebula Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-ds-accent/15 rounded-full blur-[140px] animate-vibe-pulse mix-blend-screen" />
+          
+          {/* Aurora Layers */}
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-ds-accent/10 via-transparent to-purple-500/10 blur-[120px] animate-aurora-sweep opacity-30" />
+          <div className="absolute bottom-0 right-0 w-[80%] h-[80%] bg-gradient-to-bl from-blue-500/10 via-transparent to-ds-accent/10 blur-[100px] animate-aurora-shift opacity-40" />
+      </div>
+
+      <div className="flex w-full h-full relative z-10">
 
       {/* ── Панель серверов (крайняя левая) ── */}
       <ServerSidebar
@@ -255,16 +266,8 @@ function App() {
       <main className="flex-1 flex min-w-0 overflow-hidden">
         {!selectedServer ? (
           // Экран приветствия когда нет сервера
-          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-             {/* Core Nebula Glow */}
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-ds-accent/20 rounded-full blur-[140px] animate-vibe-pulse mix-blend-screen" />
-             
-             {/* Aurora Layers */}
-             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-ds-accent/10 via-transparent to-purple-500/10 blur-[120px] animate-aurora-sweep opacity-30" />
-             <div className="absolute bottom-0 right-0 w-[70%] h-[70%] bg-gradient-to-bl from-blue-500/10 via-transparent to-ds-accent/10 blur-[100px] animate-aurora-shift opacity-40" />
-          </div>
-            <div className="relative group">
+          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative overflow-hidden">
+            <div className="relative group/glow">
                <div className="w-32 h-32 rounded-[3rem] bg-black/40 flex items-center justify-center text-ds-accent vibe-glow-blue border-2 border-white/5 relative z-10">
                   <Sparkles size={64} strokeWidth={1} />
                </div>
@@ -295,14 +298,7 @@ function App() {
             onClose={handleCloseDM}
           />
         ) : !selectedChannel ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers relative animate-fade-in overflow-hidden">
-             <div className="absolute inset-0 pointer-events-none">
-                {/* Multi-layered dynamic atmosphere */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-ds-accent/5 rounded-full blur-[160px] animate-vibe-pulse" />
-                <div className="absolute -top-1/4 -left-1/4 w-full h-full bg-ds-accent/10 rounded-full blur-[140px] animate-aurora-sweep opacity-30 mix-blend-screen" />
-                <div className="absolute -bottom-1/4 -right-1/4 w-full h-full bg-purple-500/5 rounded-full blur-[140px] animate-aurora-shift opacity-20 mix-blend-screen" />
-             </div>
-
+          <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
             <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center text-ds-accent/40 border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                <div className="absolute inset-0 vibe-moving-glow opacity-10" />
                <Hash size={56} strokeWidth={2.5} />
@@ -393,6 +389,7 @@ function App() {
           }}
         />
       )}
+      </div>
     </div>
   );
 }

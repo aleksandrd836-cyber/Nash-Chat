@@ -33,7 +33,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
   }, [currentUserId, fetchServers, refreshTrigger]); // refreshTrigger заставляет перезапросить список
 
   return (
-    <div className="w-[72px] flex-shrink-0 bg-ds-servers flex flex-col items-center py-3 gap-3 overflow-y-auto no-scrollbar select-none">
+    <div className="w-[72px] flex-shrink-0 bg-ds-servers/92 backdrop-blur-[40px] flex flex-col items-center py-3 gap-3 overflow-y-auto no-scrollbar select-none">
       {/* Список серверов */}
       {servers.map(server => {
         const isSelected = selectedServerId === server.id;
