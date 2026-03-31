@@ -392,6 +392,31 @@ export function useVoice() {
     notifications.play(next ? 'deafen' : 'undeafen');
   }, [updatePresenceStatus]);
 
+  const stopScreenShare = useCallback(async () => {
+    if (screenStreamRef.current) {
+      console.log('[WebRTC] Stopping screen share safely...');
+      const tracks = screenStreamRef.current.getTracks();
+      
+      // Вместо removeTrack используем replaceTrack(null), 
+      // чтобы не ломать порядок m-lines в SDP
+      Object.values(peerConns.current).forEach(pc => {
+        pc.getSenders().forEach(async (s) => { 
+          if (s.track?.kind === 'video') {
+            try {
+              await s.replaceTrack(null);
+              // Теперь можно безопасно убрать, т.к. стейт стабилен
+              pc.removeTrack(s);
+            } catch (e) { console.warn(e); }
+          }
+        });
+      });
+
+      tracks.forEach(t => t.stop());
+      screenStreamRef.current = null; setIsScreenSharing(false);
+      setTimeout(() => updatePresenceStatus({ isScreenSharing: false }), 300);
+    }
+  }, [updatePresenceStatus]);
+
   const startScreenShare = useCallback(async (quality = '720p', user = null, sourceId = null) => {
     try {
       console.log('[WebRTC] Starting screen share, sourceId:', sourceId);
@@ -424,31 +449,6 @@ export function useVoice() {
       setVoiceError(`Не удалось запустить трансляцию: ${err.message}`);
     }
   }, [updatePresenceStatus, stopScreenShare]);
-
-  const stopScreenShare = useCallback(async () => {
-    if (screenStreamRef.current) {
-      console.log('[WebRTC] Stopping screen share safely...');
-      const tracks = screenStreamRef.current.getTracks();
-      
-      // Вместо removeTrack используем replaceTrack(null), 
-      // чтобы не ломать порядок m-lines в SDP
-      Object.values(peerConns.current).forEach(pc => {
-        pc.getSenders().forEach(async (s) => { 
-          if (s.track?.kind === 'video') {
-            try {
-              await s.replaceTrack(null);
-              // Теперь можно безопасно убрать, т.к. стейт стабилен
-              pc.removeTrack(s);
-            } catch (e) { console.warn(e); }
-          }
-        });
-      });
-
-      tracks.forEach(t => t.stop());
-      screenStreamRef.current = null; setIsScreenSharing(false);
-      setTimeout(() => updatePresenceStatus({ isScreenSharing: false }), 300);
-    }
-  }, [updatePresenceStatus]);
 
   const [ping, setPing] = useState(null);
   useEffect(() => {
