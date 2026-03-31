@@ -210,12 +210,22 @@ export function useVoice() {
   }, [closePeer]);
 
   const cleanupAll = useCallback(async () => {
+    // 1. Сначала чистим ошибки, чтобы не триггерить UI на закрытие канала
+    setVoiceError(null);
+    setServerStatus('online');
+    
     Object.values(ghostPeersRef.current).forEach(clearTimeout); ghostPeersRef.current = {};
     Object.keys(peerConns.current).forEach(id => closePeer(id, true));
     localStream.current?.getTracks().forEach(t => t.stop()); localStream.current = null;
     originalMicStreamRef.current?.getTracks().forEach(t => t.stop()); originalMicStreamRef.current = null;
     if (audioContextRef.current) { audioContextRef.current.close().catch(() => {}); audioContextRef.current = null; }
-    if (realtimeChannel.current) { await supabase.removeChannel(realtimeChannel.current); realtimeChannel.current = null; }
+    
+    if (realtimeChannel.current) {
+      const chan = realtimeChannel.current;
+      realtimeChannel.current = null; // Зануляем ДО удаления, чтобы коллбэк subscribe проигнорировал CLOSED
+      await supabase.removeChannel(chan).catch(() => {});
+    }
+    
     if (fakeVADIntervalRef.current) clearInterval(fakeVADIntervalRef.current);
     setIsScreenSharing(false); setRemoteScreens({}); setActiveChannelId(null); setParticipants([]);
   }, [closePeer]);
@@ -382,20 +392,38 @@ export function useVoice() {
     notifications.play(next ? 'deafen' : 'undeafen');
   }, [updatePresenceStatus]);
 
-  const startScreenShare = useCallback(async () => {
+  const startScreenShare = useCallback(async (quality = '720p', user = null, sourceId = null) => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      console.log('[WebRTC] Starting screen share, sourceId:', sourceId);
+      const constraints = {
+        video: sourceId ? {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sourceId,
+            maxWidth: 1920,
+            maxHeight: 1080
+          }
+        } : true,
+        audio: true
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       screenStreamRef.current = stream; setIsScreenSharing(true);
       
       // Добавляем трек всем существующим пирам
       Object.values(peerConns.current).forEach(pc => {
         stream.getTracks().forEach(t => pc.addTrack(t, stream));
+        // Принудительно вызываем onnegotiationneeded (в некоторых браузерах не триггерится сам)
+        if (pc.onnegotiationneeded) pc.onnegotiationneeded();
       });
 
       updatePresenceStatus({ isScreenSharing: true });
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
-    } catch (err) { console.error('Screen sharing error', err); }
-  }, [updatePresenceStatus]);
+    } catch (err) { 
+      console.error('Screen sharing error', err);
+      setVoiceError(`Не удалось запустить трансляцию: ${err.message}`);
+    }
+  }, [updatePresenceStatus, stopScreenShare]);
 
   const stopScreenShare = useCallback(async () => {
     if (screenStreamRef.current) {
