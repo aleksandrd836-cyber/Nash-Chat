@@ -252,7 +252,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                     )}
                   </div>
                   <div className="text-center min-w-0 w-full">
-                      <p className="text-white font-black text-lg truncate flex items-center gap-2" style={{ color: p.userId === ownerId ? '#ff4444' : 'white' }}>
+                      <p className="text-ds-text font-black text-sm truncate flex items-center justify-center gap-2 px-2" style={{ color: p.userId === ownerId ? '#ff4444' : 'rgb(var(--ds-text))' }}>
                         {p.username}
                         {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(p.userId) && (
                           <span className="px-2 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[9px] font-black text-ds-accent uppercase tracking-widest vibe-glow-blue shadow-[0_0_10px_rgba(0,240,255,0.2)] vibe-creator-badge">
