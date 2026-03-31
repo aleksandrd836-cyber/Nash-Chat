@@ -293,12 +293,25 @@ export function useVoice() {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
           await pc.setLocalDescription();
           channel.send({ type: 'broadcast', event: 'answer', payload: { from: user.id, to: payload.from, sdp: pc.localDescription } });
-        } catch (err) { setVoiceError(`[Signaling] ${err.message}`); }
+        } catch (err) {
+          setVoiceError(`[Signaling] ${err.message}`);
+          // Если ошибка в структуре SDP (m-lines), пересоздаем соединение
+          if (err.message.includes('m-lines') || err.message.includes('SDP')) {
+            console.warn('[WebRTC] SDP Mismatch detected, forcing recreate...');
+            closePeer(payload.from, true);
+          }
+        }
       });
 
       channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (payload.to === user.id && peerConns.current[payload.from] && !ignoreOfferRef.current[payload.from]) {
-          try { await peerConns.current[payload.from].setRemoteDescription(new RTCSessionDescription(payload.sdp)); } catch {}
+          try { await peerConns.current[payload.from].setRemoteDescription(new RTCSessionDescription(payload.sdp)); } catch (err) {
+            setVoiceError(`[Signaling] ${err.message}`);
+            if (err.message.includes('m-lines') || err.message.includes('SDP')) {
+              console.warn('[WebRTC] SDP Mismatch detected, forcing recreate...');
+              closePeer(payload.from, true);
+            }
+          }
         }
       });
 
@@ -355,6 +368,12 @@ export function useVoice() {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       screenStreamRef.current = stream; setIsScreenSharing(true);
+      
+      // Добавляем трек всем существующим пирам
+      Object.values(peerConns.current).forEach(pc => {
+        stream.getTracks().forEach(t => pc.addTrack(t, stream));
+      });
+
       updatePresenceStatus({ isScreenSharing: true });
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) { console.error('Screen sharing error', err); }
@@ -362,10 +381,24 @@ export function useVoice() {
 
   const stopScreenShare = useCallback(async () => {
     if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach(t => t.stop());
+      console.log('[WebRTC] Stopping screen share safely...');
+      const tracks = screenStreamRef.current.getTracks();
+      
+      // Вместо removeTrack используем replaceTrack(null), 
+      // чтобы не ломать порядок m-lines в SDP
       Object.values(peerConns.current).forEach(pc => {
-        pc.getSenders().forEach(s => { if (s.track?.kind === 'video') pc.removeTrack(s); });
+        pc.getSenders().forEach(async (s) => { 
+          if (s.track?.kind === 'video') {
+            try {
+              await s.replaceTrack(null);
+              // Теперь можно безопасно убрать, т.к. стейт стабилен
+              pc.removeTrack(s);
+            } catch (e) { console.warn(e); }
+          }
+        });
       });
+
+      tracks.forEach(t => t.stop());
       screenStreamRef.current = null; setIsScreenSharing(false);
       setTimeout(() => updatePresenceStatus({ isScreenSharing: false }), 300);
     }
