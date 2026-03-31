@@ -10,7 +10,7 @@ export function MembersPanel({ members, loading, currentUserId, ownerId, onOpenD
   const offline = members.filter(m => !m.isOnline);
 
   return (
-    <div className="w-60 flex-shrink-0 bg-ds-sidebar/92 backdrop-blur-[40px] flex flex-col shadow-2xl z-10 transition-all duration-300 relative">
+    <div className="w-72 flex-shrink-0 bg-ds-sidebar/92 backdrop-blur-[40px] flex flex-col shadow-2xl z-10 transition-all duration-300 relative">
       <div className="absolute top-0 left-0 bottom-0 vibe-vertical-divider opacity-80 z-50 pointer-events-none" />
       {/* Header */}
       <div className="h-12 flex items-center px-4 flex-shrink-0 bg-ds-bg/20 backdrop-blur-md">
