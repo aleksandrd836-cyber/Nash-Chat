@@ -37,8 +37,8 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
             )}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${activeChannelId ? 'bg-ds-accent vibe-glow-blue animate-pulse' : 'bg-ds-muted'}`} />
-            <p className={`text-[9px] font-black uppercase tracking-[0.15em] truncate ${activeChannelId ? 'text-ds-accent' : 'text-ds-muted'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${activeChannelId ? 'bg-ds-green vibe-glow-green animate-pulse' : 'bg-ds-muted'}`} />
+            <p className={`text-[9px] font-black uppercase tracking-[0.15em] truncate ${activeChannelId ? 'text-ds-green' : 'text-ds-muted'}`}>
               {activeChannelId ? 'В эфире' : 'В сети'}
             </p>
           </div>

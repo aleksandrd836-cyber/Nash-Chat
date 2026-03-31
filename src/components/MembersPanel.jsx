@@ -17,7 +17,7 @@ export function MembersPanel({ members, loading, currentUserId, ownerId, onOpenD
         <span className="text-ds-text font-black text-[10px] uppercase tracking-[0.2em] opacity-80">
           УЧАСТНИКИ
         </span>
-        <span className="ml-auto text-ds-accent text-[10px] font-mono font-bold vibe-glow-blue px-2 py-0.5 rounded-full border border-ds-accent/20 bg-ds-accent/5">
+        <span className="ml-auto text-ds-green text-[10px] font-mono font-bold vibe-glow-green px-2 py-0.5 rounded-full border border-ds-green/20 bg-ds-green/5">
           {online.length}/{members.length}
         </span>
       </div>
@@ -128,7 +128,7 @@ function MemberRow({ member, isOnline, isSelf, ownerId, onOpenDM, unreadCount })
           )}
           {isSelf && <span className="text-white/40 font-black text-[9px] ml-2 uppercase tracking-widest">(ВЫ)</span>}
         </p>
-        <p className={`text-[9px] font-black uppercase tracking-widest ${isOnline ? 'text-ds-accent' : 'text-white/30'}`}>
+        <p className={`text-[9px] font-black uppercase tracking-widest ${isOnline ? 'text-ds-green' : 'text-white/30'}`}>
           {isOnline ? 'В СЕТИ' : 'OFFLINE'}
         </p>
       </div>

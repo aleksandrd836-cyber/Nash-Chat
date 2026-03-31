@@ -139,12 +139,12 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       {/* Header */}
       <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-ds-sidebar/40 backdrop-blur-[40px] z-10 shadow-lg relative">
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-ds-accent/20 to-transparent opacity-30" />
-        <Mic size={20} className="text-ds-accent vibe-glow-blue relative z-10" />
+        <Mic size={20} className="text-ds-green vibe-glow-green relative z-10" />
         <span className="text-ds-text font-bold text-[15px]">{channel.name}</span>
         {isInThisChannel && (
           <div className="ml-2 flex items-center gap-4">
-             <span className="flex items-center gap-1.5 text-ds-accent text-[10px] font-bold uppercase tracking-widest leading-none">
-              <span className="w-1.5 h-1.5 rounded-full bg-ds-accent shadow-[0_0_8px_#00f0ff] animate-pulse" />
+             <span className="flex items-center gap-1.5 text-ds-green text-[10px] font-bold uppercase tracking-widest leading-none vibe-glow-green">
+              <span className="w-1.5 h-1.5 rounded-full bg-ds-green shadow-[0_0_8px_#23a559] animate-pulse" />
               ПОДКЛЮЧЕНО
             </span>
             <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest leading-none ${serverStatus === 'online' ? 'text-ds-muted/40' : 'text-ds-red animate-pulse'}`}>
@@ -176,7 +176,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
         {/* Error Alert */}
         {voiceError && (
           <div className="w-full max-w-2xl bg-ds-red/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col gap-4 animate-shake shadow-2xl z-50 mb-4">
-            <div className="flex items-start gap-4">
+             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                 <MicOff className="text-white w-5 h-5" />
               </div>

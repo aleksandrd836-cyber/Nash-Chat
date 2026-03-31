@@ -81,6 +81,16 @@ html.light-theme {
     border-color: rgba(0, 110, 245, 0.4);
   }
 
+  .vibe-glow-green {
+    box-shadow: 0 0 15px rgba(35, 165, 89, 0.3), inset 0 0 5px rgba(35, 165, 89, 0.2);
+    border-color: rgba(35, 165, 89, 0.5);
+  }
+
+  .light-theme .vibe-glow-green {
+    box-shadow: 0 2px 10px rgba(35, 165, 89, 0.2);
+    border-color: rgba(35, 165, 89, 0.4);
+  }
+
   .vibe-moving-glow {
     background: linear-gradient(90deg, transparent, rgba(var(--ds-accent-rgb), 0.2), transparent);
     background-size: 200% 100%;
