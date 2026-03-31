@@ -46,6 +46,7 @@ export function useVoice() {
   const originalMicStreamRef = useRef(null);
   const gainNodesRef = useRef({}); // Узлы усиления для каждого участника
   const makingOfferRef = useRef({}); // Флаги "я шлю оффер" для каждого участника
+  const ignoreOfferRef = useRef({}); // Флаги игнорирования входящих офферов
   // Таймеры на удаление "призраков" (чтобы не рвать WebRTC при мерцании Presence)
   const ghostPeersRef = useRef({});
 
@@ -116,31 +117,25 @@ export function useVoice() {
 
     pc.onnegotiationneeded = async () => {
       try {
-        if (pc.signalingState !== 'stable') return;
+        makingOfferRef.current[remoteUserId] = true;
+        // Используем современный способ: setLocalDescription() сам создаст и применит оффер
+        await pc.setLocalDescription();
         
-        // Разносим по времени инициацию для разных ID, чтобы не было конфликтов (glare)
-        const delay = currentUserRef.current?.id < remoteUserId ? 500 : 0;
+        const offerPayload = { 
+          type: 'broadcast', event: 'offer', 
+          payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: pc.localDescription } 
+        };
         
-        setTimeout(async () => {
-          try {
-            if (pc.signalingState !== 'stable' || makingOfferRef.current[remoteUserId]) return;
-            
-            makingOfferRef.current[remoteUserId] = true;
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            
-            const offerPayload = { type: 'broadcast', event: 'offer', payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: offer } };
-            if (realtimeChannel.current) {
-              realtimeChannel.current.send(offerPayload);
-            } else if (signalingChannel) {
-              signalingChannel.send(offerPayload);
-            }
-          } catch (e) { console.warn('[WebRTC] Offer delayed error:', e); 
-          } finally {
-            makingOfferRef.current[remoteUserId] = false;
-          }
-        }, delay);
-      } catch (err) { console.error(`[WebRTC] Offer initiation error:`, err); }
+        if (realtimeChannel.current) {
+          realtimeChannel.current.send(offerPayload);
+        } else if (signalingChannel) {
+          signalingChannel.send(offerPayload);
+        }
+      } catch (err) {
+        console.warn(`[WebRTC] onnegotiationneeded error:`, err);
+      } finally {
+        makingOfferRef.current[remoteUserId] = false;
+      }
     };
 
     pc.ontrack = (event) => {
@@ -517,17 +512,58 @@ export function useVoice() {
 
     channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
       if (payload.to !== user.id) return;
-      const pc = createPeerConnection(payload.from, channel);
-      await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      channel.send({ type: 'broadcast', event: 'answer', payload: { from: user.id, to: payload.from, sdp: answer } });
+      const remoteId = payload.from;
+      const pc = createPeerConnection(remoteId, channel);
+      if (!pc) return;
+
+      try {
+        const description = new RTCSessionDescription(payload.sdp);
+        
+        // ── Perfect Negotiation Logic ──
+        const polite = user.id < remoteId; // Вежливый тот, чей ID меньше
+        const offerCollision = (pc.signalingState !== 'stable' || makingOfferRef.current[remoteId]);
+        
+        ignoreOfferRef.current[remoteId] = !polite && offerCollision;
+        if (ignoreOfferRef.current[remoteId]) {
+          console.warn(`[WebRTC] Игнорирую Offer от ${remoteId} (я главный и мы в коллизии)`);
+          return;
+        }
+
+        // Если коллизия, но мы вежливы — откатываем свой оффер
+        if (offerCollision) {
+          console.log(`[WebRTC] Откатываю свой Offer для ${remoteId} (я вежлив)`);
+          await pc.setLocalDescription({ type: 'rollback' });
+        }
+        
+        await pc.setRemoteDescription(description);
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        const answerPayload = { 
+          type: 'broadcast', event: 'answer', 
+          payload: { from: user.id, to: remoteId, sdp: pc.localDescription } 
+        };
+        channel.send(answerPayload);
+      } catch (err) {
+        console.error('[WebRTC] Error handling offer:', err);
+      }
     });
 
     channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
       if (payload.to !== user.id) return;
-      const pc = peerConns.current[payload.from];
-      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      const remoteId = payload.from;
+      const pc = peerConns.current[remoteId];
+      if (pc) {
+        try {
+          // Если мы игнорируем оффер от этого пользователя, то ответ нам тоже не нужен (мы в коллизии)
+          if (ignoreOfferRef.current[remoteId]) return;
+          
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        } catch (err) {
+          console.error('[WebRTC] Error handling answer:', err);
+        }
+      }
     });
 
     channel.on('broadcast', { event: 'ice' }, async ({ payload }) => {
@@ -769,21 +805,29 @@ export function useVoice() {
 
   const stopScreenShare = useCallback(async () => {
     if (screenStreamRef.current) {
+      console.log('[WebRTC] Остановка трансляции экрана. Очистка соединений...');
       const tracks = screenStreamRef.current.getTracks();
-      tracks.forEach(t => t.stop());
+      
+      // 1. Сначала удаляем треки из всех RTCPeerConnection (провоцирует renegotiation)
       Object.values(peerConns.current).forEach(pc => {
         pc.getSenders().forEach(sender => {
-          if (sender.track && tracks.includes(sender.track)) pc.removeTrack(sender);
+          if (sender.track && tracks.some(t => t.id === sender.track.id)) {
+            try {
+              pc.removeTrack(sender);
+            } catch (e) {
+              console.warn('[WebRTC] Ошибка при удалении трека:', e);
+            }
+          }
         });
       });
+
+      // 2. Затем останавливаем сами треки физически
+      tracks.forEach(t => t.stop());
       screenStreamRef.current = null;
+      setIsScreenSharing(false);
+      updatePresenceStatus({ isScreenSharing: false });
+      notifications.play('stream_stop');
     }
-    setIsScreenSharing(false);
-    
-    // Обновляем статус везде
-    updatePresenceStatus({ isScreenSharing: false });
-    
-    notifications.play('stream_stop');
   }, [updatePresenceStatus]);
 
   const requestScreenView = useCallback((targetUserId) => {
