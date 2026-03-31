@@ -213,12 +213,14 @@ html.light-theme {
 
 /* Light Mode Boost: Global Glow Intensity */
 .light-theme .animate-vibe-pulse {
-  opacity: 0.6 !important;
+  opacity: 0.85 !important;
+  filter: blur(100px) brightness(1.2) contrast(1.1) !important;
 }
 
 .light-theme .animate-aurora-sweep,
 .light-theme .animate-aurora-shift {
-  opacity: 0.5 !important;
+  opacity: 0.75 !important;
+  filter: blur(80px) brightness(1.1) !important;
 }
 
 /* Fix for unreadable select options in dark mode (Windows/Chrome/Electron) */

@@ -77,8 +77,8 @@ function createSplash() {
     </head>
     <body>
       <div class="logo">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24">
+          <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
         </svg>
       </div>
       <h1>Vibe</h1>
