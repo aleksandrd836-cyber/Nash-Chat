@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
 import { 
   X, Settings, Copy, RefreshCw, UserPlus, Trash2, 
-  Shield, Crown, User, Check, AlertCircle 
+  Shield, Crown, User, Check, AlertCircle, Camera 
 } from 'lucide-react';
 
 /**
@@ -39,6 +39,9 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   const [savingName, setSavingName]   = useState(false);
   const [inviteCode, setInviteCode]   = useState(server.invite_code || '');
   const [codeLoading, setCodeLoading] = useState(!server.invite_code);
+  const [iconUrl, setIconUrl]         = useState(server.icon_url || '');
+  const [uploading, setUploading]     = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!server.invite_code) {
@@ -104,6 +107,46 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
     setSavingName(false);
   }
 
+  async function handleAvatarUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Файл слишком большой! Максимальный размер — 2Мб.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `${server.id}_${Date.now()}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const publicUrl = data.publicUrl;
+
+      const { error: dbError } = await supabase
+        .from('servers')
+        .update({ icon_url: publicUrl })
+        .eq('id', server.id);
+
+      if (dbError) throw dbError;
+
+      setIconUrl(publicUrl);
+      server.icon_url = publicUrl;
+    } catch (err) {
+      console.error('[AvatarUpload] Ошибка:', err);
+      alert('Не удалось загрузить аватар. Проверьте соединение и настройки Storage в Supabase.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function handleDeleteServer() {
     if (!window.confirm(`Удалить сервер «${server.name}» полностью?`)) return;
     await supabase.from('servers').delete().eq('id', server.id);
@@ -151,20 +194,57 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           {/* General Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">Основное</h3>
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest ml-2">Название</p>
-              <div className="flex gap-2">
-                <input
-                  type="text" value={serverName} onChange={e => setServerName(e.target.value)}
-                  className="flex-1 bg-ds-bg/40 border border-white/5 rounded-2xl px-4 py-3 text-ds-text text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
-                />
-                <button
-                  onClick={handleSaveName} disabled={savingName || !serverName.trim() || serverName === server.name}
-                  className="px-6 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
-                >
-                  {savingName ? '...' : 'OK'}
-                </button>
-              </div>
+            
+            <div className="flex items-center gap-8 mb-8 pb-8 border-b border-white/5">
+               {/* Avatar Picker Context */}
+               <div className="relative group/avatar">
+                  <div 
+                     onClick={() => fileInputRef.current?.click()}
+                     className={`w-24 h-24 rounded-[2rem] bg-ds-bg/60 border-2 border-ds-border overflow-hidden flex items-center justify-center transition-all cursor-pointer shadow-2xl relative
+                       ${uploading ? 'opacity-50 pointer-events-none' : 'hover:scale-105 active:scale-95 group-hover/avatar:border-ds-accent/40'}`}
+                  >
+                     {iconUrl ? (
+                        <img src={iconUrl} alt="Avatar" className="w-full h-full object-cover" />
+                     ) : (
+                        <span className="text-3xl font-black text-ds-muted uppercase tracking-tighter">
+                           {server.name?.[0] || '?'}
+                        </span>
+                     )}
+                     
+                     {/* Overlay */}
+                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
+                        <Camera className="text-white drop-shadow-lg" size={24} />
+                     </div>
+
+                     {uploading && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                           <div className="w-8 h-8 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
+                        </div>
+                     )}
+                  </div>
+                  <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+               </div>
+
+               <div className="flex-1 space-y-4">
+                  <div className="space-y-1.5">
+                     <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest ml-1">Название сервера</p>
+                     <div className="flex gap-2">
+                        <input
+                           type="text" value={serverName} onChange={e => setServerName(e.target.value)}
+                           className="flex-1 bg-ds-bg/40 border border-white/5 rounded-2xl px-4 py-3 text-ds-text text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
+                        />
+                        <button
+                           onClick={handleSaveName} disabled={savingName || !serverName.trim() || serverName === server.name}
+                           className="px-6 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
+                        >
+                           {savingName ? '...' : 'OK'}
+                        </button>
+                     </div>
+                  </div>
+                  <p className="text-[9px] text-ds-muted uppercase tracking-[0.1em] leading-relaxed">
+                     Минимальный размер 128x128. Рекомендуем использовать квадратные изображения для лучшего вида.
+                  </p>
+               </div>
             </div>
           </section>
 

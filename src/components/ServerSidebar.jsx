@@ -13,7 +13,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
     if (!currentUserId) return;
     const { data, error } = await supabase
       .from('server_members')
-      .select('server_id, role, servers(id, name, owner_id, invite_code)')
+      .select('server_id, role, servers(id, name, owner_id, invite_code, icon_url)')
       .eq('user_id', currentUserId);
     if (!error && data) {
       setServers(data.map(row => ({ ...row.servers, role: row.role })));
@@ -89,10 +89,18 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
                 }`}
               style={!isSelected ? { borderColor: `${iconColor}44` } : {}}
             >
-              {/* Буква (увеличиваем при наведении) */}
-              <span className={`relative z-10 transition-transform duration-500 ${!isSelected ? 'group-hover/btn:scale-125' : ''}`}>
-                {initial}
-              </span>
+              {/* Буква (FALLBACK) или Иконка */}
+              {server.icon_url ? (
+                <img 
+                   src={server.icon_url} 
+                   alt={server.name} 
+                   className={`w-full h-full object-cover transition-transform duration-500 ${!isSelected ? 'group-hover/btn:scale-110' : ''}`}
+                />
+              ) : (
+                <span className={`relative z-10 transition-transform duration-500 ${!isSelected ? 'group-hover/btn:scale-125' : ''}`}>
+                   {initial}
+                </span>
+              )}
 
               {/* Фоновое свечение (только при наведении или выборе) */}
               <div 
