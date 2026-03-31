@@ -288,7 +288,7 @@ function App() {
       )}
 
       {/* ── Основной контент ── */}
-      <main className="flex-1 flex min-w-0 overflow-hidden">
+      <main className="flex-1 flex min-w-0 overflow-hidden relative">
         {!selectedServer && !activeDM ? (
           // Экран ХАБА когда нет сервера
           <div className="flex-1 flex flex-col items-center justify-center p-8 bg-transparent relative overflow-hidden animate-fade-in group">
@@ -429,21 +429,6 @@ function App() {
                 </a>
               </div>
             )}
-            
-            {/* ── Floating Action Button (FAB) ── */}
-            <button
-               onClick={() => { setSelectedServer(null); setIsDMHubOpen(true); }}
-               className="fixed bottom-10 right-10 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
-               title="Личные сообщения"
-            >
-               <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-full" />
-               <MessageSquare size={28} className="relative z-10 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]" />
-               {totalUnreadDMs > 0 && (
-                 <div className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 bg-ds-red text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-ds-bg shadow-lg animate-bounce z-20">
-                   {totalUnreadDMs}
-                 </div>
-               )}
-            </button>
           </div>
         ) : activeDM ? (
           <DirectMessagePanel
@@ -497,6 +482,21 @@ function App() {
             downloadUrl={downloadUrl}
           />
         )}
+
+        {/* ── Floating Action Button (FAB) ── */}
+        <button
+           onClick={() => { setSelectedServer(null); setIsDMHubOpen(true); }}
+           className="absolute bottom-10 right-10 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
+           title="Личные сообщения"
+        >
+           <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-full" />
+           <MessageSquare size={28} className="relative z-10 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]" />
+           {totalUnreadDMs > 0 && (
+             <div className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 bg-ds-red text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-ds-bg shadow-lg animate-bounce z-20">
+               {totalUnreadDMs}
+             </div>
+           )}
+        </button>
       </main>
 
       {/* ── Участники сервера (справа) ── */}
