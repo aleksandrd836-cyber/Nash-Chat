@@ -140,11 +140,11 @@ html.light-theme {
   width: 1px;
   height: 100%;
   background: linear-gradient(to bottom, 
-    transparent, 
-    rgba(0, 240, 255, 0.1) 15%, 
+    transparent 0%, 
+    rgba(0, 240, 255, 0.4) 10%, 
     rgba(0, 240, 255, 0.8) 50%, 
-    rgba(0, 240, 255, 0.1) 85%, 
-    transparent
+    rgba(0, 240, 255, 0.4) 90%, 
+    transparent 100%
   );
   background-size: 100% 200%;
   animation: neon-flow 3s linear infinite;

@@ -175,7 +175,8 @@ export function Sidebar({
   // ── Рендер ──
   return (
     <div className="w-60 flex-shrink-0 bg-ds-sidebar/92 backdrop-blur-[40px] flex flex-col shadow-2xl z-10 transition-all duration-300 relative select-none" onClick={() => { setChanCtx(null); setCtxMenu(null); }}>
-      <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-80 z-50 pointer-events-none" />
+      <div className="absolute top-0 left-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
+      <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
       {/* Server header */}
       <div className="h-12 flex items-center justify-between px-4 flex-shrink-0 hover:bg-white/2 transition-colors group">
         <span className="text-ds-text font-bold text-[15px] truncate">{selectedServer?.name ?? 'Сервер'}</span>
