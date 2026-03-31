@@ -434,12 +434,12 @@ export function useVoice() {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       screenStreamRef.current = stream; setIsScreenSharing(true);
+      setVoiceError(null); // Сбрасываем старые ошибки
       
       // Добавляем трек всем существующим пирам
+      // WebRTC сам триггернет onnegotiationneeded при добавлении трека
       Object.values(peerConns.current).forEach(pc => {
         stream.getTracks().forEach(t => pc.addTrack(t, stream));
-        // Принудительно вызываем onnegotiationneeded (в некоторых браузерах не триггерится сам)
-        if (pc.onnegotiationneeded) pc.onnegotiationneeded();
       });
 
       updatePresenceStatus({ isScreenSharing: true });
