@@ -487,7 +487,7 @@ function App() {
         {/* ── Floating Action Button (FAB) ── */}
         <button
            onClick={() => { setSelectedServer(null); setIsDMHubOpen(true); }}
-           className="absolute bottom-10 right-10 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
+           className="absolute bottom-40 right-10 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
            title="Личные сообщения"
         >
            <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-full" />

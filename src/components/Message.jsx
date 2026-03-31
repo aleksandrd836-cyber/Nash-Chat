@@ -245,10 +245,10 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         <div className="w-[60px] flex-shrink-0 flex items-center justify-end">
           <span className="text-[10px] text-ds-muted hidden group-hover:block">{time}</span>
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-20">
           {msg.content && (
             <div className="flex items-end gap-2">
-              <p className="text-ds-text text-sm leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
+              <p className="text-ds-text text-sm leading-relaxed break-all whitespace-pre-wrap">{msg.content}</p>
               {isMine && isRead !== undefined && (
                 <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
                   {isRead ? '✓✓' : '✓'}
@@ -271,14 +271,14 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
       <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 bg-ds-bg/40 shadow-inner overflow-hidden flex items-center justify-center border border-ds-divider/30">
         <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none" />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 pr-20">
         <div className="flex items-baseline gap-2 mb-0.5">
           <span className="font-bold text-[14.5px] tracking-tight" style={{ color: displayColor }}>{realName}</span>
           <span className="text-[10px] text-ds-muted font-bold uppercase tracking-widest" title={fullTime}>{time}</span>
         </div>
         {msg.content && (
           <div className="flex items-end gap-2 text-[15px] leading-relaxed">
-            <p className="text-ds-text break-words whitespace-pre-wrap opacity-90">{msg.content}</p>
+            <p className="text-ds-text break-all whitespace-pre-wrap opacity-90">{msg.content}</p>
             {isMine && isRead !== undefined && (
               <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
                 {isRead ? '✓✓' : '✓'}
