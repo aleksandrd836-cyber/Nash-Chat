@@ -47,19 +47,24 @@ function createSplash() {
         .logo {
           width: 90px;
           height: 90px;
-          background: rgba(255,255,255,0.03);
-          border-radius: 24px;
+          background: rgba(0, 240, 255, 0.1);
+          border-radius: 28px;
           display: flex;
           align-items: center;
           justify-content: center;
           margin-bottom: 24px;
-          box-shadow: 0 0 30px rgba(0,240,255,0.15);
-          border: 1px solid rgba(255,255,255,0.05);
-          overflow: hidden;
+          box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+          border: 2px solid rgba(0, 240, 255, 0.3);
+          position: relative;
         }
-        .logo img { width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,240,255,0.3)); }
-        h1 { font-size: 24px; font-weight: 800; margin-bottom: 4px; letter-spacing: 2px; text-transform: uppercase; }
-        p { font-size: 11px; color: #888; margin-bottom: 32px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .logo svg { 
+          width: 50px; 
+          height: 50px; 
+          fill: #00f0ff; 
+          filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.8));
+        }
+        h1 { font-size: 26px; font-weight: 900; margin-bottom: 4px; letter-spacing: 4px; text-transform: uppercase; color: #fff; }
+        p { font-size: 10px; color: #00f0ff; margin-bottom: 32px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; }
         .spinner {
           width: 24px; height: 24px;
           border: 2px solid rgba(255,255,255,0.05);
@@ -72,7 +77,9 @@ function createSplash() {
     </head>
     <body>
       <div class="logo">
-        <img src="file://${path.join(__dirname, 'icon.png')}" alt="Vibe" />
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
+        </svg>
       </div>
       <h1>Vibe</h1>
       <p>Запуск...</p>
