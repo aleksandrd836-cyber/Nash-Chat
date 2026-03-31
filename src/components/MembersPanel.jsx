@@ -14,7 +14,7 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
       <div className="absolute top-0 left-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
       {/* Header */}
       <div className="h-12 flex items-center px-4 border-b border-ds-divider/30 flex-shrink-0 bg-ds-bg/20 backdrop-blur-md">
-        <span className="text-ds-text/60 text-[10px] font-black uppercase tracking-[0.2em]">
+        <span className="text-ds-text font-black text-[10px] uppercase tracking-[0.2em] opacity-80">
           УЧАСТНИКИ
         </span>
         <span className="ml-auto text-ds-accent text-[10px] font-mono font-bold vibe-glow-blue px-2 py-0.5 rounded-full border border-ds-accent/20 bg-ds-accent/5">
@@ -33,7 +33,7 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
             {/* ── Онлайн ── */}
             {online.length > 0 && (
               <div>
-                <p className="text-ds-text/40 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
+                <p className="text-ds-text/70 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-ds-accent vibe-glow-blue" />
                   В СЕТИ — {online.length}
                 </p>
@@ -55,8 +55,8 @@ export function MembersPanel({ members, loading, currentUserId, onOpenDM, unread
             {/* ── Оффлайн ── */}
             {offline.length > 0 && (
               <div className="mt-4">
-                <p className="text-ds-text/40 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
-                   <span className="w-1 h-1 rounded-full bg-ds-text/20" />
+                <p className="text-ds-text/70 text-[9px] font-black uppercase tracking-[0.2em] px-3 mb-2 flex items-center gap-2">
+                   <span className="w-1 h-1 rounded-full bg-ds-text/40" />
                    НЕ В СЕТИ — {offline.length}
                 </p>
                 <div className="space-y-0.5">

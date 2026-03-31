@@ -32,7 +32,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
             {username}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${activeChannelId ? 'bg-ds-accent vibe-glow-blue animate-pulse' : 'bg-ds-muted/30'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${activeChannelId ? 'bg-ds-accent vibe-glow-blue animate-pulse' : 'bg-ds-muted'}`} />
             <p className={`text-[9px] font-black uppercase tracking-[0.15em] truncate ${activeChannelId ? 'text-ds-accent' : 'text-ds-muted'}`}>
               {activeChannelId ? 'В эфире' : 'В сети'}
             </p>
@@ -62,7 +62,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
               <button
                 onClick={toggleDeafen}
                 title={isDeafened ? 'Включить звук' : 'Выключить звук'}
-                className={`flex-1 h-8 rounded-md flex items-center justify-center transition-all duration-200 ${isDeafened ? 'text-ds-red bg-ds-red/10 hover:bg-ds-red/20 vibe-glow-red animate-pulse' : 'text-white/40 hover:text-ds-accent hover:bg-ds-accent/10 hover:vibe-glow-blue'}`}
+                className={`flex-1 h-8 rounded-md flex items-center justify-center transition-all duration-200 ${isDeafened ? 'text-ds-red bg-ds-red/10 hover:bg-ds-red/20 vibe-glow-red animate-pulse' : 'text-ds-muted hover:text-ds-accent hover:bg-ds-accent/10 hover:vibe-glow-blue'}`}
               >
                 <div className="slashed-container">
                   <Headphones className="w-4 h-4" />
@@ -74,7 +74,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
               <button
                 onClick={leaveVoiceChannel}
                 title="Выйти из голосового канала"
-                className="flex-1 h-8 rounded-md flex items-center justify-center text-white/20 hover:text-ds-red hover:bg-ds-red/10 transition-all duration-200"
+                className="flex-1 h-8 rounded-md flex items-center justify-center text-ds-muted hover:text-ds-red hover:bg-ds-red/10 transition-all duration-200"
               >
                 <LogOut className="w-4 h-4" />
               </button>

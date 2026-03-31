@@ -6,11 +6,11 @@
 :root {
   /* Color Palette - Dark Mode (Default) - RGB Components */
   --ds-bg: 11, 12, 14;
-  --ds-sidebar: 22, 23, 25;
-  --ds-servers: 5, 5, 5;
+  --ds-sidebar: 24, 25, 28;
+  --ds-servers: 10, 10, 10;
   --ds-input: 30, 31, 34;
   --ds-text: 255, 255, 255;
-  --ds-muted: 128, 132, 142;
+  --ds-muted: 185, 187, 190;
   --ds-hover: 42, 43, 47;
   --ds-active: 49, 51, 56;
   --ds-header: 17, 18, 20;

@@ -54,8 +54,8 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
               title={server.name}
               className={`w-12 h-12 transition-all duration-500 flex items-center justify-center font-black text-[13px] tracking-tighter shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2 server-sidebar-btn
                 ${isSelected 
-                  ? 'rounded-[14px] bg-ds-bg text-ds-text vibe-glow-blue border-ds-accent' 
-                  : 'rounded-[18px] hover:rounded-[12px] bg-ds-bg/60 backdrop-blur-md text-ds-muted hover:text-ds-text hover:scale-110'
+                  ? 'rounded-[14px] bg-ds-sidebar text-ds-text vibe-glow-blue border-ds-accent' 
+                  : 'rounded-[18px] hover:rounded-[12px] bg-ds-servers/60 backdrop-blur-md text-ds-muted hover:text-ds-text hover:scale-110'
                 }`}
               style={!isSelected ? { borderColor: `${iconColor}44` } : {}}
             >
@@ -90,7 +90,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
         <button
           onClick={onCreateServer}
           title="Создать или войти на сервер"
-          className="w-12 h-12 rounded-[24px] hover:rounded-[14px] transition-all duration-300 bg-ds-bg hover:bg-ds-accent text-ds-accent hover:text-black border border-white/5 flex items-center justify-center shadow-lg ml-3 group"
+          className="w-12 h-12 rounded-[24px] hover:rounded-[14px] transition-all duration-300 bg-ds-sidebar hover:bg-ds-accent text-ds-accent hover:text-black border border-white/5 flex items-center justify-center shadow-lg ml-3 group"
         >
           <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

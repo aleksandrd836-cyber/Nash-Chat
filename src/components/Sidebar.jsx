@@ -203,7 +203,7 @@ export function Sidebar({
             {/* ── Text channels ── */}
             <div>
               <div className="flex items-center justify-between px-2 mb-1 group">
-                <p className="text-ds-muted text-[11px] font-semibold uppercase tracking-wider">
+                <p className="text-ds-muted text-[11px] font-bold uppercase tracking-wider opacity-80">
                   Текстовые каналы
                 </p>
                 {isOwner && (
@@ -297,7 +297,7 @@ export function Sidebar({
             {/* ── Voice channels ── */}
             <div>
               <div className="flex items-center justify-between px-2 mb-1 group">
-                <p className="text-ds-muted text-[11px] font-semibold uppercase tracking-wider">
+                <p className="text-ds-muted text-[11px] font-bold uppercase tracking-wider opacity-80">
                   Голосовые каналы
                 </p>
                 {isOwner && (

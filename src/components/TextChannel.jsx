@@ -246,7 +246,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
               type="button"
               onClick={() => fileInputRef.current?.click()}
               title="Прикрепить изображение"
-              className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl text-white/40 hover:text-ds-accent hover:bg-ds-accent/10 transition-all"
+              className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl text-ds-muted hover:text-ds-accent hover:bg-ds-accent/10 transition-all"
             >
               <Paperclip size={22} strokeWidth={2.5} />
             </button>
@@ -274,7 +274,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
                 type="button"
                 onClick={() => setShowEmojiPicker(prev => !prev)}
                 title="Добавить эмодзи"
-                className="w-10 h-10 flex items-center justify-center rounded-xl text-white/40 hover:text-ds-accent hover:bg-ds-accent/10 transition-all"
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-ds-muted hover:text-ds-accent hover:bg-ds-accent/10 transition-all"
               >
                 <Smile size={22} strokeWidth={2.5} />
               </button>
@@ -301,7 +301,7 @@ export function TextChannel({ channel, user, username, userColor, downloadUrl })
               )}
             </button>
           </div>
-          <p className="text-[10px] text-ds-muted/20 font-bold uppercase tracking-widest mt-2 px-2 select-none">
+          <p className="text-[10px] text-ds-muted/40 font-bold uppercase tracking-widest mt-2 px-2 select-none">
             Enter to send · Shift+Enter to newline · Ctrl+V to paste
           </p>
         </form>
