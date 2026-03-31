@@ -155,7 +155,7 @@ function App() {
           <div className="relative group">
              <div className="w-24 h-24 border-[4px] border-white/5 border-t-ds-accent rounded-full animate-spin shadow-[0_0_40px_rgba(0,240,255,0.2)]" />
              <div className="absolute inset-0 flex items-center justify-center">
-                <img src="/logo.png" alt="Vibe Logo" className="w-14 h-14 object-contain animate-pulse mix-blend-screen" />
+                <Sparkles size={56} className="text-ds-accent vibe-logo-glow animate-pulse" />
              </div>
              <div className="absolute inset-0 vibe-glow-blue blur-xl rounded-full opacity-30 animate-vibe-pulse" />
           </div>
@@ -273,7 +273,7 @@ function App() {
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative overflow-hidden">
             <div className="relative group/glow">
                <div className="w-32 h-32 rounded-[3.5rem] bg-black/40 flex items-center justify-center border-2 border-white/10 relative z-10 overflow-hidden shadow-2xl transition-transform hover:scale-105 duration-500">
-                  <img src="/logo.png" alt="Vibe Logo" className="w-20 h-20 object-contain mix-blend-screen" />
+                  <Sparkles size={64} className="text-ds-accent vibe-logo-glow" />
                   <div className="absolute inset-0 vibe-moving-glow opacity-20" />
                </div>
                <div className="absolute inset-[-10px] bg-ds-accent/10 blur-2xl rounded-full opacity-40 animate-vibe-pulse" />
@@ -306,7 +306,7 @@ function App() {
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
             <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                <div className="absolute inset-0 vibe-moving-glow opacity-10" />
-               <img src="/logo.png" alt="Vibe Logo" className="w-14 h-14 object-contain mix-blend-screen opacity-80" />
+               <Sparkles size={48} className="text-ds-accent/40 vibe-logo-glow contrast-125" />
             </div>
             <div className="max-w-xs">
               <h3 className="text-ds-text font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>

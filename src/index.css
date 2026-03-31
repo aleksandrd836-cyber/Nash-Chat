@@ -183,6 +183,21 @@ html.light-theme {
   will-change: transform, opacity;
 }
 
+.vibe-logo-glow {
+  filter: 
+    drop-shadow(0 0 5px rgba(0, 240, 255, 0.8))
+    drop-shadow(0 0 15px rgba(0, 240, 255, 0.4))
+    drop-shadow(0 0 30px rgba(0, 240, 255, 0.2));
+  transition: filter 0.3s ease;
+}
+
+.vibe-logo-glow:hover {
+  filter: 
+    drop-shadow(0 0 8px rgba(0, 240, 255, 1))
+    drop-shadow(0 0 25px rgba(0, 240, 255, 0.6))
+    drop-shadow(0 0 50px rgba(0, 240, 255, 0.3));
+}
+
 /* Fix for unreadable select options in dark mode (Windows/Chrome/Electron) */
 select option {
   background-color: #121212 !important;
