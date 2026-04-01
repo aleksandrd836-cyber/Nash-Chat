@@ -1,5 +1,5 @@
 {
-  "version": "2.2.3",
-  "notes": "V2.2.3: Login Edition - Полный отказ от почты. Регистрация и вход теперь только по Логину и Паролю.",
+  "version": "2.2.4",
+  "notes": "V2.2.4: Admin Migration - Полная миграция старых пользователей на систему входа по Логину.",
   "downloadUrl": "https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest"
 }
