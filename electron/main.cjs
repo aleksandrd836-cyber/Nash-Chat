@@ -24,9 +24,9 @@ if (!gotTheLock) {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
-    height: 800,
+    height: 850,
     minWidth: 900,
-    minHeight: 600,
+    minHeight: 700,
     title: 'Vibe',
     backgroundColor: '#1e1f22',
     icon: path.join(__dirname, 'icon.png'),
