@@ -24,5 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // --- Горячие клавиши (VIBE v3.2) ---
   registerHotkeys: (shortcuts) => ipcRenderer.send('register-hotkeys', shortcuts),
-  onHotkey: (callback) => ipcRenderer.on('hotkey-triggered', (event, action) => callback(action))
+  onHotkey: (callback) => {
+    const listener = (event, action) => callback(action);
+    ipcRenderer.on('hotkey-triggered', listener);
+    return () => ipcRenderer.removeListener('hotkey-triggered', listener);
+  }
 });

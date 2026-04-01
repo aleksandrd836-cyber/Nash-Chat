@@ -55,6 +55,7 @@ function createWindow() {
 
 // --- СИСТЕМНЫЙ ТРЕЙ (ВОССТАНОВЛЕНО) ---
 function createTray() {
+  if (tray) return;
   const iconPath = path.join(__dirname, 'icon.png');
   const trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24 });
   tray = new Tray(trayIcon);
