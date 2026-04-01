@@ -7,6 +7,20 @@ let mainWindow;
 let tray = null;
 let isQuitting = false;
 
+// --- БЛОКИРОВКА ВТОРОГО ЭКЗЕМПЛЯРА ---
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
