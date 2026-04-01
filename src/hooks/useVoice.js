@@ -361,7 +361,7 @@ export function useVoice() {
         if (speaking !== isSpeakingRef.current) {
           isSpeakingRef.current = speaking; setIsSpeaking(speaking);
           const now = Date.now();
-          if (now - lastPresenceUpdate > 2000) {
+          if (now - lastPresenceUpdate > 250) {
             lastPresenceUpdate = now; updatePresenceStatus({ isSpeaking: speaking });
           }
         }
@@ -464,10 +464,36 @@ export function useVoice() {
   const toggleDeafen = useCallback(() => {
     const next = !isDeafenedRef.current;
     isDeafenedRef.current = next; setIsDeafened(next);
-    Object.values(gainNodesRef.current).forEach(g => { g.gain.value = next ? 0 : 1; });
+    
+    // При выключении звука (Deafen) ставим всем 0. 
+    // При включении - восстанавливаем сохраненную громкость для каждого.
+    Object.keys(gainNodesRef.current).forEach(uid => {
+      const g = gainNodesRef.current[uid];
+      if (!g) return;
+      if (next) {
+        g.gain.value = 0;
+      } else {
+        const saved = localStorage.getItem(`vol_${uid}`);
+        g.gain.value = saved !== null ? Number(saved) / 100 : 1.0;
+      }
+    });
+
     updatePresenceStatus({ isDeafened: next });
     notifications.play(next ? 'deafen' : 'undeafen');
   }, [updatePresenceStatus]);
+
+  const setParticipantVolume = useCallback((userId, volumePct) => {
+    localStorage.setItem(`vol_${userId}`, volumePct);
+    const g = gainNodesRef.current[userId];
+    if (g) {
+      // Прямое управление громкостью через GainNode
+      g.gain.setTargetAtTime(volumePct / 100, audioContextRef.current.currentTime, 0.05);
+    }
+    // Оповещаем другие компоненты об изменении
+    window.dispatchEvent(new CustomEvent('volumeChanged', { 
+      detail: { userId, volumePct } 
+    }));
+  }, []);
 
   const stopScreenShare = useCallback(async () => {
     if (screenStreamRef.current) {
@@ -552,7 +578,7 @@ export function useVoice() {
   return {
     activeChannelId, participants, allParticipants, ping, voiceError, serverStatus,
     isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens,
-    joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen,
+    joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, setParticipantVolume,
     startScreenShare, stopScreenShare, requestScreenView: (id) => {
       realtimeChannel.current?.send({ type: 'broadcast', event: 'request-stream', payload: { from: currentUserRef.current.id, to: id } });
     },

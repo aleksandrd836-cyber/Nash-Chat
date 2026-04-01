@@ -392,6 +392,7 @@ export function Sidebar({
                           const { imageUrl } = getUserAvatar(p.username);
                           const isMe = p.userId === currentUserId;
                           const vol  = volumes[p.userId] ?? 100;
+                          const isActuallySpeaking = isMe ? voice.isSpeaking : p.isSpeaking;
                           return (
                             <div
                               key={p.userId}
@@ -399,7 +400,7 @@ export function Sidebar({
                               onContextMenu={(e) => handleParticipantCtx(e, p)}
                               title={!isMe ? 'ПКМ для регулировки громкости' : ''}
                             >
-                              <div className={`w-[28px] h-[28px] rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0 transition-all duration-300 ${p.isSpeaking ? 'ring-2 ring-[#23A559] shadow-[0_0_8px_rgba(35,165,89,0.5)] scale-105' : 'border border-white/5'}`}>
+                              <div className={`w-[28px] h-[28px] rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0 transition-all duration-300 ${isActuallySpeaking ? 'ring-2 ring-ds-green shadow-[0_0_8px_rgba(35,165,89,0.5)] scale-105' : 'border border-white/5'}`}>
                                 <img src={imageUrl} alt={p.username} 
                                   className="w-full h-full object-cover select-none" 
                                 />
@@ -425,12 +426,6 @@ export function Sidebar({
                                   <MicOff className="w-3.5 h-3.5 text-ds-red flex-shrink-0" />
                                 )}
                               </div>
-
-                              {!isMe && vol !== 100 && (
-                                <span className={`text-[9px] font-bold flex-shrink-0 ml-1 ${vol === 0 ? 'text-ds-red' : 'text-ds-yellow'}`}>
-                                  {vol === 0 ? '🔇' : `${vol}%`}
-                                </span>
-                              )}
                             </div>
                           );
                         })}

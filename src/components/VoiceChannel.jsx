@@ -221,6 +221,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               const isMe = p.userId === user?.id;
               const vol = volumes[p.userId] ?? 100;
               const stream = remoteScreens[p.userId];
+              const isActuallySpeaking = isMe ? voice.isSpeaking : p.isSpeaking;
 
               if (stream) {
                 return <ScreenPlayer key={`screen-${p.userId}`} participant={p} stream={stream} />;
@@ -233,7 +234,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   onContextMenu={(e) => handleContextMenu(e, p)}
                 >
                   <div className={`relative w-[110px] h-[110px] rounded-full bg-black/40 shadow-inner overflow-hidden flex items-center justify-center transition-all duration-300
-                    ${p.isSpeaking ? 'ring-[5px] ring-ds-accent vibe-glow-blue scale-105' : 'ring-1 ring-white/10 opacity-70'}
+                    ${isActuallySpeaking ? 'ring-[5px] ring-ds-green shadow-[0_0_20px_rgba(35,165,89,0.5)] scale-105' : 'ring-1 ring-white/10 opacity-70'}
                     ${!isMe ? 'hover:ring-white/20 hover:opacity-100 hover:scale-105' : ''}`}
                   >
                     <img
@@ -241,15 +242,6 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                       alt={p.username}
                       className="w-full h-full object-cover select-none"
                     />
-                    {!isMe && vol !== 100 && (
-                      <div className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-black/80 flex items-center justify-center border border-white/10 backdrop-blur-md">
-                        {vol === 0 ? (
-                           <MicOff size={11} className="text-ds-red" />
-                        ) : (
-                           <Volume2 size={11} className="text-ds-accent" />
-                        )}
-                      </div>
-                    )}
                   </div>
                   <div className="text-center min-w-0 w-full">
                       <p className="text-ds-text font-black text-sm truncate flex items-center justify-center gap-2 px-2" style={{ color: p.userId === ownerId ? '#ff4444' : 'rgb(var(--ds-text))' }}>
@@ -260,9 +252,6 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                           </span>
                         )}
                       </p>
-                    {!isMe && vol !== 100 && (
-                      <p className="text-[10px] text-ds-muted font-bold uppercase tracking-widest mt-0.5">{vol}%</p>
-                    )}
                     {p.isScreenSharing && !isMe && !stream && (
                       <button 
                         onClick={() => requestScreenView(p.userId)}
