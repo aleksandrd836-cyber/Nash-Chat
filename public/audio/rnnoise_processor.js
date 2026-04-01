@@ -541,22 +541,35 @@ export default createRNNWasmModuleSync;
 class RNNoiseProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
+    this._initialized = false;
+    this._initPromise = this.init();
+  }
+
+  async init() {
     try {
-      this._module = createRNNWasmModuleSync();
-      this._node = new this._module.RNNoise();
+      // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РјРѕРґСѓР»СЊ Jitsi
+      const moduleCreator = createRNNWasmModuleSync();
+      // Р–РґРµРј РіРѕС‚РѕРІРЅРѕСЃС‚Рё РјРѕРґСѓР»СЏ (РІ Emscripten СЌС‚Рѕ РІРѕР·РІСЂР°С‰Р°РµС‚ Promise)
+      this._module = await moduleCreator;
       
-      // РќР°Рј РЅСѓР¶РЅРѕ 480 СЃРµРјРїР»РѕРІ РґР»СЏ RNNoise. 
-      // AudioWorklet РґР°РµС‚ 128 Р·Р° СЂР°Р·.
-      // РЎРѕР·РґР°РµРј Р±СѓС„РµСЂС‹ РґР»СЏ РЅР°РєРѕРїР»РµРЅРёСЏ (РІС…РѕРґСЏС‰РёР№ Рё РёСЃС…РѕРґСЏС‰РёР№)
+      // РЎРѕР·РґР°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РЅРµР№СЂРѕСЃРµС‚Рё РЅР°РїСЂСЏРјСѓСЋ С‡РµСЂРµР· C-С„СѓРЅРєС†РёСЋ
+      this._st = this._module._rnnoise_create();
+      
+      // Р’С‹РґРµР»СЏРµРј РїР°РјСЏС‚СЊ РІ РєСѓС‡Рµ WASM РґР»СЏ 480 СЃРµРјРїР»РѕРІ (480 * 4 Р±Р°Р№С‚Р°)
+      this._wasmInPtr = this._module._malloc(480 * 4);
+      this._wasmOutPtr = this._module._malloc(480 * 4);
+      
+      // Р‘СѓС„РµСЂС‹ РґР»СЏ РЅР°РєРѕРїР»РµРЅРёСЏ (AudioWorklet 128 -> RNNoise 480)
       this._inputBuffer = new Float32Array(480);
       this._outputBuffer = new Float32Array(480);
       this._bufferIndex = 0;
       this._readIndex = 0;
       this._hasData = false;
 
-      console.log('[RNNoiseProcessor] Initialized with Buffer (128 -> 480)');
+      this._initialized = true;
+      console.log('[RNNoiseProcessor] рџ”Ґ AI Engine Ready (Raw C API)');
     } catch (e) {
-      console.error('[RNNoiseProcessor] Initialization failed:', e);
+      console.error('[RNNoiseProcessor] вќЊ Init Error:', e);
     }
   }
 
@@ -564,28 +577,38 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const input = inputs[0];
     const output = outputs[0];
 
-    if (!input || !input[0] || !output || !output[0] || !this._node) return true;
+    // Р•СЃР»Рё РР РµС‰Рµ РіСЂСѓР·РёС‚СЃСЏ РёР»Рё Р·РІСѓРєР° РЅРµС‚ - РїСЂРѕСЃС‚Рѕ РїСЂРѕРїСѓСЃРєР°РµРј СЃС‹СЂРѕР№ СЃРёРіРЅР°Р»
+    if (!this._initialized || !input || !input[0] || !output || !output[0]) {
+      if (input && input[0] && output && output[0]) {
+        output[0].set(input[0]);
+      }
+      return true;
+    }
 
     const inputData = input[0];
     const outputData = output[0];
 
-    // 1. РљРѕРїРёСЂСѓРµРј РІС…РѕРґСЏС‰РёРµ 128 СЃРµРјРїР»РѕРІ РІ РЅР°С€ Р±СѓС„РµСЂ
     for (let i = 0; i < inputData.length; i++) {
         this._inputBuffer[this._bufferIndex] = inputData[i];
         
-        // РџРѕ РјРµСЂРµ РЅР°РєРѕРїР»РµРЅРёСЏ РІС‹РґР°РµРј Р·РІСѓРє РёР· РІС‹С…РѕРґРЅРѕРіРѕ Р±СѓС„РµСЂР° (РµСЃР»Рё РѕРЅ С‚Р°Рј РµСЃС‚СЊ)
+        // Р’С‹РґР°РµРј РѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹Р№ Р·РІСѓРє РёР»Рё СЃС‹СЂРѕР№, РµСЃР»Рё РґР°РЅРЅС‹С… РµС‰Рµ РЅРµС‚
         outputData[i] = this._hasData ? this._outputBuffer[this._readIndex] : inputData[i];
         
         this._bufferIndex++;
         this._readIndex++;
 
-        // 2. РљРѕРіРґР° РЅР°РєРѕРїРёР»Рё СЂРѕРІРЅРѕ 480 - РїРѕСЂР° Р·Р°РїСѓСЃРєР°С‚СЊ РР!
+        // РљР°Рє С‚РѕР»СЊРєРѕ РЅР°РєРѕРїРёР»Рё 480 СЃРµРјРїР»РѕРІ - РїСЂРѕРіРѕРЅСЏРµРј С‡РµСЂРµР· РР
         if (this._bufferIndex === 480) {
-            const processed = this._node.calculate(this._inputBuffer);
-            if (processed) {
-                this._outputBuffer.set(processed);
-                this._hasData = true;
-            }
+            // РљРѕРїРёСЂСѓРµРј РґР°РЅРЅС‹Рµ РІ РїР°РјСЏС‚СЊ WASM
+            this._module.HEAPF32.set(this._inputBuffer, this._wasmInPtr / 4);
+            
+            // Р—Р°РїСѓСЃРєР°РµРј РѕС‡РёСЃС‚РєСѓ (РёРЅРїСѓС‚С‹, Р°СѓС‚РїСѓС‚С‹, СЃРѕСЃС‚РѕСЏРЅРёРµ)
+            this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
+            
+            // Р—Р°Р±РёСЂР°РµРј РѕС‡РёС‰РµРЅРЅС‹Р№ Р·РІСѓРє РѕР±СЂР°С‚РЅРѕ
+            this._outputBuffer.set(this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480));
+            
+            this._hasData = true;
             this._bufferIndex = 0;
             this._readIndex = 0;
         }
