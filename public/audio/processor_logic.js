@@ -4,6 +4,11 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     super();
     this._initialized = false;
     this._framesProcessed = 0;
+    
+    // Внутренние буферы (простая линейная очередь)
+    this._inputBuffer = []; // Массив для входящих семплов
+    this._outputBuffer = []; // Массив для очищенных семплов
+    
     this.init();
   }
 
@@ -11,21 +16,12 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     try {
       const moduleCreator = createRNNWasmModuleSync();
       this._module = await moduleCreator;
-      
       this._st = this._module._rnnoise_create();
-      
-      // Память WASM (480 семплов по 4 байта)
       this._wasmInPtr = this._module._malloc(480 * 4);
       this._wasmOutPtr = this._module._malloc(480 * 4);
       
-      // Кольцевой буфер для сопряжения 128 (Worklet) и 480 (RNNoise)
-      this._circularBuffer = new Float32Array(480 * 2); 
-      this._writePos = 0;
-      this._readPos = 0;
-      this._pendingSamples = 0;
-
       this._initialized = true;
-      console.log('[RNNoiseProcessor] 🔥 AI Engine 2.4.2 READY (48kHz Optimized)');
+      console.log('[RNNoiseProcessor] 🔥 AI Engine 2.4.3 READY (Crystal Clear Mode)');
     } catch (e) {
       console.error('[RNNoiseProcessor] ❌ Init Error:', e);
     }
@@ -35,6 +31,7 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const input = inputs[0];
     const output = outputs[0];
 
+    // Если не инициализировано или нет звука - пропускаем как есть
     if (!this._initialized || !input || !input[0] || !output || !output[0]) {
       if (input && input[0] && output && output[0]) output[0].set(input[0]);
       return true;
@@ -43,52 +40,47 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const inputData = input[0];
     const outputData = output[0];
 
-    // 1. Пишем входящие данные в кольцевой буфер
+    // 1. Добавляем входящие 128 семплов в очередь ввода
     for (let i = 0; i < inputData.length; i++) {
-        this._circularBuffer[this._writePos] = inputData[i];
-        this._writePos = (this._writePos + 1) % this._circularBuffer.length;
-        this._pendingSamples++;
+        this._inputBuffer.push(inputData[i]);
     }
 
-    // 2. Если накопили 480 - обрабатываем
-    if (this._pendingSamples >= 480) {
-        const tempBuf = new Float32Array(480);
-        let tempReadPos = (this._writePos - 480 + this._circularBuffer.length) % this._circularBuffer.length;
+    // 2. Если в очереди накопилось 480 или больше - обрабатываем кадр
+    while (this._inputBuffer.length >= 480) {
+        const frame = new Float32Array(this._inputBuffer.splice(0, 480));
         
+        // Масштабируем до Int16 и кладем в WASM
+        const wasmInView = this._module.HEAPF32.subarray(this._wasmInPtr / 4, this._wasmInPtr / 4 + 480);
         for (let j = 0; j < 480; j++) {
-            tempBuf[j] = this._circularBuffer[tempReadPos] * 32768; // Масштабируем до Int16
-            tempReadPos = (tempReadPos + 1) % this._circularBuffer.length;
+            wasmInView[j] = frame[j] * 32768;
         }
 
-        // Копируем в WASM и вызываем нейронку
-        this._module.HEAPF32.set(tempBuf, this._wasmInPtr / 4);
         const speechProb = this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
         
-        // Диагностика каждые 100 кадров (примерно раз в секунду)
+        // Логируем вероятность речи
         if (this._framesProcessed++ % 100 === 0) {
-            console.log(`[RNNoise] Speech Probability: ${(speechProb * 100).toFixed(1)}% 🛡️`);
+            console.log(`[RNNoise] Probability: ${(speechProb * 100).toFixed(0)}% | Queue: ${this._inputBuffer.length} samples`);
         }
 
-        // Забираем очищенный звук и нормализуем обратно
+        // Забираем результат, нормализуем и кладем в очередь вывода
         const processed = this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480);
         for (let j = 0; j < 480; j++) {
-            processed[j] /= 32768;
-        }
-
-        // Записываем результат в "голову" буфера вывода
-        let tempWriteBackPos = (this._writePos - 480 + this._circularBuffer.length) % this._circularBuffer.length;
-        for (let j = 0; j < 480; j++) {
-            this._circularBuffer[tempWriteBackPos] = processed[j];
-            tempWriteBackPos = (tempWriteBackPos + 1) % this._circularBuffer.length;
+            this._outputBuffer.push(processed[j] / 32768);
         }
     }
 
-    // 3. Выдаем данные из буфера в выход (с задержкой на один кадр обработки)
-    let readPos = (this._writePos - inputData.length + this._circularBuffer.length) % this._circularBuffer.length;
-    for (let i = 0; i < inputData.length; i++) {
-        outputData[i] = this._circularBuffer[readPos];
-        readPos = (readPos + 1) % this._circularBuffer.length;
+    // 3. Выдаем данные из очереди вывода в браузер (по 128 за раз)
+    if (this._outputBuffer.length >= inputData.length) {
+        const toOutput = this._outputBuffer.splice(0, inputData.length);
+        outputData.set(toOutput);
+    } else {
+        // Если вдруг ИИ не успел нагрузить очередь вывода (бывает на старте)
+        outputData.set(inputData);
     }
+
+    // Защита от переполнения (если ИИ зависнет)
+    if (this._inputBuffer.length > 2000) this._inputBuffer = [];
+    if (this._outputBuffer.length > 2000) this._outputBuffer = [];
 
     return true;
   }
