@@ -94,10 +94,6 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [recordingTarget, muteKey, deafenKey]);
-�ек шумоподавления нужно перезагрузить приложение. Перезагрузить сейчас?')) {
-       window.location.reload();
-    }
-  };
 
   // ── Обновление Приложения ──
   const [updateStatus, setUpdateStatus] = useState('idle');
@@ -488,6 +484,8 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
               ))}
             </div>
           </section>
+
+          <HotkeysSettings />
 
           {/* App Info Section */}
           {window.electronAPI && (
