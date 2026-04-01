@@ -55,6 +55,7 @@ export function useVoice() {
   const isLeavingRef = useRef(false);
   const rnnoiseNodeRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
 
   // Глобальный канал
   useEffect(() => {
@@ -104,6 +105,19 @@ export function useVoice() {
             next[chId] = next[chId].map(p => 
               p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p
             );
+          });
+          return next;
+        });
+      });
+
+      // МГНОВЕННОЕ УДАЛЕНИЕ ПРИ УХОДЕ (БОРЬБА С ПРИЗРАКАМИ)
+      channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
+        console.log('[useVoice] Broadcast received: user-left', payload.userId);
+        setAllParticipants(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(chId => {
+            next[chId] = next[chId].filter(p => p.userId !== payload.userId);
+            if (next[chId].length === 0) delete next[chId];
           });
           return next;
         });
@@ -288,6 +302,15 @@ export function useVoice() {
 
     if (globalPresence.current) {
       console.log('[useVoice] Updating global presence (EXIT)...');
+      const myId = currentUserRef.current?.id;
+
+      // СИЛОВОЕ УДАЛЕНИЕ: Кричим всем, что мы уходим, чтобы у них сразу пропала иконка
+      globalPresence.current.send({
+        type: 'broadcast',
+        event: 'user-left',
+        payload: { userId: myId }
+      }).catch(() => {});
+
       await globalPresence.current.track({
         ...presencePayload.current,
         channelId: null,
@@ -488,7 +511,7 @@ export function useVoice() {
       channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
         if (payload.to === user.id && peerConns.current[payload.from] && !ignoreOfferRef.current[payload.from]) {
           try { await peerConns.current[payload.from].setRemoteDescription(new RTCSessionDescription(payload.sdp)); } catch (err) {
-            setVoiceError(`[Signaling] ${err.message}`);
+            console.warn(`[Signaling] ${err.message}`);
             if (err.message.includes('m-lines') || err.message.includes('SDP')) {
               console.warn('[WebRTC] SDP Mismatch detected, forcing recreate...');
               closePeer(payload.from, true);
@@ -511,7 +534,9 @@ export function useVoice() {
 
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          reconnectAttemptsRef.current = 0;
           setServerStatus('online');
+          setVoiceError(null);
           await channel.track(presencePayload.current).catch(() => {});
           notifications.play('self_join');
           if (globalPresence.current) {
@@ -523,28 +548,35 @@ export function useVoice() {
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           if (isLeavingRef.current) return;
           
-          const hasActivePeers = Object.keys(peerConns.current).length > 0;
+          reconnectAttemptsRef.current++;
+          console.warn(`[useVoice] Signaling issue (${status}). Attempt ${reconnectAttemptsRef.current}/5`);
           
-          if (hasActivePeers) {
-            console.warn('[useVoice] Signaling lost but voice active. Retrying in background...');
-            setServerStatus('reconnecting');
-            
-            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-            reconnectTimerRef.current = setTimeout(() => {
-              if (activeChannelIdRef.current && !isLeavingRef.current) {
-                console.log('[useVoice] Background reconnecting...');
-                joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color);
-              }
-            }, 5000);
-          } else {
+          setServerStatus('reconnecting');
+          
+          if (reconnectAttemptsRef.current > 5) {
             setServerStatus('offline');
             setVoiceError('[Server] Потеряно соединение с сервером (Realtime Offline)');
             setIsConnecting(false);
+          } else {
+            // Тихий реконнект в фоне
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = setTimeout(() => {
+              if (activeChannelIdRef.current && !isLeavingRef.current) {
+                console.log('[useVoice] Silent background reconnecting...');
+                joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color);
+              }
+            }, 3000);
           }
         }
       });
       realtimeChannel.current = channel;
-    } catch (err) { setVoiceError(err.message); setIsConnecting(false); }
+    } catch (err) { 
+      console.error('[useVoice] Fatal join error:', err);
+      if (reconnectAttemptsRef.current === 0 || reconnectAttemptsRef.current > 5) {
+        setVoiceError(err.message); 
+      }
+      setIsConnecting(false); 
+    }
   }, [activeChannelId, cleanupAll, createPeerConnection, syncParticipants, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
