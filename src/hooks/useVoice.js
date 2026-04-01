@@ -53,6 +53,7 @@ export function useVoice() {
   const ignoreOfferRef = useRef({});
   const ghostPeersRef = useRef({});
   const isLeavingRef = useRef(false);
+  const rnnoiseNodeRef = useRef(null);
 
   // Глобальный канал
   useEffect(() => {
@@ -345,22 +346,25 @@ export function useVoice() {
       if (nsEnabled) {
         try {
           console.log('[useVoice] Активация AI шумоподавления...');
-          // Проверяем наличие файлов перед загрузкой
           await audioCtx.audioWorklet.addModule('/audio/rnnoise_processor.js');
           
           const source = audioCtx.createMediaStreamSource(stream);
           const rnnoiseNode = new AudioWorkletNode(audioCtx, 'rnnoise-processor');
           
-          // Передаем начальную интенсивность
+          // Сохраняем в Ref для внешнего управления
+          rnnoiseNodeRef.current = rnnoiseNode;
+
+          // Ставим начальную интенсивность
           const initialIntensity = parseInt(localStorage.getItem('vibe_noise_intensity') || '100');
           rnnoiseNode.port.postMessage({ type: 'setIntensity', value: initialIntensity });
           
-          // Слушаем изменения ползунка в реальном времени
-          const handleIntensityChange = () => {
-            const val = parseInt(localStorage.getItem('vibe_noise_intensity') || '100');
-            rnnoiseNode.port.postMessage({ type: 'setIntensity', value: val });
+          // Живое обновление интенсивности
+          const handleLiveIntensity = (e) => {
+            if (rnnoiseNodeRef.current) {
+               rnnoiseNodeRef.current.port.postMessage({ type: 'setIntensity', value: e.detail.value });
+            }
           };
-          window.addEventListener('storage', handleIntensityChange);
+          window.addEventListener('vibe-update-ns-intensity', handleLiveIntensity);
           
           const destination = audioCtx.createMediaStreamDestination();
           source.connect(rnnoiseNode).connect(destination);

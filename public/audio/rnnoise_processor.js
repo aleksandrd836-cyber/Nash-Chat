@@ -542,18 +542,20 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this._initialized = false;
-    this._intensity = 1.0; // 0.0 to 1.0
+    this._intensity = 1.0;
+    this._framesProcessed = 0;
     
-    // Р’С‹СЃРѕРєРѕСЃРєРѕСЂРѕСЃС‚РЅС‹Рµ СЃС‚Р°С‚РёС‡РµСЃРєРёРµ Р±СѓС„РµСЂС‹ (РЅРёРєР°РєРёС… push/splice)
-    this._ringIn = new Float32Array(1024);
-    this._ringOut = new Float32Array(1024);
-    this._writePos = 0;
-    this._readPos = 0;
-    this._pending = 0;
+    // Р›РёРЅРµР№РЅС‹Р№ Р±СѓС„РµСЂ С„РёРєСЃРёСЂРѕРІР°РЅРЅРѕРіРѕ СЂР°Р·РјРµСЂР° (1024 СЃРµРјРїР»Р° РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РґР»СЏ 128/480 РјРѕСЃС‚Р°)
+    // РњС‹ РёСЃРїРѕР»СЊР·СѓРµРј С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рµ РјР°СЃСЃРёРІС‹ РґР»СЏ РёСЃРєР»СЋС‡РµРЅРёСЏ РїР°СѓР· "СЃР±РѕСЂР° РјСѓСЃРѕСЂР°" (GC)
+    this._inputBuffer = new Float32Array(1024);
+    this._outputBuffer = new Float32Array(1024);
+    this._inputPtr = 0;
+    this._outputPtr = 0;
 
     this.port.onmessage = (e) => {
       if (e.data.type === 'setIntensity') {
         this._intensity = e.data.value / 100;
+        console.log(`[RNNoiseProcessor] Intensity set to: ${(this._intensity * 100).toFixed(0)}%`);
       }
     };
 
@@ -568,9 +570,9 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
       this._wasmInPtr = this._module._malloc(480 * 4);
       this._wasmOutPtr = this._module._malloc(480 * 4);
       this._initialized = true;
-      console.log('[RNNoiseProcessor] рџ”Ґ Engine 2.5.0 Premium Active');
+      console.log('[RNNoiseProcessor] рџ”Ґ Engine v2.5.1 GOLDEN READY');
     } catch (e) {
-      console.error('[RNNoiseProcessor] Init error:', e);
+      console.error('[RNNoiseProcessor] вќЊ Init error:', e);
     }
   }
 
@@ -586,50 +588,48 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const inputData = input[0];
     const outputData = output[0];
 
-    // 1. РџРёС€РµРј РІС…РѕРґСЏС‰РёРµ РґР°РЅРЅС‹Рµ РІ РєРѕР»СЊС†РµРІРѕР№ Р±СѓС„РµСЂ
-    for (let i = 0; i < inputData.length; i++) {
-        const pos = (this._writePos + i) % this._ringIn.length;
-        this._ringIn[pos] = inputData[i];
-    }
-    this._writePos = (this._writePos + inputData.length) % this._ringIn.length;
-    this._pending += inputData.length;
-
-    // 2. РћР±СЂР°Р±Р°С‚С‹РІР°РµРј, РµСЃР»Рё РЅР°РєРѕРїРёР»Рё 480 СЃРµРјРїР»РѕРІ
-    while (this._pending >= 480) {
-        const wasmInView = this._module.HEAPF32.subarray(this._wasmInPtr / 4, this._wasmInPtr / 4 + 480);
-        let tempRead = (this._writePos - this._pending + this._ringIn.length) % this._ringIn.length;
-        
-        // РњР°СЃС€С‚Р°Р±РёСЂСѓРµРј Рё РєРѕРїРёСЂСѓРµРј РІ WASM
-        for (let j = 0; j < 480; j++) {
-            const val = this._ringIn[tempRead];
-            wasmInView[j] = val * 32768;
-            tempRead = (tempRead + 1) % this._ringIn.length;
-        }
-
-        this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
-
-        const processed = this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480);
-        let tempWrite = (this._writePos - this._pending + this._ringIn.length) % this._ringIn.length;
-        
-        // РњРРљРЁРР РћР’РђРќРР• Р”Р›РЇ РџРћР›Р—РЈРќРљРђ: РЎРјРµС€РёРІР°РµРј С‡РёСЃС‚С‹Р№ Рё СЃС‹СЂРѕР№ Р·РІСѓРє
-        for (let j = 0; j < 480; j++) {
-            const dry = this._ringIn[tempWrite];
-            const wet = processed[j] / 32768;
-            // Р¤РѕСЂРјСѓР»Р° РїР»Р°РІРЅРѕРіРѕ СЃРјРµС€РёРІР°РЅРёСЏ: РЎРёР»Р° * Р§РёСЃС‚С‹Р№ + (1 - РЎРёР»Р°) * РЎС‹СЂРѕР№
-            this._ringOut[tempWrite] = (wet * this._intensity) + (dry * (1.0 - this._intensity));
-            tempWrite = (tempWrite + 1) % this._ringIn.length;
-        }
-
-        this._pending -= 480;
+    // 1. РљРѕРїРёСЂСѓРµРј РІС…РѕРґСЏС‰РёРµ РґР°РЅРЅС‹Рµ РІ РєРѕРЅРµС† Р±СѓС„РµСЂР° РІРІРѕРґР°
+    if (this._inputPtr + 128 <= 1024) {
+      this._inputBuffer.set(inputData, this._inputPtr);
+      this._inputPtr += 128;
     }
 
-    // 3. РћС‚РґР°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ (СЃ Р·Р°РґРµСЂР¶РєРѕР№ РЅР° РІСЂРµРјСЏ РѕР±СЂР°Р±РѕС‚РєРё РєР°РґСЂР°)
-    let outRead = (this._readPos) % this._ringOut.length;
-    for (let i = 0; i < inputData.length; i++) {
-        outputData[i] = this._ringOut[outRead];
-        outRead = (outRead + 1) % this._ringOut.length;
+    // 2. РћР±СЂР°Р±Р°С‚С‹РІР°РµРј РІСЃС‘, С‡С‚Рѕ РЅР°РєРѕРїРёР»Рё РєСЂР°С‚РЅРѕ 480
+    while (this._inputPtr >= 480) {
+      const wasmInView = this._module.HEAPF32.subarray(this._wasmInPtr / 4, this._wasmInPtr / 4 + 480);
+      
+      // Р“РѕС‚РѕРІРёРј РґР°РЅРЅС‹Рµ РґР»СЏ WASM (РјР°СЃС€С‚Р°Р±РёСЂСѓРµРј РґРѕ Int16)
+      for (let j = 0; j < 480; j++) {
+        wasmInView[j] = this._inputBuffer[j] * 32768;
+      }
+
+      const speechProb = this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
+      const filtered = this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480);
+
+      // MIXING (Dry/Wet) + РљРѕРїРёСЂСѓРµРј РІ Р±СѓС„РµСЂ РІС‹РІРѕРґР°
+      for (let j = 0; j < 480; j++) {
+        const dry = this._inputBuffer[j];
+        const wet = filtered[j] / 32768;
+        this._outputBuffer[this._outputPtr + j] = (wet * this._intensity) + (dry * (1.0 - this._intensity));
+      }
+      this._outputPtr += 480;
+
+      // РЎРґРІРёРіР°РµРј Р±СѓС„РµСЂ РІРІРѕРґР° (СѓРґР°Р»СЏРµРј РѕС‚СЂР°Р±РѕС‚Р°РЅРЅС‹Рµ 480 СЃРµРјРїР»РѕРІ)
+      this._inputBuffer.copyWithin(0, 480, this._inputPtr);
+      this._inputPtr -= 480;
     }
-    this._readPos = outRead;
+
+    // 3. РћС‚РґР°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ РёР· Р±СѓС„РµСЂР° РІС‹РІРѕРґР° (РµСЃР»Рё С‚Р°Рј РµСЃС‚СЊ С…РѕС‚СЏ Р±С‹ 128)
+    if (this._outputPtr >= 128) {
+      outputData.set(this._outputBuffer.subarray(0, 128));
+      
+      // РЎРґРІРёРіР°РµРј Р±СѓС„РµСЂ РІС‹РІРѕРґР° (СѓРґР°Р»СЏРµРј РѕС‚РґР°РЅРЅС‹Рµ 128 СЃРµРјРїР»РѕРІ)
+      this._outputBuffer.copyWithin(0, 128, this._outputPtr);
+      this._outputPtr -= 128;
+    } else {
+      // РџРѕРґСЃС‚СЂР°С…РѕРІРєР°: РµСЃР»Рё Р±СѓС„РµСЂ РІС‹РІРѕРґР° РїСѓСЃС‚ (РјРёРєСЂРѕ-Р»Р°Рі), РѕС‚РґР°РµРј РІС…РѕРґ
+      outputData.set(inputData);
+    }
 
     return true;
   }

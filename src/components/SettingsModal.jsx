@@ -354,9 +354,10 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                           type="range" min="0" max="100" 
                           value={localStorage.getItem('vibe_noise_intensity') || 100}
                           onChange={(e) => {
-                            localStorage.setItem('vibe_noise_intensity', e.target.value);
-                            window.dispatchEvent(new Event('storage'));
-                            setNoiseSuppression(true); // Trigger re-render
+                            const val = e.target.value;
+                            localStorage.setItem('vibe_noise_intensity', val);
+                            window.dispatchEvent(new CustomEvent('vibe-update-ns-intensity', { detail: { value: val } }));
+                            setNoiseSuppression(true);
                           }}
                           className="absolute w-full h-full opacity-0 cursor-pointer z-10"
                         />
