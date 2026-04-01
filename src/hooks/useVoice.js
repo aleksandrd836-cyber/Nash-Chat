@@ -640,10 +640,10 @@ export function useVoice() {
     if (window.electronAPI) {
       console.log('[useVoice] Desktop mode: Initializing Global Hotkeys...');
       
-      // 1. Регистрируем клавиши из локального хранилища
-      const muteKey = localStorage.getItem('vibe_hotkey_mute') || '';
-      const deafenKey = localStorage.getItem('vibe_hotkey_deafen') || '';
-      if (muteKey || deafenKey) {
+      // 1. Регистрируем текущие клавиши (Электрон) с проверкой
+      if (window.electronAPI && typeof window.electronAPI.registerHotkeys === 'function') {
+        const muteKey = localStorage.getItem('vibe_hotkey_mute') || '';
+        const deafenKey = localStorage.getItem('vibe_hotkey_deafen') || '';
         window.electronAPI.registerHotkeys({ mute: muteKey, deafen: deafenKey });
       }
 
