@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
 import { notifications } from '../lib/notifications';
+import { HotkeysSettings } from './HotkeysSettings';
 import { 
   X, User, Mic, Headphones, Bell, Monitor, LogOut, Check, AlertTriangle, 
-  RefreshCw, Download, ChevronRight, Volume2, Shield, Sun, Moon, Sparkles
+  RefreshCw, Download, ChevronRight, Volume2, Shield,  Sun, Moon, Sparkles, Keyboard
 } from 'lucide-react';
 
 /**
@@ -34,11 +35,66 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
   // ── Шумоподавление ──
   const [noiseSuppression, setNoiseSuppression] = useState(() => localStorage.getItem('vibe_noise_suppression') === 'true');
 
+  // ── Горячие клавиши (EXE-ONLY) ──
+  const [muteKey, setMuteKey] = useState(() => localStorage.getItem('vibe_hotkey_mute') || '');
+  const [deafenKey, setDeafenKey] = useState(() => localStorage.getItem('vibe_hotkey_deafen') || '');
+  const [recordingTarget, setRecordingTarget] = useState(null); // 'mute' | 'deafen' | null
+
   const handleToggleNoiseSuppression = () => {
     const newVal = !noiseSuppression;
     setNoiseSuppression(newVal);
     localStorage.setItem('vibe_noise_suppression', newVal ? 'true' : 'false');
     if (window.confirm('Для применения настроек шумоподавления нужно перезагрузить приложение. Перезагрузить сейчас?')) {
+       window.location.reload();
+    }
+  };
+
+  // ЛОГИКА ЗАПИСИ КЛАВИШ
+  useEffect(() => {
+    if (!recordingTarget) return;
+
+    const handleKeyDown = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Пропускаем одиночные модификаторы (ждем основную клавишу)
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+
+      let keys = [];
+      if (e.ctrlKey) keys.push('Control');
+      if (e.shiftKey) keys.push('Shift');
+      if (e.altKey) keys.push('Alt');
+      if (e.metaKey) keys.push('Command');
+      
+      // Добавляем основную клавишу (в верхнем регистре для красоты)
+      let finalKey = e.key.toUpperCase();
+      if (finalKey === ' ') finalKey = 'Space';
+      keys.push(finalKey);
+
+      const accelerator = keys.join('+');
+      
+      if (recordingTarget === 'mute') {
+        setMuteKey(accelerator);
+        localStorage.setItem('vibe_hotkey_mute', accelerator);
+      } else {
+        setDeafenKey(accelerator);
+        localStorage.setItem('vibe_hotkey_deafen', accelerator);
+      }
+
+      // Обновляем в системе
+      if (window.electronAPI) {
+        const m = recordingTarget === 'mute' ? accelerator : muteKey;
+        const d = recordingTarget === 'deafen' ? accelerator : deafenKey;
+        window.electronAPI.registerHotkeys({ mute: m, deafen: d });
+      }
+
+      setRecordingTarget(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [recordingTarget, muteKey, deafenKey]);
+�ек шумоподавления нужно перезагрузить приложение. Перезагрузить сейчас?')) {
        window.location.reload();
     }
   };
@@ -247,6 +303,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
               </div>
             </div>
           </section>
+          <HotkeysSettings />
 
           {/* Audio Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>

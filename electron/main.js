@@ -1,9 +1,15 @@
-const { app, BrowserWindow, shell, Menu } = require('electron');
+const { app, BrowserWindow, shell, Menu, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
 
 const APP_URL = 'https://solitary-cloud-a126.aleksandrd836.workers.dev/';
 
 let mainWindow;
+
+// Хранилище активных горячих клавиш
+let activeShortcuts = {
+  mute: '',
+  deafen: ''
+};
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,20 +25,16 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    // Убираем стандартную рамку Windows — выглядит современнее
     frame: true,
-    show: false, // не показываем до загрузки
+    show: false,
   });
 
-  // Показываем окно когда страница готова (без белой вспышки)
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
 
-  // Загружаем сайт
   mainWindow.loadURL(APP_URL);
 
-  // Внешние ссылки открываем в браузере, не в приложении
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (!url.startsWith(APP_URL)) {
       shell.openExternal(url);
@@ -46,7 +48,31 @@ function createWindow() {
   });
 }
 
-// Убираем стандартное меню (File, Edit, View...)
+// РЕГИСТРАЦИЯ ГОРЯЧИХ КЛАВИШ
+ipcMain.on('register-hotkeys', (event, shortcuts) => {
+  globalShortcut.unregisterAll(); // Сбрасываем старые
+  
+  if (shortcuts.mute) {
+    try {
+      globalShortcut.register(shortcuts.mute, () => {
+        mainWindow?.webContents.send('hotkey-triggered', 'mute');
+      });
+    } catch (e) {
+      console.error('Failed to register mute shortcut:', e);
+    }
+  }
+
+  if (shortcuts.deafen) {
+    try {
+      globalShortcut.register(shortcuts.deafen, () => {
+        mainWindow?.webContents.send('hotkey-triggered', 'deafen');
+      });
+    } catch (e) {
+      console.error('Failed to register deafen shortcut:', e);
+    }
+  }
+});
+
 Menu.setApplicationMenu(null);
 
 app.whenReady().then(() => {
@@ -55,6 +81,10 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {

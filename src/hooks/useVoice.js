@@ -635,6 +635,26 @@ export function useVoice() {
     return () => clearInterval(interval);
   }, [activeChannelId]);
 
+  // ЭФФЕКТ ДЛЯ ГЛОБАЛЬНЫХ ГОРЯЧИХ КЛАВИШ (EXE-ONLY)
+  useEffect(() => {
+    if (window.electronAPI) {
+      console.log('[useVoice] Desktop mode: Initializing Global Hotkeys...');
+      
+      // 1. Регистрируем клавиши из локального хранилища
+      const muteKey = localStorage.getItem('vibe_hotkey_mute') || '';
+      const deafenKey = localStorage.getItem('vibe_hotkey_deafen') || '';
+      if (muteKey || deafenKey) {
+        window.electronAPI.registerHotkeys({ mute: muteKey, deafen: deafenKey });
+      }
+
+      // 2. Слушаем нажатия
+      window.electronAPI.onHotkey((action) => {
+        if (action === 'mute') toggleMute();
+        else if (action === 'deafen') toggleDeafen();
+      });
+    }
+  }, [toggleMute, toggleDeafen]);
+
   return {
     activeChannelId, participants, allParticipants, ping, voiceError, serverStatus,
     isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens,
