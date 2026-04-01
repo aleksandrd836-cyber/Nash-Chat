@@ -542,12 +542,21 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this._initialized = false;
-    this._framesProcessed = 0;
+    this._intensity = 1.0; // 0.0 to 1.0
     
-    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ Р±СѓС„РµСЂС‹ (РїСЂРѕСЃС‚Р°СЏ Р»РёРЅРµР№РЅР°СЏ РѕС‡РµСЂРµРґСЊ)
-    this._inputBuffer = []; // РњР°СЃСЃРёРІ РґР»СЏ РІС…РѕРґСЏС‰РёС… СЃРµРјРїР»РѕРІ
-    this._outputBuffer = []; // РњР°СЃСЃРёРІ РґР»СЏ РѕС‡РёС‰РµРЅРЅС‹С… СЃРµРјРїР»РѕРІ
-    
+    // Р’С‹СЃРѕРєРѕСЃРєРѕСЂРѕСЃС‚РЅС‹Рµ СЃС‚Р°С‚РёС‡РµСЃРєРёРµ Р±СѓС„РµСЂС‹ (РЅРёРєР°РєРёС… push/splice)
+    this._ringIn = new Float32Array(1024);
+    this._ringOut = new Float32Array(1024);
+    this._writePos = 0;
+    this._readPos = 0;
+    this._pending = 0;
+
+    this.port.onmessage = (e) => {
+      if (e.data.type === 'setIntensity') {
+        this._intensity = e.data.value / 100;
+      }
+    };
+
     this.init();
   }
 
@@ -558,11 +567,10 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
       this._st = this._module._rnnoise_create();
       this._wasmInPtr = this._module._malloc(480 * 4);
       this._wasmOutPtr = this._module._malloc(480 * 4);
-      
       this._initialized = true;
-      console.log('[RNNoiseProcessor] рџ”Ґ AI Engine 2.4.3 READY (Crystal Clear Mode)');
+      console.log('[RNNoiseProcessor] рџ”Ґ Engine 2.5.0 Premium Active');
     } catch (e) {
-      console.error('[RNNoiseProcessor] вќЊ Init Error:', e);
+      console.error('[RNNoiseProcessor] Init error:', e);
     }
   }
 
@@ -570,7 +578,6 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const input = inputs[0];
     const output = outputs[0];
 
-    // Р•СЃР»Рё РЅРµ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅРѕ РёР»Рё РЅРµС‚ Р·РІСѓРєР° - РїСЂРѕРїСѓСЃРєР°РµРј РєР°Рє РµСЃС‚СЊ
     if (!this._initialized || !input || !input[0] || !output || !output[0]) {
       if (input && input[0] && output && output[0]) output[0].set(input[0]);
       return true;
@@ -579,47 +586,50 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const inputData = input[0];
     const outputData = output[0];
 
-    // 1. Р”РѕР±Р°РІР»СЏРµРј РІС…РѕРґСЏС‰РёРµ 128 СЃРµРјРїР»РѕРІ РІ РѕС‡РµСЂРµРґСЊ РІРІРѕРґР°
+    // 1. РџРёС€РµРј РІС…РѕРґСЏС‰РёРµ РґР°РЅРЅС‹Рµ РІ РєРѕР»СЊС†РµРІРѕР№ Р±СѓС„РµСЂ
     for (let i = 0; i < inputData.length; i++) {
-        this._inputBuffer.push(inputData[i]);
+        const pos = (this._writePos + i) % this._ringIn.length;
+        this._ringIn[pos] = inputData[i];
     }
+    this._writePos = (this._writePos + inputData.length) % this._ringIn.length;
+    this._pending += inputData.length;
 
-    // 2. Р•СЃР»Рё РІ РѕС‡РµСЂРµРґРё РЅР°РєРѕРїРёР»РѕСЃСЊ 480 РёР»Рё Р±РѕР»СЊС€Рµ - РѕР±СЂР°Р±Р°С‚С‹РІР°РµРј РєР°РґСЂ
-    while (this._inputBuffer.length >= 480) {
-        const frame = new Float32Array(this._inputBuffer.splice(0, 480));
-        
-        // РњР°СЃС€С‚Р°Р±РёСЂСѓРµРј РґРѕ Int16 Рё РєР»Р°РґРµРј РІ WASM
+    // 2. РћР±СЂР°Р±Р°С‚С‹РІР°РµРј, РµСЃР»Рё РЅР°РєРѕРїРёР»Рё 480 СЃРµРјРїР»РѕРІ
+    while (this._pending >= 480) {
         const wasmInView = this._module.HEAPF32.subarray(this._wasmInPtr / 4, this._wasmInPtr / 4 + 480);
-        for (let j = 0; j < 480; j++) {
-            wasmInView[j] = frame[j] * 32768;
-        }
-
-        const speechProb = this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
+        let tempRead = (this._writePos - this._pending + this._ringIn.length) % this._ringIn.length;
         
-        // Р›РѕРіРёСЂСѓРµРј РІРµСЂРѕСЏС‚РЅРѕСЃС‚СЊ СЂРµС‡Рё
-        if (this._framesProcessed++ % 100 === 0) {
-            console.log(`[RNNoise] Probability: ${(speechProb * 100).toFixed(0)}% | Queue: ${this._inputBuffer.length} samples`);
-        }
-
-        // Р—Р°Р±РёСЂР°РµРј СЂРµР·СѓР»СЊС‚Р°С‚, РЅРѕСЂРјР°Р»РёР·СѓРµРј Рё РєР»Р°РґРµРј РІ РѕС‡РµСЂРµРґСЊ РІС‹РІРѕРґР°
-        const processed = this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480);
+        // РњР°СЃС€С‚Р°Р±РёСЂСѓРµРј Рё РєРѕРїРёСЂСѓРµРј РІ WASM
         for (let j = 0; j < 480; j++) {
-            this._outputBuffer.push(processed[j] / 32768);
+            const val = this._ringIn[tempRead];
+            wasmInView[j] = val * 32768;
+            tempRead = (tempRead + 1) % this._ringIn.length;
         }
+
+        this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
+
+        const processed = this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480);
+        let tempWrite = (this._writePos - this._pending + this._ringIn.length) % this._ringIn.length;
+        
+        // РњРРљРЁРР РћР’РђРќРР• Р”Р›РЇ РџРћР›Р—РЈРќРљРђ: РЎРјРµС€РёРІР°РµРј С‡РёСЃС‚С‹Р№ Рё СЃС‹СЂРѕР№ Р·РІСѓРє
+        for (let j = 0; j < 480; j++) {
+            const dry = this._ringIn[tempWrite];
+            const wet = processed[j] / 32768;
+            // Р¤РѕСЂРјСѓР»Р° РїР»Р°РІРЅРѕРіРѕ СЃРјРµС€РёРІР°РЅРёСЏ: РЎРёР»Р° * Р§РёСЃС‚С‹Р№ + (1 - РЎРёР»Р°) * РЎС‹СЂРѕР№
+            this._ringOut[tempWrite] = (wet * this._intensity) + (dry * (1.0 - this._intensity));
+            tempWrite = (tempWrite + 1) % this._ringIn.length;
+        }
+
+        this._pending -= 480;
     }
 
-    // 3. Р’С‹РґР°РµРј РґР°РЅРЅС‹Рµ РёР· РѕС‡РµСЂРµРґРё РІС‹РІРѕРґР° РІ Р±СЂР°СѓР·РµСЂ (РїРѕ 128 Р·Р° СЂР°Р·)
-    if (this._outputBuffer.length >= inputData.length) {
-        const toOutput = this._outputBuffer.splice(0, inputData.length);
-        outputData.set(toOutput);
-    } else {
-        // Р•СЃР»Рё РІРґСЂСѓРі РР РЅРµ СѓСЃРїРµР» РЅР°РіСЂСѓР·РёС‚СЊ РѕС‡РµСЂРµРґСЊ РІС‹РІРѕРґР° (Р±С‹РІР°РµС‚ РЅР° СЃС‚Р°СЂС‚Рµ)
-        outputData.set(inputData);
+    // 3. РћС‚РґР°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ (СЃ Р·Р°РґРµСЂР¶РєРѕР№ РЅР° РІСЂРµРјСЏ РѕР±СЂР°Р±РѕС‚РєРё РєР°РґСЂР°)
+    let outRead = (this._readPos) % this._ringOut.length;
+    for (let i = 0; i < inputData.length; i++) {
+        outputData[i] = this._ringOut[outRead];
+        outRead = (outRead + 1) % this._ringOut.length;
     }
-
-    // Р—Р°С‰РёС‚Р° РѕС‚ РїРµСЂРµРїРѕР»РЅРµРЅРёСЏ (РµСЃР»Рё РР Р·Р°РІРёСЃРЅРµС‚)
-    if (this._inputBuffer.length > 2000) this._inputBuffer = [];
-    if (this._outputBuffer.length > 2000) this._outputBuffer = [];
+    this._readPos = outRead;
 
     return true;
   }
