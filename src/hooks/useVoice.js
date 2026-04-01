@@ -370,8 +370,12 @@ export function useVoice() {
     }
     await supabase.removeChannel(supabase.channel(`voice:${channelId}`)).catch(() => {});
 
-    if (activeChannelId) await cleanupAll();
+    if (activeChannelIdRef.current && activeChannelIdRef.current !== channelId) {
+      await cleanupAll();
+    }
+    
     isLeavingRef.current = false;
+    activeChannelIdRef.current = channelId;
     setIsConnecting(true); setVoiceError(null);
     try {
       const constraints = { 
