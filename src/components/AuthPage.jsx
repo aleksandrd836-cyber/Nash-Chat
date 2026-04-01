@@ -13,6 +13,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
   const [email, setEmail]       = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading]   = useState(false);
 
   const [rememberMe, setRememberMe] = useState(true);
@@ -23,7 +24,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
     if (mode === 'login') {
       await onSignIn(email, password, rememberMe);
     } else {
-      await onSignUp(email, username, password, rememberMe);
+      await onSignUp(email, username, password, inviteCode, rememberMe);
     }
     setLoading(false);
   }
@@ -34,6 +35,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
     setEmail('');
     setUsername('');
     setPassword('');
+    setInviteCode('');
   }
 
   return (
@@ -128,6 +130,24 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                       className="flex-1 bg-ds-bg/40 border border-ds-border rounded-2xl px-4 py-3 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
                     />
                   </div>
+                </div>
+              )}
+
+              {/* Invite Code (Register only) */}
+              {mode === 'register' && (
+                <div className="space-y-2 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                  <div className="flex items-center gap-2 ml-2">
+                     <ShieldCheck size={12} className="text-ds-accent" />
+                     <label className="text-[10px] font-black text-ds-muted uppercase tracking-widest">
+                       Код приглашения
+                     </label>
+                  </div>
+                  <input
+                    type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)}
+                    placeholder="VIBE-XXXX-XXXX"
+                    required
+                    className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
+                  />
                 </div>
               )}
 

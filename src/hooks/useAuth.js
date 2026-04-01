@@ -33,9 +33,31 @@ export function useAuth() {
   /** Отображаемое имя пользователя */
   const getUsername = (u) => u?.user_metadata?.username ?? u?.email?.split('@')[0] ?? 'Unknown';
 
-  /** Регистрация: email + username + password */
-  const signUp = useCallback(async (email, username, password, rememberMe = true) => {
+  /** Регистрация: email + username + password + inviteCode */
+  const signUp = useCallback(async (email, username, password, inviteCode, rememberMe = true) => {
     setError(null);
+
+    if (!inviteCode || inviteCode.trim().length < 4) {
+      setError('Введи пригласительный код');
+      return { error: true };
+    }
+
+    // 1. Проверяем код в базе данных
+    const { data: codeData, error: codeErr } = await supabase
+      .from('invite_codes')
+      .select('*')
+      .eq('code', inviteCode.trim())
+      .single();
+
+    if (codeErr || !codeData) {
+      setError('Неверный код приглашения');
+      return { error: true };
+    }
+
+    if (codeData.is_used) {
+      setError('Этот код уже был использован');
+      return { error: true };
+    }
 
     // Сохраняем предпочтение перед входом
     localStorage.setItem('vibe_remember_me', rememberMe ? 'true' : 'false');
@@ -53,26 +75,29 @@ export function useAuth() {
       return { error: true };
     }
 
-    const { error: err } = await supabase.auth.signUp({
+    // 2. Создаем пользователя
+    const { data: authData, error: err } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: { data: { username: username.trim() } },
     });
 
     if (err) {
-      if (err.message.includes('already registered') || err.message.includes('already exists')) {
-        setError('Этот email уже зарегистрирован');
-      } else if (
-        err.message.toLowerCase().includes('rate limit') ||
-        err.message.toLowerCase().includes('email rate') ||
-        err.message.toLowerCase().includes('over_email_send_rate_limit')
-      ) {
-        setError('Превышен лимит писем Supabase. Открой Supabase Dashboard → Authentication → Providers → Email → выключи "Confirm email" → сохрани. После этого регистрация заработает без писем.');
-      } else {
-        setError(err.message);
-      }
+      if (err.message.includes('already registered')) setError('Этот email уже зарегистрирован');
+      else setError(err.message);
       return { error: true };
     }
+
+    // 3. Помечаем код как использованный
+    await supabase
+      .from('invite_codes')
+      .update({ 
+        is_used: true, 
+        used_at: new Date().toISOString(), 
+        used_by_email: email.trim().toLowerCase() 
+      })
+      .eq('code', inviteCode.trim());
+
     return { error: null };
   }, []);
 
