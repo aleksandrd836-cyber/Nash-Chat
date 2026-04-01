@@ -33,12 +33,21 @@ export function useAuth() {
   /** Отображаемое имя пользователя */
   const getUsername = (u) => u?.user_metadata?.username ?? u?.email?.split('@')[0] ?? 'Unknown';
 
-  /** Регистрация: email + username + password + inviteCode */
-  const signUp = useCallback(async (email, username, password, inviteCode, rememberMe = true) => {
+  /** Регистрация: username + password + inviteCode */
+  const signUp = useCallback(async (username, password, inviteCode, rememberMe = true) => {
     setError(null);
 
     if (!inviteCode || inviteCode.trim().length < 4) {
       setError('Введи пригласительный код');
+      return { error: true };
+    }
+
+    if (!username || username.trim().length < 2) {
+      setError('Логин должен быть не короче 2 символов');
+      return { error: true };
+    }
+    if (!password || password.length < 6) {
+      setError('Пароль должен быть не короче 6 символов');
       return { error: true };
     }
 
@@ -59,32 +68,25 @@ export function useAuth() {
       return { error: true };
     }
 
+    // Создаем "внутренний" email из логина
+    const fakeEmail = `${username.trim().toLowerCase()}@vibe.app`;
+
     // Сохраняем предпочтение перед входом
     localStorage.setItem('vibe_remember_me', rememberMe ? 'true' : 'false');
 
-    if (!email || !email.includes('@')) {
-      setError('Введи корректный email');
-      return { error: true };
-    }
-    if (!username || username.trim().length < 2) {
-      setError('Имя пользователя должно быть не короче 2 символов');
-      return { error: true };
-    }
-    if (!password || password.length < 6) {
-      setError('Пароль должен быть не короче 6 символов');
-      return { error: true };
-    }
-
     // 2. Создаем пользователя
-    const { data: authData, error: err } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
+    const { error: err } = await supabase.auth.signUp({
+      email: fakeEmail,
       password,
       options: { data: { username: username.trim() } },
     });
 
     if (err) {
-      if (err.message.includes('already registered')) setError('Этот email уже зарегистрирован');
-      else setError(err.message);
+      if (err.message.includes('already registered')) {
+        setError('Этот логин уже занят. Выбери другой!');
+      } else {
+        setError(err.message);
+      }
       return { error: true };
     }
 
@@ -94,26 +96,33 @@ export function useAuth() {
       .update({ 
         is_used: true, 
         used_at: new Date().toISOString(), 
-        used_by_email: email.trim().toLowerCase() 
+        used_by_username: username.trim() 
       })
       .eq('code', inviteCode.trim());
 
     return { error: null };
   }, []);
 
-  /** Вход: email + password */
-  const signIn = useCallback(async (email, password, rememberMe = true) => {
+  /** Вход: username + password */
+  const signIn = useCallback(async (username, password, rememberMe = true) => {
     setError(null);
+    
+    if (!username) {
+      setError('Введи логин');
+      return { error: true };
+    }
+
+    const fakeEmail = `${username.trim().toLowerCase()}@vibe.app`;
     
     // Сохраняем предпочтение перед входом
     localStorage.setItem('vibe_remember_me', rememberMe ? 'true' : 'false');
 
     const { error: err } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email: fakeEmail,
       password,
     });
     if (err) {
-      setError('Неверный email или пароль');
+      setError('Неверный логин или пароль');
       return { error: true };
     }
     return { error: null };

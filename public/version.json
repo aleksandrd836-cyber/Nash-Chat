@@ -1,5 +1,5 @@
 {
-  "version": "2.2.1",
-  "notes": "V2.2.1: Private Vibe - Добавлена система пригласительных кодов для регистрации (только для своих).",
+  "version": "2.2.3",
+  "notes": "V2.2.3: Login Edition - Полный отказ от почты. Регистрация и вход теперь только по Логину и Паролю.",
   "downloadUrl": "https://github.com/aleksandrd836-cyber/Nash-Chat/releases/latest"
 }

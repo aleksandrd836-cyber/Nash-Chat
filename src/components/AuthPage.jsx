@@ -22,9 +22,9 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
     e.preventDefault();
     setLoading(true);
     if (mode === 'login') {
-      await onSignIn(email, password, rememberMe);
+      await onSignIn(username, password, rememberMe);
     } else {
-      await onSignUp(email, username, password, inviteCode, rememberMe);
+      await onSignUp(username, password, inviteCode, rememberMe);
     }
     setLoading(false);
   }
@@ -97,41 +97,21 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-              {/* Email */}
+              {/* Login / Nickname */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 ml-2">
-                   <Mail size={12} className="text-ds-accent" />
+                   <User size={12} className="text-ds-accent" />
                    <label className="text-[10px] font-black text-ds-muted uppercase tracking-widest">
-                     Электронная почта
+                     {mode === 'login' ? 'Твой логин' : 'Придумай логин'}
                    </label>
                 </div>
                 <input
-                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@vibe.app"
+                  type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+                  placeholder={mode === 'login' ? "CyberVibe_2026" : "Твой_Никнейм"}
                   required
-                  className="w-full bg-ds-bg/40 border border-white/5 rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
+                  className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
                 />
               </div>
-
-              {/* Username (Register only) */}
-              {mode === 'register' && (
-                <div className="space-y-2 animate-slide-up">
-                  <div className="flex items-center gap-2 ml-2">
-                     <User size={12} className="text-ds-accent" />
-                     <label className="text-[10px] font-black text-ds-muted uppercase tracking-widest">
-                       Твой никнейм
-                     </label>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text" value={username} onChange={e => setUsername(e.target.value)}
-                      placeholder="CyberVibe_2026"
-                      required
-                      className="flex-1 bg-ds-bg/40 border border-ds-border rounded-2xl px-4 py-3 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Invite Code (Register only) */}
               {mode === 'register' && (
