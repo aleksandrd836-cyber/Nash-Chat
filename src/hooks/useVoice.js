@@ -300,7 +300,15 @@ export function useVoice() {
     isLeavingRef.current = false; // СБРАСЫВАЕМ МЕТКУ: МЫ СНОВА В ИГРЕ
     setIsConnecting(true); setVoiceError(null);
     try {
-      const constraints = { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }, video: false };
+      const constraints = { 
+        audio: { 
+          echoCancellation: false, 
+          noiseSuppression: false, 
+          autoGainControl: true,
+          sampleRate: 48000 
+        }, 
+        video: false 
+      };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       originalMicStreamRef.current = stream;
       stream.getAudioTracks().forEach(t => t.enabled = !(isMutedRef.current || isDeafenedRef.current));
@@ -309,7 +317,7 @@ export function useVoice() {
       const nsEnabled = localStorage.getItem('vibe_noise_suppression') === 'true';
       let finalStream = stream;
 
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
       audioContextRef.current = audioCtx;
       if (audioCtx.state === 'suspended') await audioCtx.resume();
 
