@@ -228,6 +228,13 @@ export function useVoice() {
     }
 
     if (globalPresence.current) {
+      // Явный сигнал "Я вышел" для всех остальных (чтобы не было призраков)
+      await globalPresence.current.track({
+        ...presencePayload.current,
+        channelId: null,
+        joined_at: Date.now()
+      }).catch(() => {});
+      
       await globalPresence.current.untrack().catch(() => {});
     }
     
