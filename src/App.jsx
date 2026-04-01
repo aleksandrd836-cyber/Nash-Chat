@@ -356,9 +356,13 @@ function App() {
               // ── Главные карточки Хаба ──
               <>
                 <div className="relative z-10 text-center mb-12 transform group-hover:scale-[1.02] transition-transform duration-700">
-                  <div className="w-24 h-24 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative mx-auto mb-8 shadow-2xl group/star">
+                  <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative mx-auto mb-8 shadow-2xl group/star">
                      <div className="absolute inset-0 vibe-moving-glow opacity-20" />
-                     <Star size={56} className="text-ds-accent vibe-logo-glow transition-all duration-500 group-hover/star:scale-110" fill="currentColor" strokeWidth={1} />
+                     <img 
+                       src={getUserAvatar(displayUsername).imageUrl} 
+                       alt={displayUsername} 
+                       className="w-full h-full object-contain z-10 transition-all duration-500 scale-125 group-hover/star:scale-[1.35] vibe-logo-glow" 
+                     />
                   </div>
                   <h2 className="text-ds-text font-black text-5xl tracking-tighter mb-4 uppercase drop-shadow-[0_0_15px_rgba(var(--ds-accent-rgb),0.3)]">
                     Привет, <span className="text-ds-accent">{displayUsername}</span>!
@@ -443,9 +447,17 @@ function App() {
           <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
             <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                <div className="absolute inset-0 vibe-moving-glow opacity-10" />
-               <svg viewBox="0 0 24 24" className="w-14 h-14 drop-shadow-[0_0_12px_rgba(0,240,255,0.6)] contrast-125">
-                 <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
-               </svg>
+               {selectedServer.icon_url ? (
+                 <img 
+                   src={selectedServer.icon_url} 
+                   alt={selectedServer.name} 
+                   className="w-full h-full object-cover z-10 transition-transform duration-500 group-hover:scale-110" 
+                 />
+               ) : (
+                 <span className="text-5xl font-black text-ds-accent uppercase tracking-tighter z-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]">
+                   {selectedServer.name?.[0]?.toUpperCase() ?? '?'}
+                 </span>
+               )}
             </div>
             <div className="max-w-xs">
               <h3 className="text-ds-text font-black text-2xl tracking-tighter mb-2 uppercase">Сервер «{selectedServer.name}»</h3>
