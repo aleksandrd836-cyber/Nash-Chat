@@ -9,6 +9,76 @@ let splashWindow;
 let tray;
 let isQuitting = false;
 
+// ── Проверка на одну единственную копию приложения ──
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Если блокировка не получена — значит, одна копия уже запущена. Выходим.
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Кто-то попытался запустить вторую копию — разворачиваем наше окно.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(() => {
+    createSplash();
+    createWindow();
+    createTray();
+
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on('update-available', (info) => {
+      mainWindow?.webContents.send('update-available', info);
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+      mainWindow?.webContents.send('update-progress', progress);
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+      mainWindow?.webContents.send('update-downloaded');
+    });
+
+    autoUpdater.on('error', (err) => {
+      mainWindow?.webContents.send('update-error', err.message);
+    });
+
+    ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
+    ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
+    ipcMain.handle('get-desktop-sources', async () => {
+      const sources = await desktopCapturer.getSources({ 
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 400, height: 225 },
+        fetchWindowIcons: true
+      });
+      return sources.map(s => ({
+        id: s.id,
+        name: s.name,
+        thumbnail: s.thumbnail.toDataURL(),
+        appIcon: s.appIcon ? s.appIcon.toDataURL() : null
+      }));
+    });
+
+    ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
+
+    session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+      if (permission === 'media') return true;
+      return false;
+    });
+
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      if (permission === 'media') return callback(true);
+      callback(false);
+    });
+  });
+}
+
 // ── Splash screen (появляется мгновенно) ──
 function createSplash() {
   splashWindow = new BrowserWindow({
@@ -197,59 +267,6 @@ Menu.setApplicationMenu(null);
 
 ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
-});
-
-app.whenReady().then(() => {
-  createSplash();
-  createWindow();
-  createTray();
-
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
-
-  autoUpdater.on('update-available', (info) => {
-    mainWindow?.webContents.send('update-available', info);
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    mainWindow?.webContents.send('update-progress', progress);
-  });
-
-  autoUpdater.on('update-downloaded', () => {
-    mainWindow?.webContents.send('update-downloaded');
-  });
-
-  autoUpdater.on('error', (err) => {
-    mainWindow?.webContents.send('update-error', err.message);
-  });
-
-  ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
-  ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
-  ipcMain.handle('get-desktop-sources', async () => {
-    const sources = await desktopCapturer.getSources({ 
-      types: ['window', 'screen'],
-      thumbnailSize: { width: 400, height: 225 },
-      fetchWindowIcons: true
-    });
-    return sources.map(s => ({
-      id: s.id,
-      name: s.name,
-      thumbnail: s.thumbnail.toDataURL(),
-      appIcon: s.appIcon ? s.appIcon.toDataURL() : null
-    }));
-  });
-
-  ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
-
-  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
-    if (permission === 'media') return true;
-    return false;
-  });
-
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    if (permission === 'media') return callback(true);
-    callback(false);
-  });
 });
 
 app.on('window-all-closed', () => {
