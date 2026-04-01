@@ -1,16 +1,11 @@
-const { app, BrowserWindow, shell, Menu, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, Menu, globalShortcut, ipcMain, Tray, nativeImage, desktopCapturer } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
 const APP_URL = 'https://vbchat.ru/';
-
 let mainWindow;
-
-// РҐСЂР°РЅРёР»РёС‰Рµ Р°РєС‚РёРІРЅС‹С… РіРѕСЂСЏС‡РёС… РєР»Р°РІРёС€
-let activeShortcuts = {
-  mute: '',
-  deafen: ''
-};
+let tray = null;
+let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -44,23 +39,54 @@ function createWindow() {
     return { action: 'allow' };
   });
 
+  // --- Сворачивание в трей при закрытии (Крестик) ---
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      return false;
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
-// Р Р•Р“Р˜РЎРўР РђР¦Р˜РЇ Р“РћР РЇР§Р˜РҐ РљР›РђР’Р˜РЁ
+// --- СИСТЕМНЫЙ ТРЕЙ (ВОССТАНОВЛЕНО) ---
+function createTray() {
+  const iconPath = path.join(__dirname, 'icon.png');
+  const trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 24, height: 24 });
+  tray = new Tray(trayIcon);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Открыть Vibe', click: () => { mainWindow?.show(); mainWindow?.focus(); } },
+    { type: 'separator' },
+    { label: 'Выйти', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+  
+  tray.setToolTip('Vibe');
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => {
+     if (mainWindow?.isVisible()) {
+       mainWindow.hide();
+     } else {
+       mainWindow?.show();
+       mainWindow?.focus();
+     }
+  });
+}
+
+// --- Регистрация горячих клавиш (VIBE v3.0) ---
 ipcMain.on('register-hotkeys', (event, shortcuts) => {
-  globalShortcut.unregisterAll(); // РЎР±СЂР°СЃС‹РІР°РµРј СЃС‚Р°СЂС‹Рµ
+  globalShortcut.unregisterAll(); 
   
   if (shortcuts.mute) {
     try {
       globalShortcut.register(shortcuts.mute, () => {
         mainWindow?.webContents.send('hotkey-triggered', 'mute');
       });
-    } catch (e) {
-      console.error('Failed to register mute shortcut:', e);
-    }
+    } catch (e) { console.error('Error registering mute:', e); }
   }
 
   if (shortcuts.deafen) {
@@ -68,51 +94,38 @@ ipcMain.on('register-hotkeys', (event, shortcuts) => {
       globalShortcut.register(shortcuts.deafen, () => {
         mainWindow?.webContents.send('hotkey-triggered', 'deafen');
       });
-    } catch (e) {
-      console.error('Failed to register deafen shortcut:', e);
-    }
+    } catch (e) { console.error('Error registering deafen:', e); }
   }
 });
 
-// --- Р›РћР“Р˜РљРђ РђР’РўРћ-РћР‘РќРћР’Р›Р•РќР˜Р™ (Р’РћРЎРЎРўРђРќРћР’Р›Р•РќРћ) ---
-ipcMain.handle('check-for-updates', () => {
-  autoUpdater.checkForUpdatesAndNotify();
+// --- Демонстрация экрана (Screen Sharing - ВОССТАНОВЛЕНО) ---
+ipcMain.handle('get-desktop-sources', async () => {
+  return await desktopCapturer.getSources({ types: ['window', 'screen'] });
 });
 
-autoUpdater.on('update-available', () => {
-  mainWindow?.webContents.send('update-available');
+// --- Версия приложения (ВОССТАНОВЛЕНО) ---
+ipcMain.on('get-app-version', (event) => {
+  event.returnValue = app.getVersion();
 });
 
-autoUpdater.on('update-not-available', () => {
-  mainWindow?.webContents.send('update-not-available');
-});
-
-autoUpdater.on('error', (err) => {
-  mainWindow?.webContents.send('update-error', err.message);
-});
-
-autoUpdater.on('download-progress', (progressObj) => {
-  mainWindow?.webContents.send('download-progress', progressObj.percent);
-});
-
-autoUpdater.on('update-downloaded', () => {
-  mainWindow?.webContents.send('update-downloaded');
-});
+// --- Авто-обновление (ВОССТАНОВЛЕНО) ---
+ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdatesAndNotify());
+autoUpdater.on('update-available', () => mainWindow?.webContents.send('update-available'));
+autoUpdater.on('update-not-available', () => mainWindow?.webContents.send('update-not-available'));
+autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-error', err.message));
+autoUpdater.on('download-progress', (p) => mainWindow?.webContents.send('download-progress', p.percent));
+autoUpdater.on('update-downloaded', () => mainWindow?.webContents.send('update-downloaded'));
 
 Menu.setApplicationMenu(null);
 
 app.whenReady().then(() => {
   createWindow();
-
+  createTray();
+  
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
-});
-
-app.on('window-all-closed', () => {
-  app.quit();
-});
+app.on('will-quit', () => globalShortcut.unregisterAll());
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

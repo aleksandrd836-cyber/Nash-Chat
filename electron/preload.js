@@ -1,19 +1,28 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Полный реставрированный мост (Обновления + Горячие клавиши)
+// Получение версии синхронно (для совместимости)
+const appVersion = ipcRenderer.sendSync('get-app-version');
+
+// СУПЕР-БРИДЖ (Трей + Обновления + Шеринг + Кнопки)
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
-  version: '2.4.5', // Обновлено до v2.4.5
+  version: appVersion,
   
-  // --- Авто-обновления (Восстановлено) ---
+  // --- Демонстрация экрана (ВОССТАНОВЛЕНО) ---
+  getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
+
+  // --- Авто-обновления (ВОССТАНОВЛЕНО) ---
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
-  onUpdateAvailable: (cb) => ipcRenderer.on('update-available', cb),
-  onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', cb),
-  onUpdateError: (cb) => ipcRenderer.on('update-error', (e, msg) => cb(msg)),
-  onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (e, progress) => cb(progress)),
-  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', cb),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate:  () => ipcRenderer.invoke('install-update'),
   
-  // --- Горячие клавиши (VIBE v3.0) ---
+  // События обновлений
+  onUpdateAvailable:  (cb) => ipcRenderer.on('update-available', (_, info) => cb(info)),
+  onUpdateProgress:   (cb) => ipcRenderer.on('update-progress', (_, progress) => cb(progress)),
+  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', () => cb()),
+  onUpdateError:      (cb) => ipcRenderer.on('update-error', (_, msg) => cb(msg)),
+  
+  // --- Горячие клавиши (VIBE v3.2) ---
   registerHotkeys: (shortcuts) => ipcRenderer.send('register-hotkeys', shortcuts),
   onHotkey: (callback) => ipcRenderer.on('hotkey-triggered', (event, action) => callback(action))
 });
