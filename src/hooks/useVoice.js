@@ -243,25 +243,51 @@ export function useVoice() {
   }, [closePeer]);
 
   const cleanupAll = useCallback(async () => {
+    console.log('[useVoice] cleanupAll started (EXIT button clicked)');
     isLeavingRef.current = true; // СТАВИМ МЕТКУ: ВЫХОДИМ САМИ
-    // 1. Сначала чистим ошибки, чтобы не триггерить UI на закрытие канала
-    setVoiceError(null);
     
-    Object.values(ghostPeersRef.current).forEach(clearTimeout); ghostPeersRef.current = {};
-    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+    // Мгновенно сбрасываем UI
+    setVoiceError(null);
+    setIsScreenSharing(false); 
+    setRemoteScreens({}); 
+    setActiveChannelId(null); 
+    activeChannelIdRef.current = null;
+    setParticipants([]);
+
+    if (reconnectTimerRef.current) { 
+      console.log('[useVoice] Clearing background reconnect timer');
+      clearTimeout(reconnectTimerRef.current); 
+      reconnectTimerRef.current = null; 
+    }
+    
+    if (fakeVADIntervalRef.current) {
+      clearInterval(fakeVADIntervalRef.current);
+      fakeVADIntervalRef.current = null;
+    }
+
+    Object.values(ghostPeersRef.current).forEach(clearTimeout); 
+    ghostPeersRef.current = {};
+    
+    console.log('[useVoice] Closing peer connections...');
     Object.keys(peerConns.current).forEach(id => closePeer(id, true));
+
     localStream.current?.getTracks().forEach(t => t.stop()); localStream.current = null;
     originalMicStreamRef.current?.getTracks().forEach(t => t.stop()); originalMicStreamRef.current = null;
-    if (audioContextRef.current) { audioContextRef.current.close().catch(() => {}); audioContextRef.current = null; }
+    
+    if (audioContextRef.current) { 
+      audioContextRef.current.close().catch(() => {}); 
+      audioContextRef.current = null; 
+    }
     
     if (realtimeChannel.current) {
       const chan = realtimeChannel.current;
-      realtimeChannel.current = null; // Зануляем ДО удаления, чтобы коллбэк subscribe проигнорировал CLOSED
+      realtimeChannel.current = null; // Зануляем ДО удаления
+      console.log('[useVoice] Removing Realtime channel...');
       await supabase.removeChannel(chan).catch(() => {});
     }
 
     if (globalPresence.current) {
-      // Явный сигнал "Я вышел" для всех остальных (чтобы не было призраков)
+      console.log('[useVoice] Updating global presence (EXIT)...');
       await globalPresence.current.track({
         ...presencePayload.current,
         channelId: null,
@@ -271,17 +297,11 @@ export function useVoice() {
       await globalPresence.current.untrack().catch(() => {});
     }
     
-    if (fakeVADIntervalRef.current) clearInterval(fakeVADIntervalRef.current);
-    setIsScreenSharing(false); setRemoteScreens({}); 
-    setActiveChannelId(null); 
-    activeChannelIdRef.current = null;
-    setParticipants([]);
-
-    // Непосредственно очищаем себя из локального списка всех участников (для мгновенного UI-отклика)
     setAllParticipants(prev => {
       const next = { ...prev };
+      const myId = currentUserRef.current?.id;
       Object.keys(next).forEach(chId => {
-        next[chId] = next[chId].filter(p => p.userId !== currentUserRef.current?.id);
+        next[chId] = next[chId].filter(p => p.userId !== myId);
         if (next[chId].length === 0) delete next[chId];
       });
       return next;

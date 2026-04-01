@@ -20,8 +20,29 @@ export function HotkeysSettings() {
       if (e.altKey) keys.push('Alt');
       if (e.metaKey) keys.push('Command');
       
-      let finalKey = e.key.toUpperCase();
-      if (finalKey === ' ') finalKey = 'Space';
+      let finalKey = '';
+      const code = e.code;
+
+      if (code.startsWith('Key')) {
+        finalKey = code.substring(3);
+      } else if (code.startsWith('Digit')) {
+        finalKey = code.substring(5);
+      } else if (code === 'Space') {
+        finalKey = 'Space';
+      } else if (code === 'Enter' || code === 'NumpadEnter') {
+        finalKey = 'Enter';
+      } else if (code === 'Escape') {
+        finalKey = 'Escape';
+      } else if (code.startsWith('Arrow')) {
+        finalKey = code.substring(5); // Up, Down, Left, Right
+      } else if (code === 'Backquote') {
+        finalKey = '~';
+      } else {
+        // Fallback for other keys
+        finalKey = e.key.toUpperCase();
+        if (finalKey === ' ') finalKey = 'Space';
+      }
+      
       keys.push(finalKey);
 
       const accelerator = keys.join('+');
