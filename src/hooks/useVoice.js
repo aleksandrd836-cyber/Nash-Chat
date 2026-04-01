@@ -534,14 +534,24 @@ export function useVoice() {
 
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          // ЗАЩИТА ОТ ГОНКИ: Если мы уже нажали выход, пока подписка шла - НЕ РЕГИСТРИРУЕМСЯ
+          if (isLeavingRef.current || activeChannelIdRef.current !== channelId) {
+             console.warn('[useVoice] Late subscription aborted to prevent ghosting.');
+             setIsConnecting(false);
+             return;
+          }
+
           reconnectAttemptsRef.current = 0;
           setServerStatus('online');
           setVoiceError(null);
+          
           await channel.track(presencePayload.current).catch(() => {});
           notifications.play('self_join');
+          
           if (globalPresence.current) {
             globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
           }
+          
           setActiveChannelId(channelId); 
           activeChannelIdRef.current = channelId;
           setIsConnecting(false);

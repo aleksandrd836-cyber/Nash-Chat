@@ -50,7 +50,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
 
       <div className="relative w-full max-w-md animate-fade-in">
         {/* Brand/Logo Section */}
-        <div className="text-center mb-10 group cursor-default">
+        <div className="text-center mb-6 group cursor-default">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2.5rem] bg-ds-sidebar/40 mb-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all group-hover:scale-110 group-hover:rotate-[10deg] duration-500 relative border border-white/10">
              <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-[2.5rem]" />
              <div className="absolute inset-0 bg-gradient-to-br from-ds-accent/20 to-transparent opacity-50 rounded-[2.5rem]" />
@@ -69,11 +69,11 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
         </div>
 
         {/* Auth Card */}
-        <div className="bg-ds-sidebar/80 backdrop-blur-3xl rounded-[3rem] p-10 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] relative group overflow-hidden">
+        <div className="bg-ds-sidebar/80 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] relative group overflow-y-auto max-h-[75vh] no-scrollbar">
           <div className="absolute inset-0 vibe-moving-glow opacity-[0.03] group-hover:opacity-[0.07] transition-opacity duration-700" />
           
           {/* Mode Switcher */}
-          <div className="flex bg-ds-bg/60 rounded-[1.5rem] p-1.5 mb-8 border border-white/5 relative z-10">
+          <div className="flex bg-ds-bg/60 rounded-[1.5rem] p-1.5 mb-6 border border-white/5 relative z-10">
             <button
               onClick={() => switchMode('login')}
               className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${mode === 'login'
@@ -96,7 +96,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+          <form onSubmit={handleSubmit} className={`${mode === 'login' ? 'space-y-6' : 'space-y-4'} relative z-10`}>
               {/* Login / Nickname */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 ml-2">
@@ -200,7 +200,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
           </form>
 
           {/* Bottom Info */}
-          <div className="mt-10 text-center relative z-10">
+          <div className="mt-8 text-center relative z-10">
              <p className="text-[9px] text-ds-muted font-black uppercase tracking-[0.2em]">
                 {mode === 'login' ? 'Нет аккаунта? Давай создадим!' : 'Уже в системе? Тогда возвращайся!'}
              </p>
