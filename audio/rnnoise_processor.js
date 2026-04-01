@@ -542,7 +542,8 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this._initialized = false;
-    this._initPromise = this.init();
+    this._framesProcessed = 0;
+    this.init();
   }
 
   async init() {
@@ -552,17 +553,18 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
       
       this._st = this._module._rnnoise_create();
       
+      // РџР°РјСЏС‚СЊ WASM (480 СЃРµРјРїР»РѕРІ РїРѕ 4 Р±Р°Р№С‚Р°)
       this._wasmInPtr = this._module._malloc(480 * 4);
       this._wasmOutPtr = this._module._malloc(480 * 4);
       
-      this._inputBuffer = new Float32Array(480);
-      this._outputBuffer = new Float32Array(480);
-      this._bufferIndex = 0;
-      this._readIndex = 0;
-      this._hasData = false;
+      // РљРѕР»СЊС†РµРІРѕР№ Р±СѓС„РµСЂ РґР»СЏ СЃРѕРїСЂСЏР¶РµРЅРёСЏ 128 (Worklet) Рё 480 (RNNoise)
+      this._circularBuffer = new Float32Array(480 * 2); 
+      this._writePos = 0;
+      this._readPos = 0;
+      this._pendingSamples = 0;
 
       this._initialized = true;
-      console.log('[RNNoiseProcessor] рџ”Ґ AI Engine Ready (Scaled API)');
+      console.log('[RNNoiseProcessor] рџ”Ґ AI Engine 2.4.2 READY (48kHz Optimized)');
     } catch (e) {
       console.error('[RNNoiseProcessor] вќЊ Init Error:', e);
     }
@@ -573,42 +575,58 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const output = outputs[0];
 
     if (!this._initialized || !input || !input[0] || !output || !output[0]) {
-      if (input && input[0] && output && output[0]) {
-        output[0].set(input[0]);
-      }
+      if (input && input[0] && output && output[0]) output[0].set(input[0]);
       return true;
     }
 
     const inputData = input[0];
     const outputData = output[0];
 
+    // 1. РџРёС€РµРј РІС…РѕРґСЏС‰РёРµ РґР°РЅРЅС‹Рµ РІ РєРѕР»СЊС†РµРІРѕР№ Р±СѓС„РµСЂ
     for (let i = 0; i < inputData.length; i++) {
-        this._inputBuffer[this._bufferIndex] = inputData[i];
-        
-        outputData[i] = this._hasData ? this._outputBuffer[this._readIndex] : inputData[i];
-        
-        this._bufferIndex++;
-        this._readIndex++;
+        this._circularBuffer[this._writePos] = inputData[i];
+        this._writePos = (this._writePos + 1) % this._circularBuffer.length;
+        this._pendingSamples++;
+    }
 
-        if (this._bufferIndex === 480) {
-            // РњРђРЎРЁРўРђР‘РР РћР’РђРќРР•: РџРµСЂРµРІРѕРґРёРј РёР· -1.0..1.0 РІ -32768..32768
-            const wasmInView = this._module.HEAPF32.subarray(this._wasmInPtr / 4, this._wasmInPtr / 4 + 480);
-            for (let j = 0; j < 480; j++) {
-                wasmInView[j] = this._inputBuffer[j] * 32768;
-            }
-            
-            this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
-            
-            // РћР‘Р РђРўРќРћР• РњРђРЎРЁРўРђР‘РР РћР’РђРќРР•: Р’РѕР·РІСЂР°С‰Р°РµРј РІ -1.0..1.0
-            const wasmOutView = this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480);
-            for (let j = 0; j < 480; j++) {
-                this._outputBuffer[j] = wasmOutView[j] / 32768;
-            }
-            
-            this._hasData = true;
-            this._bufferIndex = 0;
-            this._readIndex = 0;
+    // 2. Р•СЃР»Рё РЅР°РєРѕРїРёР»Рё 480 - РѕР±СЂР°Р±Р°С‚С‹РІР°РµРј
+    if (this._pendingSamples >= 480) {
+        const tempBuf = new Float32Array(480);
+        let tempReadPos = (this._writePos - 480 + this._circularBuffer.length) % this._circularBuffer.length;
+        
+        for (let j = 0; j < 480; j++) {
+            tempBuf[j] = this._circularBuffer[tempReadPos] * 32768; // РњР°СЃС€С‚Р°Р±РёСЂСѓРµРј РґРѕ Int16
+            tempReadPos = (tempReadPos + 1) % this._circularBuffer.length;
         }
+
+        // РљРѕРїРёСЂСѓРµРј РІ WASM Рё РІС‹Р·С‹РІР°РµРј РЅРµР№СЂРѕРЅРєСѓ
+        this._module.HEAPF32.set(tempBuf, this._wasmInPtr / 4);
+        const speechProb = this._module._rnnoise_process_frame(this._st, this._wasmOutPtr, this._wasmInPtr);
+        
+        // Р”РёР°РіРЅРѕСЃС‚РёРєР° РєР°Р¶РґС‹Рµ 100 РєР°РґСЂРѕРІ (РїСЂРёРјРµСЂРЅРѕ СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ)
+        if (this._framesProcessed++ % 100 === 0) {
+            console.log(`[RNNoise] Speech Probability: ${(speechProb * 100).toFixed(1)}% рџ›ЎпёЏ`);
+        }
+
+        // Р—Р°Р±РёСЂР°РµРј РѕС‡РёС‰РµРЅРЅС‹Р№ Р·РІСѓРє Рё РЅРѕСЂРјР°Р»РёР·СѓРµРј РѕР±СЂР°С‚РЅРѕ
+        const processed = this._module.HEAPF32.subarray(this._wasmOutPtr / 4, this._wasmOutPtr / 4 + 480);
+        for (let j = 0; j < 480; j++) {
+            processed[j] /= 32768;
+        }
+
+        // Р—Р°РїРёСЃС‹РІР°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ РІ "РіРѕР»РѕРІСѓ" Р±СѓС„РµСЂР° РІС‹РІРѕРґР°
+        let tempWriteBackPos = (this._writePos - 480 + this._circularBuffer.length) % this._circularBuffer.length;
+        for (let j = 0; j < 480; j++) {
+            this._circularBuffer[tempWriteBackPos] = processed[j];
+            tempWriteBackPos = (tempWriteBackPos + 1) % this._circularBuffer.length;
+        }
+    }
+
+    // 3. Р’С‹РґР°РµРј РґР°РЅРЅС‹Рµ РёР· Р±СѓС„РµСЂР° РІ РІС‹С…РѕРґ (СЃ Р·Р°РґРµСЂР¶РєРѕР№ РЅР° РѕРґРёРЅ РєР°РґСЂ РѕР±СЂР°Р±РѕС‚РєРё)
+    let readPos = (this._writePos - inputData.length + this._circularBuffer.length) % this._circularBuffer.length;
+    for (let i = 0; i < inputData.length; i++) {
+        outputData[i] = this._circularBuffer[readPos];
+        readPos = (readPos + 1) % this._circularBuffer.length;
     }
 
     return true;
