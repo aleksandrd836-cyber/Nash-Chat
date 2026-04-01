@@ -299,7 +299,6 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
               </div>
             </div>
           </section>
-          <HotkeysSettings />
 
           {/* Audio Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
