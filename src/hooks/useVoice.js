@@ -315,6 +315,9 @@ export function useVoice() {
       }
 
       localStream.current = finalStream;
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
       const vadSource = audioCtx.createMediaStreamSource(finalStream.clone());
       vadSource.connect(analyser);
 
