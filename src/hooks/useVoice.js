@@ -647,11 +647,13 @@ export function useVoice() {
         window.electronAPI.registerHotkeys({ mute: muteKey, deafen: deafenKey });
       }
 
-      // 2. Слушаем нажатия
-      window.electronAPI.onHotkey((action) => {
-        if (action === 'mute') toggleMute();
-        else if (action === 'deafen') toggleDeafen();
-      });
+      // 2. Слушаем глобальные горячие клавиши (Электрон)
+      if (window.electronAPI?.onHotkey) {
+        window.electronAPI.onHotkey((action) => {
+          if (action === 'mute') toggleMute();
+          else if (action === 'deafen') toggleDeafen();
+        });
+      }
     }
   }, [toggleMute, toggleDeafen]);
 
