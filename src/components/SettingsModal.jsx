@@ -312,25 +312,62 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                  </div>
               </div>
 
-              {/* Noise Suppression AI */}
-              <div className="p-6 bg-ds-accent/5 border border-ds-accent/20 rounded-3xl flex items-center justify-between group hover:bg-ds-accent/10 transition-all">
-                 <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border ${noiseSuppression ? 'bg-ds-accent/20 border-ds-accent text-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-ds-muted'}`}>
-                       <Sparkles size={24} />
+              <div className="space-y-3">
+                 <div className="p-6 bg-ds-accent/5 border border-ds-accent/20 rounded-3xl flex items-center justify-between group hover:bg-ds-accent/10 transition-all">
+                    <div className="flex items-center gap-4">
+                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border ${noiseSuppression ? 'bg-ds-accent/20 border-ds-accent text-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-ds-muted'}`}>
+                          <Sparkles size={24} />
+                       </div>
+                       <div>
+                         <p className="text-ds-text font-black uppercase tracking-widest text-[11px] mb-1 flex items-center gap-2">
+                           AI Шумоподавление 
+                           {noiseSuppression && <span className="px-1.5 py-0.5 rounded-full bg-ds-accent/20 text-ds-accent text-[8px] border border-ds-accent/30 animate-pulse">Active</span>}
+                         </p>
+                         <p className="text-[9px] text-ds-muted font-bold uppercase tracking-wider">Интеллектуальный фильтр RNNoise</p>
+                       </div>
                     </div>
-                    <div>
-                      <p className="text-ds-text font-black uppercase tracking-widest text-[11px] mb-1">AI Шумоподавление (Beta)</p>
-                      <p className="text-[9px] text-ds-muted font-bold uppercase tracking-wider">Интеллектуальный фильтр фоновых шумов RNNoise</p>
-                    </div>
+                    
+                    <button 
+                       onClick={handleToggleNoiseSuppression}
+                       className={`relative w-14 h-7 rounded-full transition-all duration-500 p-1 ${noiseSuppression ? 'bg-ds-accent vibe-glow-blue' : 'bg-white/10'}`}
+                    >
+                       <div className={`w-5 h-5 rounded-full bg-white shadow-lg transition-transform duration-500 transform ${noiseSuppression ? 'translate-x-7' : 'translate-x-0'}`} />
+                    </button>
                  </div>
-                 
-                 <button 
-                    onClick={handleToggleNoiseSuppression}
-                    className={`relative w-14 h-7 rounded-full transition-all duration-500 p-1 ${noiseSuppression ? 'bg-ds-accent vibe-glow-blue' : 'bg-white/10 overflow-hidden'}`}
-                 >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-lg transition-transform duration-500 transform ${noiseSuppression ? 'translate-x-7' : 'translate-x-0'}`} />
-                    {noiseSuppression && <div className="absolute inset-0 vibe-moving-glow opacity-30 pointer-events-none" />}
-                 </button>
+
+                 {noiseSuppression && (
+                   <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                     <div className="flex justify-between items-center px-1">
+                       <div className="flex items-center gap-2">
+                          <p className="text-[10px] font-black text-ds-muted uppercase tracking-[0.2em] font-mono">Сила подавления</p>
+                          <span className="text-[10px] font-black text-ds-accent font-mono">{localStorage.getItem('vibe_noise_intensity') || 100}%</span>
+                       </div>
+                     </div>
+                     <div className="relative h-6 flex items-center group">
+                        <div className="absolute w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                           <div 
+                             className="h-full bg-ds-accent vibe-glow-blue transition-all"
+                             style={{ width: `${localStorage.getItem('vibe_noise_intensity') || 100}%` }}
+                           />
+                        </div>
+                        <input 
+                          type="range" min="0" max="100" 
+                          value={localStorage.getItem('vibe_noise_intensity') || 100}
+                          onChange={(e) => {
+                            localStorage.setItem('vibe_noise_intensity', e.target.value);
+                            window.dispatchEvent(new Event('storage'));
+                            setNoiseSuppression(true); // Trigger re-render
+                          }}
+                          className="absolute w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div 
+                           className="absolute w-3.5 h-3.5 bg-white rounded-full border-2 border-ds-accent shadow-lg transition-all pointer-events-none"
+                           style={{ left: `calc(${localStorage.getItem('vibe_noise_intensity') || 100}% - 7px)` }}
+                        />
+                     </div>
+                     <p className="text-[9px] text-ds-muted font-bold italic opacity-60">Меньшая интенсивность сохраняет больше «жизни» в голосе.</p>
+                   </div>
+                 )}
               </div>
             </div>
           </section>

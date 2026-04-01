@@ -351,14 +351,22 @@ export function useVoice() {
           const source = audioCtx.createMediaStreamSource(stream);
           const rnnoiseNode = new AudioWorkletNode(audioCtx, 'rnnoise-processor');
           
-          // Передаем путь к wasm файлу через порт сообщения (или как опцию, если процессор поддерживает)
-          rnnoiseNode.port.postMessage({ type: 'init', wasmPath: '/audio/rnnoise.wasm' });
+          // Передаем начальную интенсивность
+          const initialIntensity = parseInt(localStorage.getItem('vibe_noise_intensity') || '100');
+          rnnoiseNode.port.postMessage({ type: 'setIntensity', value: initialIntensity });
+          
+          // Слушаем изменения ползунка в реальном времени
+          const handleIntensityChange = () => {
+            const val = parseInt(localStorage.getItem('vibe_noise_intensity') || '100');
+            rnnoiseNode.port.postMessage({ type: 'setIntensity', value: val });
+          };
+          window.addEventListener('storage', handleIntensityChange);
           
           const destination = audioCtx.createMediaStreamDestination();
           source.connect(rnnoiseNode).connect(destination);
           
           finalStream = destination.stream;
-          console.log('[useVoice] AI шумоподавление успешно запущено! 🛡️🎙️');
+          console.log('[useVoice] AI шумоподавление запущено (Интенсивность:', initialIntensity, '%) 🛡️🎙️');
         } catch (err) {
           console.error('[useVoice] Ошибка шумодава (Safe Fallback):', err);
           finalStream = stream;
