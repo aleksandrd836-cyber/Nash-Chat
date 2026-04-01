@@ -9,15 +9,13 @@ let splashWindow;
 let tray;
 let isQuitting = false;
 
-// ── Проверка на одну единственную копию приложения ──
+// ── SINGLE INSTANCE LOCK ──
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  // Если блокировка не получена — значит, одна копия уже запущена. Выходим.
   app.quit();
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Кто-то попытался запустить вторую копию — разворачиваем наше окно.
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       if (!mainWindow.isVisible()) mainWindow.show();
@@ -30,56 +28,12 @@ if (!gotTheLock) {
     createWindow();
     createTray();
 
-    autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = true;
-
-    autoUpdater.on('update-available', (info) => {
-      mainWindow?.webContents.send('update-available', info);
-    });
-
-    autoUpdater.on('download-progress', (progress) => {
-      mainWindow?.webContents.send('update-progress', progress);
-    });
-
-    autoUpdater.on('update-downloaded', () => {
-      mainWindow?.webContents.send('update-downloaded');
-    });
-
-    autoUpdater.on('error', (err) => {
-      mainWindow?.webContents.send('update-error', err.message);
-    });
-
-    ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
-    ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
-    ipcMain.handle('get-desktop-sources', async () => {
-      const sources = await desktopCapturer.getSources({ 
-        types: ['window', 'screen'],
-        thumbnailSize: { width: 400, height: 225 },
-        fetchWindowIcons: true
-      });
-      return sources.map(s => ({
-        id: s.id,
-        name: s.name,
-        thumbnail: s.thumbnail.toDataURL(),
-        appIcon: s.appIcon ? s.appIcon.toDataURL() : null
-      }));
-    });
-
-    ipcMain.handle('install-update',    () => { autoUpdater.quitAndInstall(); });
-
-    session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
-      if (permission === 'media') return true;
-      return false;
-    });
-
-    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-      if (permission === 'media') return callback(true);
-      callback(false);
-    });
+    setupUpdater();
+    setupIpcHandlers();
+    setupPermissions();
   });
 }
 
-// ── Splash screen (появляется мгновенно) ──
 function createSplash() {
   splashWindow = new BrowserWindow({
     width: 360,
@@ -99,60 +53,17 @@ function createSplash() {
     <head>
       <meta charset="UTF-8">
       <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          background: #1e1f22;
-          border-radius: 16px;
-          border: 1px solid rgba(255,255,255,0.08);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 100vh;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          color: white;
-          overflow: hidden;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }
-        .logo {
-          width: 90px;
-          height: 90px;
-          background: rgba(0, 240, 255, 0.1);
-          border-radius: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 24px;
-          box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
-          border: 2px solid rgba(0, 240, 255, 0.3);
-          position: relative;
-        }
-        .logo svg { 
-          width: 50px; 
-          height: 50px; 
-          fill: #00f0ff; 
-          filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.8));
-        }
-        h1 { font-size: 26px; font-weight: 900; margin-bottom: 4px; letter-spacing: 4px; text-transform: uppercase; color: #fff; }
-        p { font-size: 10px; color: #00f0ff; margin-bottom: 32px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; }
-        .spinner {
-          width: 24px; height: 24px;
-          border: 2px solid rgba(255,255,255,0.05);
-          border-top-color: #00f0ff;
-          border-radius: 50%;
-          animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
+        body { background: #1e1f22; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; color: white; margin: 0; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); }
+        .logo { width: 80px; height: 80px; background: rgba(0, 240, 255, 0.1); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; border: 2px solid rgba(0, 240, 255, 0.3); }
+        .spinner { width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.1); border-top-color: #00f0ff; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
       </style>
     </head>
     <body>
       <div class="logo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24">
-          <path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" />
-        </svg>
+        <svg width="40" height="40" viewBox="0 0 24 24"><path fill="#00f0ff" d="M12 2L14.4 8.6H21L15.6 12.7L18 19.3L12 15.2L6 19.3L8.4 12.7L3 8.6H9.6L12 2Z" /></svg>
       </div>
-      <h1>Vibe</h1>
-      <p>Запуск...</p>
+      <h1 style="font-size: 20px; letter-spacing: 2px;">VIBE</h1>
       <div class="spinner"></div>
     </body>
     </html>
@@ -160,7 +71,6 @@ function createSplash() {
   splashWindow.show();
 }
 
-// ── Главное окно (загружает сайт в фоне) ──
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -177,12 +87,11 @@ function createWindow() {
       backgroundThrottling: false,
     },
     frame: true,
-    show: false, // скрыто до полной загрузки
+    show: false,
   });
 
   mainWindow.loadURL(APP_URL);
 
-  // Когда страница загружена — закрываем сплэш, показываем основное окно
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.setTitle('Vibe');
     setTimeout(() => {
@@ -192,7 +101,7 @@ function createWindow() {
       }
       mainWindow.show();
       mainWindow.focus();
-    }, 300);
+    }, 500);
   });
 
   mainWindow.webContents.on('did-fail-load', () => {
@@ -203,7 +112,6 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Внешние ссылки — в браузер
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (!url.startsWith(APP_URL)) {
       shell.openExternal(url);
@@ -212,7 +120,6 @@ function createWindow() {
     return { action: 'allow' };
   });
 
-  // Перехват закрытия окна — сворачиваем в трей
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault();
@@ -224,57 +131,67 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// ── Системный трей ──
 function createTray() {
   const iconPath = path.join(__dirname, 'icon.png');
   const trayIcon = nativeImage.createFromPath(iconPath);
-  
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
   
   const contextMenu = Menu.buildFromTemplate([
-    { 
-      label: 'Развернуть Vibe', 
-      click: () => {
-        mainWindow.show();
-        mainWindow.focus();
-      } 
-    },
+    { label: 'Развернуть Vibe', click: () => { mainWindow.show(); mainWindow.focus(); } },
     { type: 'separator' },
-    { 
-      label: 'Выйти', 
-      click: () => {
-        isQuitting = true;
-        app.quit();
-      } 
-    }
+    { label: 'Выйти', click: () => { isQuitting = true; app.quit(); } }
   ]);
 
   tray.setToolTip('Vibe — Чат будущего');
   tray.setContextMenu(contextMenu);
-
-  // Одинарный клик по иконке разворачивает окно
   tray.on('click', () => {
-    if (mainWindow.isVisible()) {
-      mainWindow.focus();
-    } else {
-      mainWindow.show();
-      mainWindow.focus();
-    }
+    if (mainWindow.isVisible()) mainWindow.focus();
+    else { mainWindow.show(); mainWindow.focus(); }
+  });
+}
+
+function setupUpdater() {
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('update-available', (info) => mainWindow?.webContents.send('update-available', info));
+  autoUpdater.on('download-progress', (progress) => mainWindow?.webContents.send('update-progress', progress));
+  autoUpdater.on('update-downloaded', () => mainWindow?.webContents.send('update-downloaded'));
+  autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-error', err.message));
+}
+
+function setupIpcHandlers() {
+  ipcMain.on('get-app-version', (event) => { event.returnValue = app.getVersion(); });
+  ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdates());
+  ipcMain.handle('download-update',   () => autoUpdater.downloadUpdate());
+  ipcMain.handle('get-desktop-sources', async () => {
+    const sources = await desktopCapturer.getSources({ 
+      types: ['window', 'screen'],
+      thumbnailSize: { width: 400, height: 225 },
+      fetchWindowIcons: true
+    });
+    return sources.map(s => ({
+      id: s.id,
+      name: s.name,
+      thumbnail: s.thumbnail.toDataURL(),
+      appIcon: s.appIcon ? s.appIcon.toDataURL() : null
+    }));
+  });
+  ipcMain.handle('install-update', () => { autoUpdater.quitAndInstall(); });
+}
+
+function setupPermissions() {
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    return permission === 'media';
+  });
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(permission === 'media');
   });
 }
 
 Menu.setApplicationMenu(null);
 
-ipcMain.on('get-app-version', (event) => {
-  event.returnValue = app.getVersion();
-});
-
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    // На Windows мы не выходим, так как приложение висит в трее
-  }
+  if (process.platform !== 'darwin') { /* Keep alive for tray */ }
 });
 
-app.on('before-quit', () => {
-  isQuitting = true;
-});
+app.on('before-quit', () => { isQuitting = true; });
