@@ -147,8 +147,14 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               <span className="w-1.5 h-1.5 rounded-full bg-ds-green shadow-[0_0_8px_#23a559] animate-pulse" />
               ПОДКЛЮЧЕНО
             </span>
-            <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest leading-none ${serverStatus === 'online' ? 'text-ds-muted/40' : 'text-ds-red animate-pulse'}`}>
-              <span className={`w-1 h-1 rounded-full ${serverStatus === 'online' ? 'bg-ds-muted/40' : 'bg-ds-red shadow-[0_0_8px_#ff0000]'}`} />
+            <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest leading-none ${
+              serverStatus === 'online' ? 'text-ds-muted/40' : 
+              serverStatus === 'reconnecting' ? 'text-amber-400 animate-pulse' : 'text-ds-red animate-pulse'
+            }`}>
+              <span className={`w-1 h-1 rounded-full ${
+                serverStatus === 'online' ? 'bg-ds-muted/40' : 
+                serverStatus === 'reconnecting' ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24]' : 'bg-ds-red shadow-[0_0_8px_#ff0000]'
+              }`} />
               SERVER: {serverStatus}
             </span>
             {voice.ping !== null && serverStatus === 'online' && (

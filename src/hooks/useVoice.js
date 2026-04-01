@@ -54,6 +54,7 @@ export function useVoice() {
   const ghostPeersRef = useRef({});
   const isLeavingRef = useRef(false);
   const rnnoiseNodeRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
 
   // Глобальный канал
   useEffect(() => {
@@ -247,6 +248,7 @@ export function useVoice() {
     setVoiceError(null);
     
     Object.values(ghostPeersRef.current).forEach(clearTimeout); ghostPeersRef.current = {};
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     Object.keys(peerConns.current).forEach(id => closePeer(id, true));
     localStream.current?.getTracks().forEach(t => t.stop()); localStream.current = null;
     originalMicStreamRef.current?.getTracks().forEach(t => t.stop()); originalMicStreamRef.current = null;
@@ -499,12 +501,26 @@ export function useVoice() {
           activeChannelIdRef.current = channelId;
           setIsConnecting(false);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          // ЕСЛИ МЫ ВЫХОДИМ САМИ - НИКАКИХ ОШИБОК
           if (isLeavingRef.current) return;
           
-          setServerStatus('offline');
-          setVoiceError('[Server] Потеряно соединение с сервером (Realtime Offline)');
-          setIsConnecting(false);
+          const hasActivePeers = Object.keys(peerConns.current).length > 0;
+          
+          if (hasActivePeers) {
+            console.warn('[useVoice] Signaling lost but voice active. Retrying in background...');
+            setServerStatus('reconnecting');
+            
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = setTimeout(() => {
+              if (activeChannelIdRef.current && !isLeavingRef.current) {
+                console.log('[useVoice] Background reconnecting...');
+                joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color);
+              }
+            }, 5000);
+          } else {
+            setServerStatus('offline');
+            setVoiceError('[Server] Потеряно соединение с сервером (Realtime Offline)');
+            setIsConnecting(false);
+          }
         }
       });
       realtimeChannel.current = channel;
