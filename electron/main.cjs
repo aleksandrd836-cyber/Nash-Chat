@@ -53,7 +53,7 @@ function createSplash() {
     <head>
       <meta charset="UTF-8">
       <style>
-        body { background: #1e1f22; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; color: white; margin: 0; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); }
+        body { background: #1e1f22; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; color: white; margin: 0; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
         .logo { width: 80px; height: 80px; background: rgba(0, 240, 255, 0.1); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; border: 2px solid rgba(0, 240, 255, 0.3); }
         .spinner { width: 24px; height: 24px; border: 2px solid rgba(255,255,255,0.1); border-top-color: #00f0ff; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
