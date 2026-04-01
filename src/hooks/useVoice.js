@@ -363,8 +363,15 @@ export function useVoice() {
   }, [createPeerConnection, closePeer]);
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color) => {
+    // АГРЕССИВНАЯ ОЧИСТКА: Удаляем старый канал из кэша Supabase перед созданием нового
+    if (realtimeChannel.current) {
+      await supabase.removeChannel(realtimeChannel.current).catch(() => {});
+      realtimeChannel.current = null;
+    }
+    await supabase.removeChannel(supabase.channel(`voice:${channelId}`)).catch(() => {});
+
     if (activeChannelId) await cleanupAll();
-    isLeavingRef.current = false; // СБРАСЫВАЕМ МЕТКУ: МЫ СНОВА В ИГРЕ
+    isLeavingRef.current = false;
     setIsConnecting(true); setVoiceError(null);
     try {
       const constraints = { 
@@ -470,6 +477,9 @@ export function useVoice() {
       currentUserRef.current = { id: user.id, username };
       presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false, isMuted: isMutedRef.current, isDeafened: isDeafenedRef.current };
 
+      // Удаляем возможные дубликаты из кэша перед созданием
+      await supabase.removeChannel(supabase.channel(`voice:${channelId}`)).catch(() => {});
+      
       const channel = supabase.channel(`voice:${channelId}`, { config: { presence: { key: user.id } } });
       channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
       channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
