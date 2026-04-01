@@ -282,14 +282,40 @@ export function useVoice() {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       originalMicStreamRef.current = stream;
       stream.getAudioTracks().forEach(t => t.enabled = !(isMutedRef.current || isDeafenedRef.current));
-      localStream.current = stream;
+
+      // ── Интеллектуальное шумоподавление (RNNoise AI) ──
+      const nsEnabled = localStorage.getItem('vibe_noise_suppression') === 'true';
+      let finalStream = stream;
 
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       audioContextRef.current = audioCtx;
       if (audioCtx.state === 'suspended') await audioCtx.resume();
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-      const vadSource = audioCtx.createMediaStreamSource(stream.clone());
+
+      if (nsEnabled) {
+        try {
+          console.log('[useVoice] Активация AI шумоподавления...');
+          // Проверяем наличие файлов перед загрузкой
+          await audioCtx.audioWorklet.addModule('/audio/rnnoise_processor.js');
+          
+          const source = audioCtx.createMediaStreamSource(stream);
+          const rnnoiseNode = new AudioWorkletNode(audioCtx, 'rnnoise-processor');
+          
+          // Передаем путь к wasm файлу через порт сообщения (или как опцию, если процессор поддерживает)
+          rnnoiseNode.port.postMessage({ type: 'init', wasmPath: '/audio/rnnoise.wasm' });
+          
+          const destination = audioCtx.createMediaStreamDestination();
+          source.connect(rnnoiseNode).connect(destination);
+          
+          finalStream = destination.stream;
+          console.log('[useVoice] AI шумоподавление успешно запущено! 🛡️🎙️');
+        } catch (err) {
+          console.error('[useVoice] Ошибка шумодава (Safe Fallback):', err);
+          finalStream = stream;
+        }
+      }
+
+      localStream.current = finalStream;
+      const vadSource = audioCtx.createMediaStreamSource(finalStream.clone());
       vadSource.connect(analyser);
 
       const analyserData = new Float32Array(analyser.fftSize);

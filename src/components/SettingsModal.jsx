@@ -4,7 +4,7 @@ import { getUserAvatar } from '../lib/avatar';
 import { notifications } from '../lib/notifications';
 import { 
   X, User, Mic, Headphones, Bell, Monitor, LogOut, Check, AlertTriangle, 
-  RefreshCw, Download, ChevronRight, Volume2, Shield, Sun, Moon
+  RefreshCw, Download, ChevronRight, Volume2, Shield, Sun, Moon, Sparkles
 } from 'lucide-react';
 
 /**
@@ -30,6 +30,18 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
   const animFrameRef   = useRef(null);
   const audioCtxRef    = useRef(null);
   const [notifSettings, setNotifSettings] = useState(() => notifications.getSettings());
+  
+  // ── Шумоподавление ──
+  const [noiseSuppression, setNoiseSuppression] = useState(() => localStorage.getItem('vibe_noise_suppression') === 'true');
+
+  const handleToggleNoiseSuppression = () => {
+    const newVal = !noiseSuppression;
+    setNoiseSuppression(newVal);
+    localStorage.setItem('vibe_noise_suppression', newVal ? 'true' : 'false');
+    if (window.confirm('Для применения настроек шумоподавления нужно перезагрузить приложение. Перезагрузить сейчас?')) {
+       window.location.reload();
+    }
+  };
 
   // ── Обновление Приложения ──
   const [updateStatus, setUpdateStatus] = useState('idle');
@@ -115,10 +127,10 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
   }
 
   function stopTest() {
-    cancelAnimationFrame(animFrameRef.current);
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     testStreamRef.current?.getTracks().forEach(t => t.stop());
     testStreamRef.current = null;
-    audioCtxRef.current?.close().catch(() => {});
+    if (audioCtxRef.current) audioCtxRef.current.close().catch(() => {});
     audioCtxRef.current = null;
     setTesting(false);
     setVolume(0);
@@ -298,6 +310,27 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                       </div>
                     </div>
                  </div>
+              </div>
+
+              {/* Noise Suppression AI */}
+              <div className="p-6 bg-ds-accent/5 border border-ds-accent/20 rounded-3xl flex items-center justify-between group hover:bg-ds-accent/10 transition-all">
+                 <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border ${noiseSuppression ? 'bg-ds-accent/20 border-ds-accent text-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-ds-muted'}`}>
+                       <Sparkles size={24} />
+                    </div>
+                    <div>
+                      <p className="text-ds-text font-black uppercase tracking-widest text-[11px] mb-1">AI Шумоподавление (Beta)</p>
+                      <p className="text-[9px] text-ds-muted font-bold uppercase tracking-wider">Интеллектуальный фильтр фоновых шумов RNNoise</p>
+                    </div>
+                 </div>
+                 
+                 <button 
+                    onClick={handleToggleNoiseSuppression}
+                    className={`relative w-14 h-7 rounded-full transition-all duration-500 p-1 ${noiseSuppression ? 'bg-ds-accent vibe-glow-blue' : 'bg-white/10 overflow-hidden'}`}
+                 >
+                    <div className={`w-5 h-5 rounded-full bg-white shadow-lg transition-transform duration-500 transform ${noiseSuppression ? 'translate-x-7' : 'translate-x-0'}`} />
+                    {noiseSuppression && <div className="absolute inset-0 vibe-moving-glow opacity-30 pointer-events-none" />}
+                 </button>
               </div>
             </div>
           </section>
