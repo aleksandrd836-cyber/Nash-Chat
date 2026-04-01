@@ -1,7 +1,8 @@
-﻿const { app, BrowserWindow, shell, Menu, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, Menu, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 
-const APP_URL = 'https://solitary-cloud-a126.aleksandrd836.workers.dev/';
+const APP_URL = 'https://vbchat.ru/';
 
 let mainWindow;
 
@@ -48,7 +49,7 @@ function createWindow() {
   });
 }
 
-// Р Р•Р“РРЎРўР РђР¦РРЇ Р“РћР РЇР§РРҐ РљР›РђР’РРЁ
+// Р Р•Р“Р˜РЎРўР РђР¦Р˜РЇ Р“РћР РЇР§Р˜РҐ РљР›РђР’Р˜РЁ
 ipcMain.on('register-hotkeys', (event, shortcuts) => {
   globalShortcut.unregisterAll(); // РЎР±СЂР°СЃС‹РІР°РµРј СЃС‚Р°СЂС‹Рµ
   
@@ -71,6 +72,31 @@ ipcMain.on('register-hotkeys', (event, shortcuts) => {
       console.error('Failed to register deafen shortcut:', e);
     }
   }
+});
+
+// --- Р›РћР“Р˜РљРђ РђР’РўРћ-РћР‘РќРћР’Р›Р•РќР˜Р™ (Р’РћРЎРЎРўРђРќРћР’Р›Р•РќРћ) ---
+ipcMain.handle('check-for-updates', () => {
+  autoUpdater.checkForUpdatesAndNotify();
+});
+
+autoUpdater.on('update-available', () => {
+  mainWindow?.webContents.send('update-available');
+});
+
+autoUpdater.on('update-not-available', () => {
+  mainWindow?.webContents.send('update-not-available');
+});
+
+autoUpdater.on('error', (err) => {
+  mainWindow?.webContents.send('update-error', err.message);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  mainWindow?.webContents.send('download-progress', progressObj.percent);
+});
+
+autoUpdater.on('update-downloaded', () => {
+  mainWindow?.webContents.send('update-downloaded');
 });
 
 Menu.setApplicationMenu(null);

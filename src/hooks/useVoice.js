@@ -648,7 +648,7 @@ export function useVoice() {
       }
 
       // 2. Слушаем глобальные горячие клавиши (Электрон)
-      if (window.electronAPI?.onHotkey) {
+      if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.onHotkey === 'function') {
         window.electronAPI.onHotkey((action) => {
           if (action === 'mute') toggleMute();
           else if (action === 'deafen') toggleDeafen();

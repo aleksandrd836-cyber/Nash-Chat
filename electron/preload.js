@@ -1,13 +1,19 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Мост между Electron и веб-страницей
+// Полный реставрированный мост (Обновления + Горячие клавиши)
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
-  version: process.env.npm_package_version ?? '1.0.0',
+  version: '2.4.5', // Обновлено до v2.4.5
   
-  // Регистрация горячих клавиш из интерфейса
+  // --- Авто-обновления (Восстановлено) ---
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  onUpdateAvailable: (cb) => ipcRenderer.on('update-available', cb),
+  onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', cb),
+  onUpdateError: (cb) => ipcRenderer.on('update-error', (e, msg) => cb(msg)),
+  onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (e, progress) => cb(progress)),
+  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', cb),
+  
+  // --- Горячие клавиши (VIBE v3.0) ---
   registerHotkeys: (shortcuts) => ipcRenderer.send('register-hotkeys', shortcuts),
-  
-  // Слушатель нажатия глобальной клавиши
   onHotkey: (callback) => ipcRenderer.on('hotkey-triggered', (event, action) => callback(action))
 });
