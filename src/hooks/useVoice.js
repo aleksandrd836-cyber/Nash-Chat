@@ -39,6 +39,7 @@ export function useVoice() {
   const presencePayload = useRef({});
 
   const isSpeakingRef    = useRef(false);
+  const activeChannelIdRef = useRef(null);
   const fakeVADIntervalRef = useRef(null);
   const iceDisconnectTimers = useRef({});
   const autoMutedByDeafenRef = useRef(false);
@@ -65,8 +66,16 @@ export function useVoice() {
       channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const latestUserPresence = new Map();
+        const myId = currentUserRef.current?.id;
+
         Object.values(state).flat().forEach(p => {
           if (!p.channelId || !p.userId || !p.username) return;
+          
+          // ЗАЩИТА ОТ ПРИЗРАКОВ: Если это МЫ, то верим только нашему Ref-у
+          if (myId && p.userId === myId) {
+            if (p.channelId !== activeChannelIdRef.current) return;
+          }
+
           const existing = latestUserPresence.get(p.userId);
           if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
             latestUserPresence.set(p.userId, p);
@@ -239,7 +248,20 @@ export function useVoice() {
     }
     
     if (fakeVADIntervalRef.current) clearInterval(fakeVADIntervalRef.current);
-    setIsScreenSharing(false); setRemoteScreens({}); setActiveChannelId(null); setParticipants([]);
+    setIsScreenSharing(false); setRemoteScreens({}); 
+    setActiveChannelId(null); 
+    activeChannelIdRef.current = null;
+    setParticipants([]);
+
+    // Непосредственно очищаем себя из локального списка всех участников (для мгновенного UI-отклика)
+    setAllParticipants(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(chId => {
+        next[chId] = next[chId].filter(p => p.userId !== currentUserRef.current?.id);
+        if (next[chId].length === 0) delete next[chId];
+      });
+      return next;
+    });
   }, [closePeer]);
 
   const updatePresenceStatus = useCallback(async (updates) => {
@@ -405,7 +427,9 @@ export function useVoice() {
           if (globalPresence.current) {
             globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
           }
-          setActiveChannelId(channelId); setIsConnecting(false);
+          setActiveChannelId(channelId); 
+          activeChannelIdRef.current = channelId;
+          setIsConnecting(false);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           // ЕСЛИ МЫ ВЫХОДИМ САМИ - НИКАКИХ ОШИБОК
           if (isLeavingRef.current) return;
