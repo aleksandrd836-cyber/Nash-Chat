@@ -41,6 +41,7 @@ export function useVoice() {
   const isSpeakingRef    = useRef(false);
   const activeChannelIdRef = useRef(null);
   const fakeVADIntervalRef = useRef(null);
+  const remoteAnalysersRef = useRef({}); // Локальный анализ громкости других участников
   const iceDisconnectTimers = useRef({});
   const autoMutedByDeafenRef = useRef(false);
 
@@ -71,7 +72,7 @@ export function useVoice() {
         Object.values(state).flat().forEach(p => {
           if (!p.channelId || !p.userId || !p.username) return;
           
-          // ЗАЩИТА ОТ ПРИЗРАКОВ: Если это МЫ, то верим только нашему Ref-у
+          // ЗАЩИТА ОТ ПРИЗРАКОВ
           if (myId && p.userId === myId) {
             if (p.channelId !== activeChannelIdRef.current) return;
           }
@@ -91,6 +92,19 @@ export function useVoice() {
           });
         });
         setAllParticipants(finalAll);
+      });
+
+      // СЛУШАЕМ БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ САЙДБАРА
+      channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
+        setAllParticipants(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(chId => {
+            next[chId] = next[chId].map(p => 
+              p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p
+            );
+          });
+          return next;
+        });
       });
       channel.subscribe();
       globalPresence.current = channel;
@@ -171,6 +185,13 @@ export function useVoice() {
         if (!gainNodesRef.current[remoteUserId] && audioContextRef.current) {
           try {
             const source = audioContextRef.current.createMediaStreamSource(stream);
+            
+            // ── Создаем Analyser для ЛОКАЛЬНОГО детектирования голоса ──
+            const analyser = audioContextRef.current.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            remoteAnalysersRef.current[remoteUserId] = { analyser, data: new Float32Array(analyser.fftSize) };
+
             const gain = audioContextRef.current.createGain();
             const savedVol = localStorage.getItem(`vol_${remoteUserId}`);
             gain.gain.value = isDeafenedRef.current ? 0 : (savedVol !== null ? Number(savedVol)/100 : 1.0);
@@ -354,18 +375,40 @@ export function useVoice() {
       const analyserData = new Float32Array(analyser.fftSize);
       let lastPresenceUpdate = 0;
       fakeVADIntervalRef.current = setInterval(() => {
+        // 1. Анализируем себя
         analyser.getFloatTimeDomainData(analyserData);
         let sum = 0; for (let i = 0; i < analyserData.length; i++) sum += analyserData[i] * analyserData[i];
         const rms = Math.sqrt(sum / analyserData.length);
         const speaking = rms > 0.015 && !isMutedRef.current;
+        
         if (speaking !== isSpeakingRef.current) {
           isSpeakingRef.current = speaking; setIsSpeaking(speaking);
+          // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ
+          const payload = { userId: currentUserRef.current.id, isSpeaking: speaking };
+          realtimeChannel.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
+          globalPresence.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
+
           const now = Date.now();
-          if (now - lastPresenceUpdate > 250) {
+          if (now - lastPresenceUpdate > 500) {
             lastPresenceUpdate = now; updatePresenceStatus({ isSpeaking: speaking });
           }
         }
-      }, 150);
+
+        // 2. Анализируем ВСЕХ ОСТАЛЬНЫХ в канале (ЛОКАЛЬНО)
+        Object.keys(remoteAnalysersRef.current).forEach(uid => {
+          const { analyser: rAnalyser, data: rData } = remoteAnalysersRef.current[uid];
+          rAnalyser.getFloatTimeDomainData(rData);
+          let rSum = 0; for (let i = 0; i < rData.length; i++) rSum += rData[i] * rData[i];
+          const rRms = Math.sqrt(rSum / rData.length);
+          const rSpeaking = rRms > 0.01;
+
+          setParticipants(prev => {
+            const p = prev.find(item => item.userId === uid);
+            if (!p || p.isSpeaking === rSpeaking) return prev;
+            return prev.map(item => item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item);
+          });
+        });
+      }, 100);
 
       currentUserRef.current = { id: user.id, username };
       presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false, isMuted: isMutedRef.current, isDeafened: isDeafenedRef.current };
@@ -373,6 +416,11 @@ export function useVoice() {
       const channel = supabase.channel(`voice:${channelId}`, { config: { presence: { key: user.id } } });
       channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
       channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
+      
+      // БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ СЕТКИ
+      channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
+        setParticipants(prev => prev.map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p));
+      });
       
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.to !== user.id) return;

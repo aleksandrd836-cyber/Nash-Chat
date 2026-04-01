@@ -37,7 +37,7 @@ export function Sidebar({
   const [volumes, setVolumes] = useState({});
   const volMenuRef = useRef(null);
 
-  const { activeChannelId, allParticipants, setParticipantVolume } = voice;
+  const { activeChannelId, allParticipants, setParticipantVolume, isSpeaking } = voice;
 
   // ── Загрузка каналов ──
   useEffect(() => {
@@ -392,7 +392,7 @@ export function Sidebar({
                           const { imageUrl } = getUserAvatar(p.username);
                           const isMe = p.userId === currentUserId;
                           const vol  = volumes[p.userId] ?? 100;
-                          const isActuallySpeaking = isMe ? voice.isSpeaking : p.isSpeaking;
+                          const isActuallySpeaking = isMe ? isSpeaking : p.isSpeaking;
                           return (
                             <div
                               key={p.userId}
@@ -405,7 +405,7 @@ export function Sidebar({
                                   className="w-full h-full object-cover select-none" 
                                 />
                               </div>
-                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${p.isSpeaking ? 'text-ds-green' : 'text-ds-muted group-hover:text-ds-text'}`} style={{ color: p.userId === ownerId ? '#ff4444' : '' }}>
+                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${isActuallySpeaking ? 'text-ds-green' : 'text-ds-muted group-hover:text-ds-text'}`} style={{ color: p.userId === ownerId ? '#ff4444' : '' }}>
                                 {p.username}
                                 {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(p.userId) && (
                                   <span className="ml-1 px-1 py-0 rounded bg-ds-accent/10 border border-ds-accent/30 text-[7px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
@@ -505,14 +505,16 @@ export function Sidebar({
             <div className="w-8 h-8 rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0">
               <img src={getUserAvatar(ctxMenu.participant.username).imageUrl} alt={ctxMenu.participant.username} className="w-12 h-12 max-w-none" />
             </div>
-            <p className="text-ds-text font-black text-base truncate" style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
-              {ctxMenu.participant.username}
+            <div className="text-center min-w-0 w-full">
+              <p className={`font-black text-sm truncate flex items-center justify-center gap-2 px-2 transition-colors ${ctxMenu.participant.isSpeaking ? 'text-ds-green' : 'text-ds-text'}`} style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : '' }}>
+                {ctxMenu.participant.username}
+              </p>
               {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(ctxMenu.participant.userId) && (
                 <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
                   СОЗДАТЕЛЬ
                 </span>
               )}
-            </p>
+            </div>
           </div>
           <div className="border-t border-ds-divider/40 pt-3">
             <div className="flex items-center justify-between mb-2">
