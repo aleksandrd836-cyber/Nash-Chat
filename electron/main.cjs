@@ -111,6 +111,13 @@ ipcMain.on('get-app-version', (event) => {
 
 // --- Авто-обновление (ВОССТАНОВЛЕНО) ---
 ipcMain.handle('check-for-updates', () => autoUpdater.checkForUpdatesAndNotify());
+ipcMain.handle('download-update', () => autoUpdater.downloadUpdate());
+ipcMain.handle('install-update', () => {
+  console.log('[Main] Installing update and quitting...');
+  isQuitting = true;
+  autoUpdater.quitAndInstall();
+});
+
 autoUpdater.on('update-available', () => mainWindow?.webContents.send('update-available'));
 autoUpdater.on('update-not-available', () => mainWindow?.webContents.send('update-not-available'));
 autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-error', err.message));
