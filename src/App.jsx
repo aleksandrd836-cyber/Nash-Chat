@@ -300,8 +300,8 @@ function App() {
 
             {isDMHubOpen ? (
               // ── Раздел Личных Сообщений ── 
-              <div className="relative z-10 w-full max-w-4xl flex flex-col items-center animate-slide-up h-full max-h-[70vh]">
-                 <div className="flex items-center justify-between w-full mb-10 px-6">
+              <div className="relative z-10 w-full max-w-4xl flex flex-col items-center animate-slide-up flex-1 min-h-0 pt-4">
+                 <div className="flex items-center justify-between w-full mb-8 px-6 flex-shrink-0">
                     <button 
                       onClick={() => setIsDMHubOpen(false)}
                       className="group flex items-center gap-3 text-ds-muted hover:text-ds-text transition-all bg-white/5 px-4 py-2 rounded-2xl border border-white/5"
@@ -323,14 +323,14 @@ function App() {
                        <p className="text-ds-muted font-black uppercase tracking-[0.3em] text-[10px]">Пока нет активных диалогов</p>
                     </div>
                  ) : (
-                    <div className="w-full space-y-3 overflow-y-auto pr-2 scrollbar-hide">
+                    <div className="w-full space-y-3 overflow-y-auto pr-2 flex-1 scrollbar-hide">
                        {recentConvs.map(conv => {
                          const { imageUrl } = getUserAvatar(conv.username);
                          return (
                            <button 
                              key={conv.id}
                              onClick={() => { setActiveDM(conv); setIsDMHubOpen(false); }}
-                             className="w-full group/item relative bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 rounded-3xl p-5 flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-2xl"
+                             className="w-full group/item relative bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 rounded-3xl p-5 flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-2xl flex-shrink-0"
                            >
                              <div className="relative flex-shrink-0">
                                <img src={imageUrl} alt={conv.username} className="w-14 h-14 rounded-2xl object-cover border border-white/10 group-hover/item:scale-110 transition-transform duration-500" />
@@ -417,7 +417,7 @@ function App() {
 
             {/* Футер-кнопка */}
             {!isElectron && (
-              <div className="mt-16 animate-fade-in delay-500">
+              <div className="mt-10 mb-6 animate-fade-in delay-500 flex-shrink-0">
                 <a
                   href={downloadUrl}
                   className="group relative px-10 py-5 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-2xl animate-vibe-btn overflow-hidden block"

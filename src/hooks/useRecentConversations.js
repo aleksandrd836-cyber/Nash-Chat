@@ -39,7 +39,7 @@ export function useRecentConversations(currentUserId) {
           if (!partners.has(partnerId)) {
             partners.set(partnerId, {
               id: partnerId,
-              username: msg.sender_id === currentUserId ? msg.receiver_id_username || 'Пользователь' : msg.sender_username,
+              username: 'Пользователь', // Фолбек до загрузки профиля
               lastMessage: msg.content,
               timestamp: msg.created_at,
               isRead: msg.receiver_id === currentUserId ? msg.is_read : true,
@@ -51,17 +51,19 @@ export function useRecentConversations(currentUserId) {
         // Теперь нам нужны актуальные данные профилей этих людей (аватары и т.д.)
         const partnerIds = Array.from(partners.keys());
         if (partnerIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('members')
+          const { data: profiles, error: profError } = await supabase
+            .from('profiles')
             .select('id, username, color')
             .in('id', partnerIds);
+
+          if (profError) throw profError;
 
           if (profiles) {
             profiles.forEach(p => {
               const conv = partners.get(p.id);
               if (conv) {
-                conv.username = p.username;
-                conv.color = p.color;
+                conv.username = p.username || 'Пользователь';
+                conv.color = p.color || null;
               }
             });
           }
