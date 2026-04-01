@@ -226,6 +226,10 @@ export function useVoice() {
       realtimeChannel.current = null; // Зануляем ДО удаления, чтобы коллбэк subscribe проигнорировал CLOSED
       await supabase.removeChannel(chan).catch(() => {});
     }
+
+    if (globalPresence.current) {
+      await globalPresence.current.untrack().catch(() => {});
+    }
     
     if (fakeVADIntervalRef.current) clearInterval(fakeVADIntervalRef.current);
     setIsScreenSharing(false); setRemoteScreens({}); setActiveChannelId(null); setParticipants([]);
