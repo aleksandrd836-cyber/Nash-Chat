@@ -542,10 +542,19 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     try {
-      // Р­С‚Рѕ РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµС‚ РЅРµР№СЂРѕСЃРµС‚СЊ РёР· Р±РёР±Р»РёРѕС‚РµРєРё Jitsi
       this._module = createRNNWasmModuleSync();
       this._node = new this._module.RNNoise();
-      console.log('[RNNoiseProcessor] Initialized successfully with Sync Wasm рџ”Ґ');
+      
+      // РќР°Рј РЅСѓР¶РЅРѕ 480 СЃРµРјРїР»РѕРІ РґР»СЏ RNNoise. 
+      // AudioWorklet РґР°РµС‚ 128 Р·Р° СЂР°Р·.
+      // РЎРѕР·РґР°РµРј Р±СѓС„РµСЂС‹ РґР»СЏ РЅР°РєРѕРїР»РµРЅРёСЏ (РІС…РѕРґСЏС‰РёР№ Рё РёСЃС…РѕРґСЏС‰РёР№)
+      this._inputBuffer = new Float32Array(480);
+      this._outputBuffer = new Float32Array(480);
+      this._bufferIndex = 0;
+      this._readIndex = 0;
+      this._hasData = false;
+
+      console.log('[RNNoiseProcessor] Initialized with Buffer (128 -> 480)');
     } catch (e) {
       console.error('[RNNoiseProcessor] Initialization failed:', e);
     }
@@ -555,20 +564,31 @@ class RNNoiseProcessor extends AudioWorkletProcessor {
     const input = inputs[0];
     const output = outputs[0];
 
-    // Р•СЃР»Рё РЅРµС‚ РІС…РѕРґРЅРѕРіРѕ СЃРёРіРЅР°Р»Р° РёР»Рё РЅРѕРґР° РЅРµ РіРѕС‚РѕРІР° - РїСЂРѕСЃС‚Рѕ РїСЂРѕРїСѓСЃРєР°РµРј СЃС‹СЂРѕР№ Р·РІСѓРє (Safe Fallback)
-    if (!input || !input[0] || !this._node) return true;
+    if (!input || !input[0] || !output || !output[0] || !this._node) return true;
 
-    try {
-      const rawData = input[0];
-      const processedData = this._node.calculate(rawData);
-      
-      if (processedData) {
-        output[0].set(processedData);
-      } else {
-        output[0].set(rawData);
-      }
-    } catch (err) {
-      if (input[0]) output[0].set(input[0]);
+    const inputData = input[0];
+    const outputData = output[0];
+
+    // 1. РљРѕРїРёСЂСѓРµРј РІС…РѕРґСЏС‰РёРµ 128 СЃРµРјРїР»РѕРІ РІ РЅР°С€ Р±СѓС„РµСЂ
+    for (let i = 0; i < inputData.length; i++) {
+        this._inputBuffer[this._bufferIndex] = inputData[i];
+        
+        // РџРѕ РјРµСЂРµ РЅР°РєРѕРїР»РµРЅРёСЏ РІС‹РґР°РµРј Р·РІСѓРє РёР· РІС‹С…РѕРґРЅРѕРіРѕ Р±СѓС„РµСЂР° (РµСЃР»Рё РѕРЅ С‚Р°Рј РµСЃС‚СЊ)
+        outputData[i] = this._hasData ? this._outputBuffer[this._readIndex] : inputData[i];
+        
+        this._bufferIndex++;
+        this._readIndex++;
+
+        // 2. РљРѕРіРґР° РЅР°РєРѕРїРёР»Рё СЂРѕРІРЅРѕ 480 - РїРѕСЂР° Р·Р°РїСѓСЃРєР°С‚СЊ РР!
+        if (this._bufferIndex === 480) {
+            const processed = this._node.calculate(this._inputBuffer);
+            if (processed) {
+                this._outputBuffer.set(processed);
+                this._hasData = true;
+            }
+            this._bufferIndex = 0;
+            this._readIndex = 0;
+        }
     }
 
     return true;
