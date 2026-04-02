@@ -438,13 +438,15 @@ export function useVoice() {
       return;
     }
 
-    // АГРЕССИВНАЯ ОЧИСТКА: Удаляем старый канал из кэша Supabase ТОЛЬКО если мы меняем комнату
+    // 1. Очистка старого КАНАЛА (сигналки) — делаем всегда, чтобы не дублировать слушателей
+    if (realtimeChannel.current) {
+      await supabase.removeChannel(realtimeChannel.current).catch(() => {});
+      realtimeChannel.current = null;
+    }
+
+    // 2. Полная очистка МЕДИА (микрофон, пиры) — ТОЛЬКО если мы реально меняем комнату
     if (activeChannelIdRef.current && activeChannelIdRef.current !== channelId) {
       console.log('[useVoice] Changing channel, full cleanup...');
-      if (realtimeChannel.current) {
-        await supabase.removeChannel(realtimeChannel.current).catch(() => {});
-        realtimeChannel.current = null;
-      }
       await cleanupAll();
     }
     
