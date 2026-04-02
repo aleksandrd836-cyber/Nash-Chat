@@ -57,6 +57,7 @@ export function useVoice() {
   const reconnectTimerRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const presenceDebounceRef = useRef(null);
+  const isSwitchingRef = useRef(false);
 
   // СИНХРОНИЗАЦИЯ СТРИМОВ: удаляем стрим из remoteScreens, если участник перестал шарить
   useEffect(() => {
@@ -398,10 +399,16 @@ export function useVoice() {
 
     const sendUpdate = async () => {
       const payload = { ...presencePayload.current };
-      if (realtimeChannel.current) await realtimeChannel.current.track(payload).catch(() => {});
+      
+      // БЛОКИРОВКА: Не шлем, если мы в процессе смены канала или вылета
+      if (isLeavingRef.current || isSwitchingRef.current) return;
+
+      if (realtimeChannel.current && realtimeChannel.current.state === 'joined') {
+        await realtimeChannel.current.track(payload).catch(() => {});
+      }
       
       const chId = activeChannelIdRef.current;
-      if (globalPresence.current && chId) {
+      if (globalPresence.current && globalPresence.current.state === 'joined' && chId) {
         await globalPresence.current.track({ ...payload, channelId: chId, joined_at: Date.now() }).catch(() => {});
       }
     };
@@ -458,9 +465,13 @@ export function useVoice() {
 
     // 1. Очистка старого КАНАЛА (сигналки) — делаем всегда, чтобы не дублировать слушателей
     if (realtimeChannel.current) {
-      await supabase.removeChannel(realtimeChannel.current).catch(() => {});
-      realtimeChannel.current = null;
+      console.log('[useVoice] Intentionally removing old channel before re-joining');
+      const oldChannel = realtimeChannel.current;
+      realtimeChannel.current = null; // Mark as inactive BEFORE removal to stop loop
+      await supabase.removeChannel(oldChannel).catch(() => {});
     }
+
+    isSwitchingRef.current = true;
 
     // 2. Полная очистка МЕДИА (микрофон, пиры) — ТОЛЬКО если мы реально меняем комнату
     if (activeChannelIdRef.current && activeChannelIdRef.current !== channelId) {
@@ -688,15 +699,20 @@ export function useVoice() {
       });
 
       channel.subscribe(async (status) => {
-        console.log(`[useVoice] Channel status: ${status}`);
+        console.log(`[useVoice] Channel status: ${status} for instance:`, channel.topic);
+        
         if (status === 'SUBSCRIBED') {
-          // ЗАЩИТА ОТ ГОНКИ: Если мы уже нажали выход, пока подписка шла - НЕ РЕГИСТРИРУЕМСЯ
-          if (isLeavingRef.current || activeChannelIdRef.current !== channelId) {
+          // ЗАЩИТА ОТ ГОНКИ: Если мы уже нажали выход ИЛИ переключились на другой канал
+          if (isLeavingRef.current || activeChannelIdRef.current !== channelId || channel !== realtimeChannel.current) {
              console.warn('[useVoice] Late subscription aborted to prevent ghosting.');
+             if (channel !== realtimeChannel.current) {
+               supabase.removeChannel(channel).catch(() => {});
+             }
              setIsConnecting(false);
              return;
           }
 
+          isSwitchingRef.current = false;
           reconnectAttemptsRef.current = 0;
           setServerStatus('online');
           setVoiceError(null);
@@ -722,7 +738,11 @@ export function useVoice() {
           activeChannelIdRef.current = channelId;
           setIsConnecting(false);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          if (isLeavingRef.current) return;
+          // ИГНОРИРУЕМ ОШИБКИ, если мы уходим, меняем канал или это не наш текущий канал
+          if (isLeavingRef.current || isSwitchingRef.current || channel !== realtimeChannel.current) {
+            console.log('[useVoice] Ignoring CLOSED/ERROR for intentional removal or stale channel');
+            return;
+          }
           
           reconnectAttemptsRef.current++;
           console.warn(`[useVoice] Signaling issue (${status}). Reason: ${status === 'CLOSED' ? 'Socket Closed' : 'Supabase Error'}. Attempt ${reconnectAttemptsRef.current}/5`);
