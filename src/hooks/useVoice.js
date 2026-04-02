@@ -75,7 +75,10 @@ export function useVoice() {
         Object.values(state).flat().forEach(p => {
           if (!p.channelId || !p.userId || !p.username) return;
           
-          // ЗАЩИТА ОТ ПРИЗРАКОВ
+          // ЗАЩИТА ОТ ПРИЗРАКОВ: Если мы в процессе выхода - игнорируем инфу о себе
+          const myId = currentUserRef.current?.id;
+          if (isLeavingRef.current && p.userId === myId) return;
+
           if (myId && p.userId === myId) {
             if (p.channelId !== activeChannelIdRef.current) return;
           }
@@ -232,6 +235,9 @@ export function useVoice() {
       if (state === 'failed') {
         closePeer(remoteUserId, true);
       } else if (state === 'disconnected') {
+        // ИГНОРИРУЕМ ОШИБКИ, ЕСЛИ МЫ ВЫХОДИМ (БОРЬБА С ЛОЖНЫМИ АЛЕРТАМИ)
+        if (isLeavingRef.current) return;
+
         setVoiceError(`[Network] Попытка восстановления связи с ${remoteUserId}...`);
         pc.restartIce().catch(() => {});
         
@@ -342,13 +348,18 @@ export function useVoice() {
   const syncParticipants = useCallback((channel) => {
     const state = channel.presenceState();
     const seen = new Map();
+    const myId = currentUserRef.current?.id;
+    
     Object.values(state).flat().forEach(p => {
+      // ЗАЩИТА ОТ ПРИЗРАКОВ: Если мы выходим - не добавляем себя
+      if (isLeavingRef.current && p.userId === myId) return;
+
       seen.set(p.userId, { 
         userId: p.userId, username: p.username, color: p.color, 
         isScreenSharing: p.isScreenSharing, isSpeaking: p.isSpeaking, 
         isMuted: p.isMuted, isDeafened: p.isDeafened 
       });
-      if (p.userId !== currentUserRef.current?.id && !peerConns.current[p.userId] && !ghostPeersRef.current[p.userId]) {
+      if (p.userId !== myId && !peerConns.current[p.userId] && !ghostPeersRef.current[p.userId]) {
         createPeerConnection(p.userId, channel);
       }
     });

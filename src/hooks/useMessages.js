@@ -82,6 +82,10 @@ export function useMessages(channelId, currentUserId) {
     if (!content.trim() && !imageUrl) return;
     if (!channelId) return;
     setSending(true);
+    
+    // ОТЛАДКА: чтобы видеть, какой ID улетает в базу
+    console.log('[DEBUG] Отправка сообщения:', { channelId, userId, auth_uid: (await supabase.auth.getUser()).data.user?.id });
+
     const dbUsername = userColor ? `${username}@@${userColor}` : username;
     const { error } = await supabase.from('messages').insert({
       channel_id: channelId,
