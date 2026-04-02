@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS messages (
   user_id    UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   username   TEXT        NOT NULL,
   content    TEXT        NOT NULL,
+  image_url  TEXT,
   file_name  TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -192,3 +193,23 @@ INSERT INTO channels (name, type, position) VALUES
   ('голосовой-2','voice', 6),
   ('игровой',    'voice', 7)
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 6. ПОСЛЕДНЕЕ ПРОЧТЕНИЕ КАНАЛА (для счетчика непрочитанных)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS channel_last_read (
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  channel_id   UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, channel_id)
+);
+
+ALTER TABLE channel_last_read ENABLE ROW LEVEL SECURITY;
+
+-- Пользователи пишут только свое время прочтения
+DROP POLICY IF EXISTS "Пользователи обновляют свои отметки прочтения" ON channel_last_read;
+CREATE POLICY "Пользователи обновляют свои отметки прочтения" 
+  ON channel_last_read FOR ALL 
+  TO authenticated 
+  USING (auth.uid() = user_id) 
+  WITH CHECK (auth.uid() = user_id);

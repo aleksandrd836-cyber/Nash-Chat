@@ -93,6 +93,7 @@ export function useMessages(channelId, currentUserId) {
     });
     setSending(false);
     if (error) console.error('Ошибка отправки:', error);
+    return { error };
   }, [channelId]);
 
   return { messages, loading, sending, sendMessage, uploadFile };

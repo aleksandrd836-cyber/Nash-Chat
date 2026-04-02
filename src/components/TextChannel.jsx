@@ -113,7 +113,13 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
       removeAttachment();
     }
 
-    await sendMessage(draft, user.id, username, imageUrl, userColor, attachment?.file.name);
+    const { error } = await sendMessage(draft, user.id, username, imageUrl, userColor, attachment?.file.name);
+    
+    if (error) {
+      alert(`Ошибка при отправке: ${error.message || 'Неизвестная ошибка'}`);
+      return;
+    }
+
     setDraft('');
   }, [draft, attachment, sending, uploading, sendMessage, uploadFile, user.id, username, userColor]);
 

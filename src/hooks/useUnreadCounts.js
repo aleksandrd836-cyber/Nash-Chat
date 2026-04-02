@@ -13,16 +13,25 @@ export function useUnreadCounts(userId, activeChannelId) {
   const markAsRead = useCallback(async (channelId) => {
     if (!userId || !channelId) return;
 
-    // Обновляем метку времени в БД
-    await supabase
-      .from('channel_last_read')
-      .upsert({ 
-        user_id: userId, 
-        channel_id: channelId, 
-        last_read_at: new Date().toISOString() 
-      }, { onConflict: 'user_id, channel_id' });
-
+    // Мгновенный сброс в UI
     setCounts(prev => ({ ...prev, [channelId]: 0 }));
+
+    try {
+      // Обновляем метку времени в БД. 
+      // Добавляем 1 секунду к текущему времени, чтобы мелкий рассинхрон с сервером не оставлял сообщение "непрочитанным"
+      const futureDate = new Date();
+      futureDate.setSeconds(futureDate.getSeconds() + 1);
+
+      await supabase
+        .from('channel_last_read')
+        .upsert({ 
+          user_id: userId, 
+          channel_id: channelId, 
+          last_read_at: futureDate.toISOString() 
+        }, { onConflict: 'user_id, channel_id' });
+    } catch (err) {
+      console.warn('[useUnreadCounts] Ошибка сохранения прочтения:', err);
+    }
   }, [userId]);
 
   // Сбрасываем счетчик и обновляем сервер при смене активного канала
@@ -40,9 +49,10 @@ export function useUnreadCounts(userId, activeChannelId) {
     try {
       // Получаем список всех текстовых каналов
       const { data: channels } = await supabase.from('channels').select('id').eq('type', 'text');
-      channelsRef.current = channels || [];
+      if (!channels) return;
+      channelsRef.current = channels;
 
-      // Получаем временные метки прочтения для текущего пользователя
+      // Получаем временные метки прочтения
       const { data: lastReadData } = await supabase
         .from('channel_last_read')
         .select('channel_id, last_read_at')
@@ -50,14 +60,19 @@ export function useUnreadCounts(userId, activeChannelId) {
 
       const newCounts = {};
 
-      // Для каждого канала считаем количество новых сообщений
-      const promises = channelsRef.current.map(async (ch) => {
+      const promises = channels.map(async (ch) => {
+        // Если это текущий канал - счетчик 0
+        if (ch.id === activeChannelId) {
+          newCounts[ch.id] = 0;
+          return;
+        }
+
         const clr = lastReadData?.find(l => l.channel_id === ch.id);
         const lastReadAt = clr?.last_read_at || '1970-01-01T00:00:00Z';
 
         const { count, error } = await supabase
           .from('messages')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .eq('channel_id', ch.id)
           .gt('created_at', lastReadAt);
 
@@ -73,13 +88,13 @@ export function useUnreadCounts(userId, activeChannelId) {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, activeChannelId]);
 
   useEffect(() => {
     fetchInitialCounts();
   }, [fetchInitialCounts]);
 
-  // 2. Подписка на Realtime (новые сообщения во всех каналах)
+  // 2. Подписка на Realtime
   useEffect(() => {
     if (!userId) return;
 
@@ -91,10 +106,11 @@ export function useUnreadCounts(userId, activeChannelId) {
         (payload) => {
           const { channel_id, user_id: sender_id } = payload.new;
           
+          // Не считаем свои сообщения
           if (sender_id === userId) return;
 
+          // Если мы в этом канале - игнорируем инкремент и помечаем как прочитано
           if (channel_id === activeChannelId) {
-            // Если мы в этом канале, просто обновляем метку прочтения в фоне (без частого спама)
             markAsRead(channel_id);
             return;
           }
