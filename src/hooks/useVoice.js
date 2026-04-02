@@ -78,6 +78,7 @@ export function useVoice() {
 
   // Глобальный канал
   useEffect(() => {
+    let cancelled = false;
     const initGlobalChannel = async () => {
       if (globalPresence.current) {
         supabase.removeChannel(globalPresence.current).catch(() => {});
@@ -259,6 +260,7 @@ export function useVoice() {
 
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) {
+        const payload = { type: 'broadcast', event: 'ice', payload: { from: currentUserRef.current.id, to: remoteUserId, candidate } };
         const chan = realtimeChannel.current || signalingChannel;
         if (chan && chan.state === 'joined') chan.send(payload);
       }
