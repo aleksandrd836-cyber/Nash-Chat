@@ -102,13 +102,14 @@ export function ScreenPickerModal({ onClose, onSelect }) {
                   onClick={() => onSelect(source.id, withAudio)}
                   className="group flex flex-col bg-ds-servers/50 rounded-xl overflow-hidden hover:ring-2 hover:ring-ds-accent transition-all animate-fade-in"
                 >
-                  {/* Thumbnail */}
-                  <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden border-b border-white/5">
-                    <img 
-                      src={source.thumbnail} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                      alt=""
-                    />
+                  <div className="relative aspect-video bg-black/40 flex items-center justify-center overflow-hidden border-b border-white/5">
+                    {source.thumbnail && (
+                      <img 
+                        src={source.thumbnail} 
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 block" 
+                        alt=""
+                      />
+                    )}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                   </div>
                   {/* Footer */}

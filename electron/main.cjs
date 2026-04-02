@@ -117,7 +117,7 @@ ipcMain.on('register-hotkeys', (event, shortcuts) => {
 ipcMain.handle('get-desktop-sources', async () => {
   const sources = await desktopCapturer.getSources({ 
     types: ['window', 'screen'],
-    thumbnailSize: { width: 300, height: 300 }, // задаем размер для четкости
+    thumbnailSize: { width: 1280, height: 720 }, // Увеличиваем размер для высокой четкости 16:9
     fetchWindowIcons: true
   });
   
