@@ -9,10 +9,8 @@ import { useStore } from '../store/useStore';
 export const ProfileFooter = memo(({ 
   onSignOut, voice,
   updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion,
-  ownerId, currentUserId
+  ownerId, currentUserId, username, userColor
 }) => {
-  const { localUsername: username, localColor: userColor } = useStore();
-
   return (
     <div className="flex flex-col flex-shrink-0 bg-ds-sidebar border-t border-white/5 relative z-10 transition-all duration-300">
       <UserPanel 
@@ -20,6 +18,8 @@ export const ProfileFooter = memo(({
         voice={voice} 
         ownerId={ownerId}
         currentUserId={currentUserId}
+        username={username}
+        userColor={userColor}
       />
 
       <div className="flex items-center gap-2 px-3 pb-2 text-ds-muted flex-shrink-0 pt-0.5">

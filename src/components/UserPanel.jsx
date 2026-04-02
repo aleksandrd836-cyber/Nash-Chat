@@ -7,13 +7,13 @@ import { useStore } from '../store/useStore';
  * Нижняя панель пользователя (слева в сайдбаре).
  * Показывает аватар, имя, кнопки голоса и настроек.
  */
-export const UserPanel = React.memo(({ onSignOut, voice, ownerId, currentUserId }) => {
+export const UserPanel = React.memo(({ onSignOut, voice, ownerId, currentUserId, username: propUsername }) => {
   const { 
     localUsername, 
     setSettingsOpen 
   } = useStore();
   
-  const username = localUsername || 'Пользователь';
+  const username = propUsername || localUsername || 'Пользователь';
   const { activeChannelId, isMuted, isDeafened, isSpeaking, toggleMute, toggleDeafen, leaveVoiceChannel } = voice;
   const { imageUrl } = getUserAvatar(username);
 

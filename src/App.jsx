@@ -72,11 +72,17 @@ function App() {
   // (Логика уже в сторе)
 
   useEffect(() => {
-    if (auth.user && localColor === null) {
-      const savedColor = auth.user.user_metadata?.user_color;
-      if (savedColor) setLocalColor(savedColor);
+    if (auth.user) {
+      if (localColor === null) {
+        const savedColor = auth.user.user_metadata?.user_color;
+        if (savedColor) setLocalColor(savedColor);
+      }
+      if (localUsername === null) {
+        const savedName = auth.user.user_metadata?.username || auth.username;
+        if (savedName) setLocalUsername(savedName);
+      }
     }
-  }, [auth.user]);
+  }, [auth.user, localUsername, localColor, setLocalColor, setLocalUsername, auth.username]);
 
   // ── Управление Темой ──
   useEffect(() => {
