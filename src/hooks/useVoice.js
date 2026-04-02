@@ -113,24 +113,28 @@ export function useVoice() {
         });
       });
 
-      // МГНОВЕННОЕ УДАЛЕНИЕ ПРИ УХОДЕ (БОРЬБА С ПРИЗРАКАМИ)
+      // УДАЛЯЕМ ИЗ САЙДБАРА ПРИ ПОЛУЧЕНИИ СИГНАЛА
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        console.log('[useVoice] Broadcast received: user-left', payload.userId);
-        
-        // Удаляем из сайдбара
+        const uid = payload.userId;
         setAllParticipants(prev => {
           const next = { ...prev };
+          let changed = false;
           Object.keys(next).forEach(chId => {
-            next[chId] = next[chId].filter(p => p.userId !== payload.userId);
-            if (next[chId].length === 0) delete next[chId];
+            const filtered = next[chId].filter(p => p.userId !== uid);
+            if (filtered.length !== next[chId].length) {
+              next[chId] = filtered;
+              if (next[chId].length === 0) delete next[chId];
+              changed = true;
+            }
           });
-          return next;
+          return changed ? next : prev;
         });
-
-        // Удаляем из центра (если мы в этом же канале)
-        setParticipants(prev => prev.filter(p => p.userId !== payload.userId));
+        setParticipants(prev => prev.filter(p => p.userId !== uid));
       });
-      channel.subscribe();
+
+      channel.subscribe(status => {
+        console.log(`[useVoice] Global channel status: ${status}`);
+      });
       globalPresence.current = channel;
     });
 
@@ -273,12 +277,25 @@ export function useVoice() {
     // СТАВИМ МЕТКУ ПЕРВОЙ ЖЕ СТРОЧКОЙ
     isLeavingRef.current = true;
     
-    // Мгновенно тушим все уведомления об ошибках
-    setVoiceError(null);
-    
-    // Силовое зануление всех списков
+    // Силовое зануление СПИСКА УЧАСТНИКОВ В ЦЕНТРЕ
     setParticipants([]);
-    setAllParticipants({}); 
+    
+    // В САЙДБАРЕ УДАЛЯЕМ ТОЛЬКО СЕБЯ, ЧТОБЫ НЕ БЫЛО ПУСТОТЫ
+    setAllParticipants(prev => {
+      const next = { ...prev };
+      const myId = currentUserRef.current?.id;
+      let changed = false;
+      Object.keys(next).forEach(chId => {
+        const filtered = next[chId].filter(p => p.userId !== myId);
+        if (filtered.length !== next[chId].length) {
+          next[chId] = filtered;
+          if (next[chId].length === 0) delete next[chId];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+
     setActiveChannelId(null); 
     activeChannelIdRef.current = null;
     setIsScreenSharing(false); 
@@ -318,13 +335,13 @@ export function useVoice() {
 
     if (globalPresence.current) {
       console.log('[useVoice] Updating global presence (EXIT)...');
-      const myId = currentUserRef.current?.id;
-
-      // СИЛОВОЕ УДАЛЕНИЕ: Кричим во ВСЕ доступные каналы
+      // СИЛОВОЕ УДАЛЕНИЕ: Кричим во ВСЕ доступные каналы (если они подключены)
       const broadcastPayload = { type: 'broadcast', event: 'user-left', payload: { userId: myId } };
       
-      globalPresence.current.send(broadcastPayload).catch(() => {});
-      if (realtimeChannel.current) {
+      if (globalPresence.current?.state === 'joined') {
+        globalPresence.current.send(broadcastPayload).catch(() => {});
+      }
+      if (realtimeChannel.current?.state === 'joined') {
         realtimeChannel.current.send(broadcastPayload).catch(() => {});
       }
 
@@ -609,6 +626,17 @@ export function useVoice() {
           
           if (globalPresence.current) {
             globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
+            
+            // ОПТИМИСТИЧНЫЙ АПДЕЙТ САЙДБАРА (ЧТОБЫ ИКОНКА СРАЗУ ПОЯВИЛАСЬ СЛЕВА)
+            setAllParticipants(prev => {
+              const next = { ...prev };
+              const currentInCh = next[channelId] || [];
+              if (!currentInCh.find(p => p.userId === user.id)) {
+                next[channelId] = [...currentInCh, { ...presencePayload.current, channelId }];
+                return next;
+              }
+              return prev;
+            });
           }
           
           setActiveChannelId(channelId); 
