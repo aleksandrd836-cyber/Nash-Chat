@@ -820,6 +820,14 @@ export function useVoice() {
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) { 
       console.error('Screen sharing error', err);
+      
+      // Игнорируем ошибку, если пользователь просто нажал "Отмена"
+      if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
+        setIsScreenSharing(false);
+        screenStreamRef.current = null;
+        return;
+      }
+
       setVoiceError(`Не удалось запустить трансляцию: ${err.message}`);
       setIsScreenSharing(false);
       screenStreamRef.current = null;
