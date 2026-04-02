@@ -152,11 +152,18 @@ export function useVoice() {
       });
 
       channel.subscribe(status => {
+        // ЗАЩИТА: Игнорируем статусы от "старых" каналов, которые мы сами закрыли
+        if (channel !== globalPresence.current) return;
+
         console.log(`[useVoice] Global channel status: ${status}`);
         if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           if (!cancelled && !isLeavingRef.current) {
-            console.log('[useVoice] Global channel lost, attempting silent recovery in 5s...');
-            setTimeout(() => { if (!cancelled) initGlobalChannel(); }, 5000);
+            console.log('[useVoice] Global channel actually lost, recovering in 4s...');
+            setTimeout(() => { 
+              if (!cancelled && !isLeavingRef.current && globalPresence.current === channel) {
+                initGlobalChannel(); 
+              }
+            }, 4000);
           }
         }
       });
@@ -755,27 +762,25 @@ export function useVoice() {
           activeChannelIdRef.current = channelId;
           setIsConnecting(false);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          // ИГНОРИРУЕМ ОШИБКИ, если мы уходим, меняем канал или это не наш текущий канал
-          if (isLeavingRef.current || isSwitchingRef.current || channel !== realtimeChannel.current) {
-            console.log('[useVoice] Ignoring CLOSED/ERROR for intentional removal or stale channel');
+          // ЗАЩИТА: Игнорируем статусы от старых инстансов канала
+          if (channel !== realtimeChannel.current || isLeavingRef.current || isSwitchingRef.current) {
             return;
           }
           
           reconnectAttemptsRef.current++;
-          console.warn(`[useVoice] Signaling issue (${status}). Reason: ${status === 'CLOSED' ? 'Socket Closed' : 'Supabase Error'}. Attempt ${reconnectAttemptsRef.current}/5`);
+          console.warn(`[useVoice] Realtime lost (${status}). Attempt ${reconnectAttemptsRef.current}/5`);
           
           setServerStatus('reconnecting');
           
           if (reconnectAttemptsRef.current > 5) {
             setServerStatus('offline');
-            setVoiceError('[Server] Потеряно соединение с сервером (Realtime Offline)');
+            setVoiceError('[Server] Соединение полностью потеряно');
             setIsConnecting(false);
           } else {
-            // Тихий реконнект в фоне
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
             reconnectTimerRef.current = setTimeout(() => {
-              if (activeChannelIdRef.current && !isLeavingRef.current) {
-                console.log(`[useVoice] Silent background reconnecting to #${activeChannelIdRef.current}...`);
+              if (activeChannelIdRef.current && !isLeavingRef.current && realtimeChannel.current === channel) {
+                console.log(`[useVoice] Attempting background reconnect...`);
                 joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color, true);
               }
             }, 4000);
