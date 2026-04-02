@@ -113,9 +113,21 @@ ipcMain.on('register-hotkeys', (event, shortcuts) => {
   }
 });
 
-// --- Демонстрация экрана (Screen Sharing - ВОССТАНОВЛЕНО) ---
+// --- Демонстрация экрана (Screen Sharing - ИСПРАВЛЕНО) ---
 ipcMain.handle('get-desktop-sources', async () => {
-  return await desktopCapturer.getSources({ types: ['window', 'screen'] });
+  const sources = await desktopCapturer.getSources({ 
+    types: ['window', 'screen'],
+    thumbnailSize: { width: 300, height: 300 }, // задаем размер для четкости
+    fetchWindowIcons: true
+  });
+  
+  // Конвертируем NativeImage в Data URL строку (иначе в React будет пусто)
+  return sources.map(source => ({
+    id: source.id,
+    name: source.name,
+    thumbnail: source.thumbnail.toDataURL(),
+    appIcon: source.appIcon ? source.appIcon.toDataURL() : null
+  }));
 });
 
 // --- Версия приложения (ВОССТАНОВЛЕНО) ---
