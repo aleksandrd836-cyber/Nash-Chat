@@ -78,35 +78,36 @@ export function useVoice() {
 
   // Глобальный канал
   useEffect(() => {
-    let channel;
-    let cancelled = false;
+    const initGlobalChannel = async () => {
+      if (globalPresence.current) {
+        supabase.removeChannel(globalPresence.current).catch(() => {});
+      }
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      channel = supabase.channel('global_voice_presence', {
+
+      const channel = supabase.channel('global_voice_presence', {
         config: { presence: { key: user.id } }
       });
+
       channel.on('presence', { event: 'sync' }, () => {
+        if (channel.state !== 'joined') return; // ЗАЩИТА: Не обновляем сайдбар при обрывах
+        
         const state = channel.presenceState();
         const latestUserPresence = new Map();
-        const myId = currentUserRef.current?.id;
+        const myId = user.id;
 
         Object.values(state).flat().forEach(p => {
           if (!p.channelId || !p.userId || !p.username) return;
-          
-          // ЗАЩИТА ОТ ПРИЗРАКОВ: Если мы в процессе выхода - игнорируем инфу о себе
-          const myId = currentUserRef.current?.id;
           if (isLeavingRef.current && p.userId === myId) return;
-
-          if (myId && p.userId === myId) {
-            if (p.channelId !== activeChannelIdRef.current) return;
-          }
+          if (p.userId === myId && p.channelId !== activeChannelIdRef.current) return;
 
           const existing = latestUserPresence.get(p.userId);
           if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
             latestUserPresence.set(p.userId, p);
           }
         });
+
         const finalAll = {};
         latestUserPresence.forEach(p => {
           if (!finalAll[p.channelId]) finalAll[p.channelId] = [];
@@ -119,7 +120,6 @@ export function useVoice() {
         setAllParticipants(finalAll);
       });
 
-      // СЛУШАЕМ БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ САЙДБАРА
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
         setAllParticipants(prev => {
           const next = { ...prev };
@@ -132,7 +132,6 @@ export function useVoice() {
         });
       });
 
-      // УДАЛЯЕМ ИЗ САЙДБАРА ПРИ ПОЛУЧЕНИИ СИГНАЛА
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
         const uid = payload.userId;
         setAllParticipants(prev => {
@@ -153,15 +152,22 @@ export function useVoice() {
 
       channel.subscribe(status => {
         console.log(`[useVoice] Global channel status: ${status}`);
+        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          if (!cancelled && !isLeavingRef.current) {
+            console.log('[useVoice] Global channel lost, attempting silent recovery in 5s...');
+            setTimeout(() => { if (!cancelled) initGlobalChannel(); }, 5000);
+          }
+        }
       });
       globalPresence.current = channel;
-    });
+    };
+
+    initGlobalChannel();
 
     return () => {
       cancelled = true;
-      if (channel) {
-        channel.untrack().catch(() => {});
-        supabase.removeChannel(channel).catch(() => {});
+      if (globalPresence.current) {
+        supabase.removeChannel(globalPresence.current).catch(() => {});
       }
       globalPresence.current = null;
     };
@@ -210,7 +216,7 @@ export function useVoice() {
           payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: pc.localDescription } 
         };
         const chan = realtimeChannel.current || signalingChannel;
-        if (chan) chan.send(payload);
+        if (chan && chan.state === 'joined') chan.send(payload);
       } catch (err) {
         console.warn(`[WebRTC] Negotiation error with ${remoteUserId}:`, err);
       } finally {
@@ -253,8 +259,8 @@ export function useVoice() {
 
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) {
-        const payload = { type: 'broadcast', event: 'ice', payload: { from: currentUserRef.current.id, to: remoteUserId, candidate } };
-        (realtimeChannel.current || signalingChannel).send(payload);
+        const chan = realtimeChannel.current || signalingChannel;
+        if (chan && chan.state === 'joined') chan.send(payload);
       }
     };
 
@@ -421,6 +427,10 @@ export function useVoice() {
   }, [activeChannelId]);
 
   const syncParticipants = useCallback((channel) => {
+    // ЗАЩИТА: Если канал не в статусе "joined", не пытаемся синхронизировать участников
+    // Это предотвращает очистку списка (блинкование) при обрывах
+    if (channel.state !== 'joined') return;
+
     const state = channel.presenceState();
     const seen = new Map();
     const myId = currentUserRef.current?.id;
@@ -571,7 +581,9 @@ export function useVoice() {
             
             // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ (БЕЗЛИМИТНЫЙ)
             const payload = { userId: currentUserRef.current.id, isSpeaking: speaking };
-            realtimeChannel.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
+            if (realtimeChannel.current && realtimeChannel.current.state === 'joined') {
+              realtimeChannel.current.send({ type: 'broadcast', event: 'speaking-update', payload });
+            }
             
             // МЕДЛЕННЫЙ TRACK (ТОЛЬКО РАЗ В 500мс ДЛЯ СТАБИЛЬНОСТИ)
             const now = Date.now();
@@ -761,7 +773,7 @@ export function useVoice() {
                 console.log(`[useVoice] Silent background reconnecting to #${activeChannelIdRef.current}...`);
                 joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color, true);
               }
-            }, 3000);
+            }, 4000);
           }
         }
       });
