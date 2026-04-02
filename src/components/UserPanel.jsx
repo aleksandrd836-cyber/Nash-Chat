@@ -9,10 +9,11 @@ import { useStore } from '../store/useStore';
  */
 export const UserPanel = React.memo(({ onSignOut, voice, ownerId, currentUserId }) => {
   const { 
-    localUsername: username, 
+    localUsername, 
     setSettingsOpen 
   } = useStore();
   
+  const username = localUsername || 'Пользователь';
   const { activeChannelId, isMuted, isDeafened, isSpeaking, toggleMute, toggleDeafen, leaveVoiceChannel } = voice;
   const { imageUrl } = getUserAvatar(username);
 

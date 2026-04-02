@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 import { ScreenPickerModal } from './ScreenPickerModal';
-import { Mic, Volume2, Users, MicOff, Headphones, LogOut, Monitor, Download } from 'lucide-react';
+import { Mic, Volume2, Users, MicOff, Headphones, LogOut, Monitor, Download, Maximize, X } from 'lucide-react';
 
 
-function ScreenPlayer({ participant, stream }) {
+function ScreenPlayer({ participant, stream, onClose }) {
   const videoRef = useRef(null);
   const [vol, setVol] = useState(1);
 
@@ -20,10 +20,38 @@ function ScreenPlayer({ participant, stream }) {
     }
   }, [vol]);
 
+  const toggleFullscreen = () => {
+    if (videoRef.current) {
+      if (videoRef.current.requestFullscreen) {
+        videoRef.current.requestFullscreen();
+      } else if (videoRef.current.webkitRequestFullscreen) {
+        videoRef.current.webkitRequestFullscreen();
+      }
+    }
+  };
+
   return (
     <div className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/5 group animate-fade-in mx-auto flex-shrink-0">
       <video ref={videoRef} autoPlay className="w-full h-auto max-h-[70vh] object-contain" />
       
+      {/* Top Controls */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+        <button 
+          onClick={toggleFullscreen}
+          className="p-2.5 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-black/60 transition-all hover:scale-105"
+          title="На весь экран"
+        >
+          <Maximize size={18} />
+        </button>
+        <button 
+          onClick={onClose}
+          className="p-2.5 bg-ds-red/20 backdrop-blur-md rounded-xl border border-ds-red/20 text-ds-red hover:bg-ds-red hover:text-white transition-all hover:scale-105"
+          title="Закрыть стрим"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
       {/* Overlay UI */}
       <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-4">
         <div className="flex items-center gap-2">
@@ -79,7 +107,13 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
   const [volumes, setVolumes] = useState({});    // { [userId]: number 0-200 }
   const [quality, setQuality] = useState('720p'); // качество стрима
   const [showPicker, setShowPicker] = useState(false);
+  const [ignoredScreens, setIgnoredScreens] = useState(new Set());
   const menuRef = useRef(null);
+
+  // Сброс игнорируемых стримов при смене канала
+  useEffect(() => {
+    setIgnoredScreens(new Set());
+  }, [activeChannelId]);
 
   // Закрыть меню при клике вне его
   useEffect(() => {
@@ -229,8 +263,15 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               const stream = remoteScreens[p.userId];
               const isActuallySpeaking = isMe ? voice.isSpeaking : p.isSpeaking;
 
-              if (stream) {
-                return <ScreenPlayer key={`screen-${p.userId}`} participant={p} stream={stream} />;
+              if (stream && !ignoredScreens.has(p.userId)) {
+                return (
+                  <ScreenPlayer 
+                    key={`screen-${p.userId}`} 
+                    participant={p} 
+                    stream={stream} 
+                    onClose={() => setIgnoredScreens(prev => new Set(prev).add(p.userId))}
+                  />
+                );
               }
 
               return (

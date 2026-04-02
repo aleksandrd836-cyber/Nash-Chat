@@ -57,6 +57,23 @@ export function useVoice() {
   const reconnectTimerRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
 
+  // СИНХРОНИЗАЦИЯ СТРИМОВ: удаляем стрим из remoteScreens, если участник перестал шарить
+  useEffect(() => {
+    setRemoteScreens(prev => {
+      const next = { ...prev };
+      let changed = false;
+      Object.keys(next).forEach(uid => {
+        const p = participants.find(part => part.userId === uid);
+        // Если юзера нет в канале ИЛИ у него выключен флаг стрима — удаляем объект потока
+        if (!p || !p.isScreenSharing) {
+          delete next[uid];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [participants]);
+
   // Глобальный канал
   useEffect(() => {
     let channel;
