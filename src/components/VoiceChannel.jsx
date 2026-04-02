@@ -5,6 +5,7 @@ import { Mic, Volume2, Users, MicOff, Headphones, LogOut, Monitor, Download, Max
 
 
 function ScreenPlayer({ participant, stream, onClose }) {
+  const containerRef = useRef(null);
   const videoRef = useRef(null);
   const [vol, setVol] = useState(1);
 
@@ -21,18 +22,21 @@ function ScreenPlayer({ participant, stream, onClose }) {
   }, [vol]);
 
   const toggleFullscreen = () => {
-    if (videoRef.current) {
-      if (videoRef.current.requestFullscreen) {
-        videoRef.current.requestFullscreen();
-      } else if (videoRef.current.webkitRequestFullscreen) {
-        videoRef.current.webkitRequestFullscreen();
+    const el = containerRef.current;
+    if (el) {
+      if (!document.fullscreenElement) {
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       }
     }
   };
 
   return (
-    <div className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/5 group animate-fade-in mx-auto flex-shrink-0">
-      <video ref={videoRef} autoPlay className="w-full h-auto max-h-[70vh] object-contain" />
+    <div ref={containerRef} className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/5 group animate-fade-in mx-auto flex-shrink-0">
+      <video ref={videoRef} autoPlay className="w-full h-auto max-h-[70vh] object-contain pointer-events-none" />
       
       {/* Top Controls */}
       <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
@@ -299,9 +303,19 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                           </span>
                         )}
                       </p>
-                    {p.isScreenSharing && !isMe && !stream && (
+                    {p.isScreenSharing && !isMe && (!stream || ignoredScreens.has(p.userId)) && (
                       <button 
-                        onClick={() => requestScreenView(p.userId)}
+                        onClick={() => {
+                          if (ignoredScreens.has(p.userId)) {
+                            setIgnoredScreens(prev => {
+                              const next = new Set(prev);
+                              next.delete(p.userId);
+                              return next;
+                            });
+                          } else {
+                            requestScreenView(p.userId);
+                          }
+                        }}
                         className="mt-2 bg-ds-accent text-black px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-ds-accent/20 vibe-glow-blue"
                       >
                         СМОТРЕТЬ
