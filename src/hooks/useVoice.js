@@ -438,155 +438,167 @@ export function useVoice() {
       return;
     }
 
-    // АГРЕССИВНАЯ ОЧИСТКА: Удаляем старый канал из кэша Supabase перед созданием нового
-    if (realtimeChannel.current) {
-      await supabase.removeChannel(realtimeChannel.current).catch(() => {});
-      realtimeChannel.current = null;
-    }
-    await supabase.removeChannel(supabase.channel(`voice:${channelId}`)).catch(() => {});
-
+    // АГРЕССИВНАЯ ОЧИСТКА: Удаляем старый канал из кэша Supabase ТОЛЬКО если мы меняем комнату
     if (activeChannelIdRef.current && activeChannelIdRef.current !== channelId) {
+      console.log('[useVoice] Changing channel, full cleanup...');
+      if (realtimeChannel.current) {
+        await supabase.removeChannel(realtimeChannel.current).catch(() => {});
+        realtimeChannel.current = null;
+      }
       await cleanupAll();
     }
     
-    isLeavingRef.current = false;
-    activeChannelIdRef.current = channelId;
-    setIsConnecting(true); setVoiceError(null);
-    try {
-      const constraints = { 
-        audio: { 
-          echoCancellation: false, 
-          noiseSuppression: false, 
-          autoGainControl: true,
-          sampleRate: 48000 
-        }, 
-        video: false 
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      originalMicStreamRef.current = stream;
-      stream.getAudioTracks().forEach(t => t.enabled = !(isMutedRef.current || isDeafenedRef.current));
+    // МЯГКИЙ РЕКОННЕКТ: Если это тихий перезапуск того же канала — не убиваем поток и пиры
+    const isActuallyReconnecting = isSilent && activeChannelIdRef.current === channelId && localStream.current;
+    
+    if (isActuallyReconnecting && localStream.current) {
+      console.log('[useVoice] Reusing existing streams for soft reconnect');
+    } else {
+      isLeavingRef.current = false;
+      activeChannelIdRef.current = channelId;
+      setIsConnecting(true); setVoiceError(null);
+      try {
+        const constraints = { 
+          audio: { 
+            echoCancellation: false, 
+            noiseSuppression: false, 
+            autoGainControl: true,
+            sampleRate: 48000 
+          }, 
+          video: false 
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        originalMicStreamRef.current = stream;
+        
+        // Принудительно ставим статус мута сразу при создании
+        stream.getAudioTracks().forEach(t => t.enabled = !(isMutedRef.current || isDeafenedRef.current));
 
-      // ── Интеллектуальное шумоподавление (RNNoise AI) ──
-      const nsEnabled = localStorage.getItem('vibe_noise_suppression') === 'true';
-      let finalStream = stream;
+        // ── Интеллектуальное шумоподавление (RNNoise AI) ──
+        const nsEnabled = localStorage.getItem('vibe_noise_suppression') === 'true';
+        let finalStream = stream;
 
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
-      audioContextRef.current = audioCtx;
-      if (audioCtx.state === 'suspended') await audioCtx.resume();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+        audioContextRef.current = audioCtx;
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
 
-      if (nsEnabled) {
-        try {
-          console.log('[useVoice] Активация AI шумоподавления...');
-          await audioCtx.audioWorklet.addModule('/audio/rnnoise_processor.js');
-          
-          const source = audioCtx.createMediaStreamSource(stream);
-          const rnnoiseNode = new AudioWorkletNode(audioCtx, 'rnnoise-processor');
-          
-          // Сохраняем в Ref для внешнего управления
-          rnnoiseNodeRef.current = rnnoiseNode;
+        if (nsEnabled) {
+          try {
+            console.log('[useVoice] Активация AI шумоподавления...');
+            await audioCtx.audioWorklet.addModule('/audio/rnnoise_processor.js');
+            
+            const source = audioCtx.createMediaStreamSource(stream);
+            const rnnoiseNode = new AudioWorkletNode(audioCtx, 'rnnoise-processor');
+            
+            // Сохраняем в Ref для внешнего управления
+            rnnoiseNodeRef.current = rnnoiseNode;
 
-          // Ставим начальную интенсивность
-          const initialIntensity = parseInt(localStorage.getItem('vibe_noise_intensity') || '100');
-          rnnoiseNode.port.postMessage({ type: 'setIntensity', value: initialIntensity });
-          
-          // Живое обновление интенсивности
-          const handleLiveIntensity = (e) => {
-            if (rnnoiseNodeRef.current) {
-               rnnoiseNodeRef.current.port.postMessage({ type: 'setIntensity', value: e.detail.value });
-            }
-          };
-          window.addEventListener('vibe-update-ns-intensity', handleLiveIntensity);
-          
-          const destination = audioCtx.createMediaStreamDestination();
-          source.connect(rnnoiseNode).connect(destination);
-          
-          finalStream = destination.stream;
-          console.log('[useVoice] AI шумоподавление запущено (Интенсивность:', initialIntensity, '%) 🛡️🎙️');
-        } catch (err) {
-          console.error('[useVoice] Ошибка шумодава (Safe Fallback):', err);
-          finalStream = stream;
-        }
-      }
-
-      localStream.current = finalStream;
-
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-      const vadSource = audioCtx.createMediaStreamSource(finalStream.clone());
-      vadSource.connect(analyser);
-
-      let lastPresenceUpdate = 0;
-      fakeVADIntervalRef.current = setInterval(() => {
-        // ПРОВЕРКА ПОТОКА: если поток умер — тормозим
-        if (!localStream.current || !localStream.current.active) return;
-
-        const data = new Float32Array(analyser.fftSize);
-        analyser.getFloatTimeDomainData(data);
-        let sumSquares = 0.0;
-        for (const amplitude of data) sumSquares += amplitude * amplitude;
-        const rms = Math.sqrt(sumSquares / data.length);
-        const speaking = rms > 0.015 && !isMutedRef.current;
-
-        if (speaking !== isSpeakingRef.current) {
-          setIsSpeaking(speaking);
-          isSpeakingRef.current = speaking;
-          
-          // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ (БЕЗЛИМИТНЫЙ)
-          const payload = { userId: currentUserRef.current.id, isSpeaking: speaking };
-          realtimeChannel.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
-          
-          // МЕДЛЕННЫЙ TRACK (ТОЛЬКО РАЗ В 500мс ДЛЯ СТАБИЛЬНОСТИ)
-          const now = Date.now();
-          if (now - lastPresenceUpdate > 500) {
-             lastPresenceUpdate = now;
-             updatePresenceStatus({ isSpeaking: speaking });
+            // Ставим начальную интенсивность
+            const initialIntensity = parseInt(localStorage.getItem('vibe_noise_intensity') || '100');
+            rnnoiseNode.port.postMessage({ type: 'setIntensity', value: initialIntensity });
+            
+            // Живое обновление интенсивности
+            const handleLiveIntensity = (e) => {
+              if (rnnoiseNodeRef.current) {
+                 rnnoiseNodeRef.current.port.postMessage({ type: 'setIntensity', value: e.detail.value });
+              }
+            };
+            window.addEventListener('vibe-update-ns-intensity', handleLiveIntensity);
+            
+            const destination = audioCtx.createMediaStreamDestination();
+            source.connect(rnnoiseNode).connect(destination);
+            
+            finalStream = destination.stream;
+            console.log('[useVoice] AI шумоподавление запущено (Интенсивность:', initialIntensity, '%) 🛡️🎙️');
+          } catch (err) {
+            console.error('[useVoice] Ошибка шумодава (Safe Fallback):', err);
+            finalStream = stream;
           }
         }
 
-        // 2. Анализируем ВСЕХ ОСТАЛЬНЫХ в канале (ЛОКАЛЬНО)
-        Object.keys(remoteAnalysersRef.current).forEach(uid => {
-          const { analyser: rAnalyser, data: rData } = remoteAnalysersRef.current[uid];
-          rAnalyser.getFloatTimeDomainData(rData);
-          let rSum = 0; for (let i = 0; i < rData.length; i++) rSum += rData[i] * rData[i];
-          const rRms = Math.sqrt(rSum / rData.length);
-          const rSpeaking = rRms > 0.01;
+        localStream.current = finalStream;
 
-          setParticipants(prev => {
-            const p = prev.find(item => item.userId === uid);
-            if (!p || p.isSpeaking === rSpeaking) return prev;
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        const vadSource = audioCtx.createMediaStreamSource(finalStream.clone());
+        vadSource.connect(analyser);
+
+        let lastPresenceUpdate = 0;
+        fakeVADIntervalRef.current = setInterval(() => {
+          // ПРОВЕРКА ПОТОКА: если поток умер — тормозим
+          if (!localStream.current || !localStream.current.active) return;
+
+          const data = new Float32Array(analyser.fftSize);
+          analyser.getFloatTimeDomainData(data);
+          let sumSquares = 0.0;
+          for (const amplitude of data) sumSquares += amplitude * amplitude;
+          const rms = Math.sqrt(sumSquares / data.length);
+          const speaking = rms > 0.015 && !isMutedRef.current;
+
+          if (speaking !== isSpeakingRef.current) {
+            setIsSpeaking(speaking);
+            isSpeakingRef.current = speaking;
             
-            // Синхронизируем с общим списком для сайдбара
-            setAllParticipants(all => ({
-              ...all,
-              [activeChannelIdRef.current]: (all[activeChannelIdRef.current] || []).map(item => 
-                item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item
-              )
-            }));
+            // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ (БЕЗЛИМИТНЫЙ)
+            const payload = { userId: currentUserRef.current.id, isSpeaking: speaking };
+            realtimeChannel.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
+            
+            // МЕДЛЕННЫЙ TRACK (ТОЛЬКО РАЗ В 500мс ДЛЯ СТАБИЛЬНОСТИ)
+            const now = Date.now();
+            if (now - lastPresenceUpdate > 500) {
+               lastPresenceUpdate = now;
+               updatePresenceStatus({ isSpeaking: speaking });
+            }
+          }
 
-            return prev.map(item => item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item);
+          // 2. Анализируем ВСЕХ ОСТАЛЬНЫХ в канале (ЛОКАЛЬНО)
+          Object.keys(remoteAnalysersRef.current).forEach(uid => {
+            const { analyser: rAnalyser, data: rData } = remoteAnalysersRef.current[uid];
+            rAnalyser.getFloatTimeDomainData(rData);
+            let rSum = 0; for (let i = 0; i < rData.length; i++) rSum += rData[i] * rData[i];
+            const rRms = Math.sqrt(rSum / rData.length);
+            const rSpeaking = rRms > 0.01;
+
+            setParticipants(prev => {
+              const p = prev.find(item => item.userId === uid);
+              if (!p || p.isSpeaking === rSpeaking) return prev;
+              
+              // Синхронизируем с общим списком для сайдбара
+              setAllParticipants(all => ({
+                ...all,
+                [activeChannelIdRef.current]: (all[activeChannelIdRef.current] || []).map(item => 
+                  item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item
+                )
+              }));
+
+              return prev.map(item => item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item);
+            });
           });
-        });
-      }, 250);
+        }, 250);
+      } catch (err) {
+        console.error('[useVoice] Media initialization failed:', err);
+        setVoiceError(`Ошибка микрофона: ${err.message}`);
+        setIsConnecting(false);
+        return;
+      }
+    }
 
+    try {
       currentUserRef.current = { id: user.id, username };
       presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false, isMuted: isMutedRef.current, isDeafened: isDeafenedRef.current };
 
-      // Удаляем возможные дубликаты из кэша перед созданием
-      await supabase.removeChannel(supabase.channel(`voice:${channelId}`)).catch(() => {});
-      
       const channel = supabase.channel(`voice:${channelId}`, { config: { presence: { key: user.id } } });
-      channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
-      channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
-      
-      // БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ СЕТКИ И САЙДБАРА
-      channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-        setParticipants(prev => prev.map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p));
-        setAllParticipants(all => ({
-          ...all,
-          [channelId]: (all[channelId] || []).map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p)
-        }));
-      });
-      
+    channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
+    channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
+    
+    // БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ СЕТКИ И САЙДБАРА
+    channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
+      setParticipants(prev => prev.map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p));
+      setAllParticipants(all => ({
+        ...all,
+        [channelId]: (all[channelId] || []).map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p)
+      }));
+    });
+
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.to !== user.id) return;
         console.log(`[WebRTC] Handle offer from ${payload.from}`);
@@ -723,6 +735,11 @@ export function useVoice() {
         setVoiceError(err.message); 
       }
       setIsConnecting(false); 
+      // При фатальной ошибке зануляем реконнект, чтобы не спамить
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
     }
   }, [activeChannelId, cleanupAll, createPeerConnection, syncParticipants, updatePresenceStatus]);
 
@@ -731,7 +748,15 @@ export function useVoice() {
   const toggleMute = useCallback(() => {
     const next = !isMutedRef.current;
     isMutedRef.current = next; setIsMuted(next);
-    if (localStream.current) localStream.current.getAudioTracks().forEach(t => t.enabled = !next);
+    
+    // Выключаем звук ВЕЗДЕ: и в AI-потоке, и в сыром микрофоне
+    if (localStream.current) {
+      localStream.current.getAudioTracks().forEach(t => t.enabled = !next);
+    }
+    if (originalMicStreamRef.current) {
+      originalMicStreamRef.current.getAudioTracks().forEach(t => t.enabled = !next);
+    }
+    
     updatePresenceStatus({ isMuted: next });
     notifications.play(next ? 'mute' : 'unmute');
   }, [updatePresenceStatus]);
