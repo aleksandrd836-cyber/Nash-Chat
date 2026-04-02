@@ -276,6 +276,7 @@ export function useVoice() {
     
     // СТАВИМ МЕТКУ ПЕРВОЙ ЖЕ СТРОЧКОЙ
     isLeavingRef.current = true;
+    const myId = currentUserRef.current?.id;
     
     // Силовое зануление СПИСКА УЧАСТНИКОВ В ЦЕНТРЕ
     setParticipants([]);
@@ -493,6 +494,7 @@ export function useVoice() {
       const vadSource = audioCtx.createMediaStreamSource(finalStream.clone());
       vadSource.connect(analyser);
 
+      let lastPresenceUpdate = 0;
       fakeVADIntervalRef.current = setInterval(() => {
         // ПРОВЕРКА ПОТОКА: если поток умер — тормозим
         if (!localStream.current || !localStream.current.active) return;
@@ -508,11 +510,16 @@ export function useVoice() {
           setIsSpeaking(speaking);
           isSpeakingRef.current = speaking;
           
-          // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ
+          // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ (БЕЗЛИМИТНЫЙ)
           const payload = { userId: currentUserRef.current.id, isSpeaking: speaking };
           realtimeChannel.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
-          globalPresence.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
-          updatePresenceStatus({ isSpeaking: speaking });
+          
+          // МЕДЛЕННЫЙ TRACK (ТОЛЬКО РАЗ В 500мс ДЛЯ СТАБИЛЬНОСТИ)
+          const now = Date.now();
+          if (now - lastPresenceUpdate > 500) {
+             lastPresenceUpdate = now;
+             updatePresenceStatus({ isSpeaking: speaking });
+          }
         }
 
         // 2. Анализируем ВСЕХ ОСТАЛЬНЫХ в канале (ЛОКАЛЬНО)
