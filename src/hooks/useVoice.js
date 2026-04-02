@@ -390,7 +390,15 @@ export function useVoice() {
     setParticipants(Array.from(seen.values()));
   }, [createPeerConnection, closePeer]);
 
-  const joinVoiceChannel = useCallback(async (channelId, user, username, color) => {
+  const joinVoiceChannel = useCallback(async (channelId, user, username, color, isSilent = false) => {
+    if (!channelId || !user) return;
+    
+    // Если мы уже подключаемся к ЭТОМУ ЖЕ каналу — игнорируем повторный вызов
+    if (isConnecting && activeChannelIdRef.current === channelId) {
+      console.log('[useVoice] Already connecting to this channel, skipping...');
+      return;
+    }
+
     // АГРЕССИВНАЯ ОЧИСТКА: Удаляем старый канал из кэша Supabase перед созданием нового
     if (realtimeChannel.current) {
       await supabase.removeChannel(realtimeChannel.current).catch(() => {});
@@ -468,26 +476,26 @@ export function useVoice() {
       const vadSource = audioCtx.createMediaStreamSource(finalStream.clone());
       vadSource.connect(analyser);
 
-      const analyserData = new Float32Array(analyser.fftSize);
-      let lastPresenceUpdate = 0;
       fakeVADIntervalRef.current = setInterval(() => {
-        // 1. Анализируем себя
-        analyser.getFloatTimeDomainData(analyserData);
-        let sum = 0; for (let i = 0; i < analyserData.length; i++) sum += analyserData[i] * analyserData[i];
-        const rms = Math.sqrt(sum / analyserData.length);
+        // ПРОВЕРКА ПОТОКА: если поток умер — тормозим
+        if (!localStream.current || !localStream.current.active) return;
+
+        const data = new Float32Array(analyser.fftSize);
+        analyser.getFloatTimeDomainData(data);
+        let sumSquares = 0.0;
+        for (const amplitude of data) sumSquares += amplitude * amplitude;
+        const rms = Math.sqrt(sumSquares / data.length);
         const speaking = rms > 0.015 && !isMutedRef.current;
-        
+
         if (speaking !== isSpeakingRef.current) {
-          isSpeakingRef.current = speaking; setIsSpeaking(speaking);
+          setIsSpeaking(speaking);
+          isSpeakingRef.current = speaking;
+          
           // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ
           const payload = { userId: currentUserRef.current.id, isSpeaking: speaking };
           realtimeChannel.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
           globalPresence.current?.send({ type: 'broadcast', event: 'speaking-update', payload });
-
-          const now = Date.now();
-          if (now - lastPresenceUpdate > 500) {
-            lastPresenceUpdate = now; updatePresenceStatus({ isSpeaking: speaking });
-          }
+          updatePresenceStatus({ isSpeaking: speaking });
         }
 
         // 2. Анализируем ВСЕХ ОСТАЛЬНЫХ в канале (ЛОКАЛЬНО)
@@ -504,7 +512,7 @@ export function useVoice() {
             return prev.map(item => item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item);
           });
         });
-      }, 100);
+      }, 250);
 
       currentUserRef.current = { id: user.id, username };
       presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false, isMuted: isMutedRef.current, isDeafened: isDeafenedRef.current };
@@ -581,6 +589,7 @@ export function useVoice() {
       });
 
       channel.subscribe(async (status) => {
+        console.log(`[useVoice] Channel status: ${status}`);
         if (status === 'SUBSCRIBED') {
           // ЗАЩИТА ОТ ГОНКИ: Если мы уже нажали выход, пока подписка шла - НЕ РЕГИСТРИРУЕМСЯ
           if (isLeavingRef.current || activeChannelIdRef.current !== channelId) {
@@ -594,7 +603,9 @@ export function useVoice() {
           setVoiceError(null);
           
           await channel.track(presencePayload.current).catch(() => {});
-          notifications.play('self_join');
+          
+          // УВЕДОМЛЕНИЕ О ВХОДЕ (ТОЛЬКО ЕСЛИ НЕ ТИХИЙ РЕКОННЕКТ)
+          if (!isSilent) notifications.play('self_join');
           
           if (globalPresence.current) {
             globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
@@ -607,7 +618,7 @@ export function useVoice() {
           if (isLeavingRef.current) return;
           
           reconnectAttemptsRef.current++;
-          console.warn(`[useVoice] Signaling issue (${status}). Attempt ${reconnectAttemptsRef.current}/5`);
+          console.warn(`[useVoice] Signaling issue (${status}). Reason: ${status === 'CLOSED' ? 'Socket Closed' : 'Supabase Error'}. Attempt ${reconnectAttemptsRef.current}/5`);
           
           setServerStatus('reconnecting');
           
@@ -620,8 +631,8 @@ export function useVoice() {
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
             reconnectTimerRef.current = setTimeout(() => {
               if (activeChannelIdRef.current && !isLeavingRef.current) {
-                console.log('[useVoice] Silent background reconnecting...');
-                joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color);
+                console.log(`[useVoice] Silent background reconnecting to #${activeChannelIdRef.current}...`);
+                joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color, true);
               }
             }, 3000);
           }
