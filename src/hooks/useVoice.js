@@ -101,7 +101,7 @@ export function useVoice() {
         Object.values(state).flat().forEach(p => {
           if (!p.channelId || !p.userId || !p.username) return;
           if (isLeavingRef.current && p.userId === myId) return;
-          if (p.userId === myId && p.channelId !== activeChannelIdRef.current) return;
+          if (p.userId === myId && activeChannelIdRef.current && p.channelId !== activeChannelIdRef.current) return;
 
           const existing = latestUserPresence.get(p.userId);
           if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
@@ -212,9 +212,12 @@ export function useVoice() {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         
+        const myId = currentUserRef.current?.id;
+        if (!myId) return;
+
         const payload = { 
           type: 'broadcast', event: 'offer', 
-          payload: { from: currentUserRef.current.id, to: remoteUserId, sdp: pc.localDescription } 
+          payload: { from: myId, to: remoteUserId, sdp: pc.localDescription } 
         };
         const chan = realtimeChannel.current || signalingChannel;
         if (chan && chan.state === 'joined') chan.send(payload);
@@ -259,7 +262,7 @@ export function useVoice() {
     };
 
     pc.onicecandidate = ({ candidate }) => {
-      if (candidate) {
+      if (candidate && currentUserRef.current?.id) {
         const payload = { type: 'broadcast', event: 'ice', payload: { from: currentUserRef.current.id, to: remoteUserId, candidate } };
         const chan = realtimeChannel.current || signalingChannel;
         if (chan && chan.state === 'joined') chan.send(payload);
@@ -498,7 +501,7 @@ export function useVoice() {
       console.log('[useVoice] Reusing existing streams for soft reconnect');
     } else {
       isLeavingRef.current = false;
-      activeChannelIdRef.current = channelId;
+      activeChannelIdRef.current = channelId; // УСТАНАВЛИВАЕМ СРАЗУ, чтобы не было "невидимости" в сайдбаре
       setIsConnecting(true); setVoiceError(null);
       try {
         const constraints = { 
