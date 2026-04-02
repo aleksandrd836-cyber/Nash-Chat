@@ -56,6 +56,7 @@ export function useVoice() {
   const rnnoiseNodeRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
+  const presenceDebounceRef = useRef(null);
 
   // СИНХРОНИЗАЦИЯ СТРИМОВ: удаляем стрим из remoteScreens, если участник перестал шарить
   useEffect(() => {
@@ -387,11 +388,28 @@ export function useVoice() {
     });
   }, [closePeer]);
 
-  const updatePresenceStatus = useCallback(async (updates) => {
+  const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
     presencePayload.current = { ...presencePayload.current, ...updates };
-    if (realtimeChannel.current) await realtimeChannel.current.track(presencePayload.current).catch(() => {});
-    if (globalPresence.current && activeChannelId) {
-      await globalPresence.current.track({ ...presencePayload.current, channelId: activeChannelId, joined_at: Date.now() }).catch(() => {});
+    
+    if (presenceDebounceRef.current) {
+      clearTimeout(presenceDebounceRef.current);
+      presenceDebounceRef.current = null;
+    }
+
+    const sendUpdate = async () => {
+      const payload = { ...presencePayload.current };
+      if (realtimeChannel.current) await realtimeChannel.current.track(payload).catch(() => {});
+      
+      const chId = activeChannelIdRef.current;
+      if (globalPresence.current && chId) {
+        await globalPresence.current.track({ ...payload, channelId: chId, joined_at: Date.now() }).catch(() => {});
+      }
+    };
+
+    if (immediate) {
+      await sendUpdate();
+    } else {
+      presenceDebounceRef.current = setTimeout(sendUpdate, 400); // 400ms – золотая середина
     }
   }, [activeChannelId]);
 
@@ -683,15 +701,12 @@ export function useVoice() {
           setServerStatus('online');
           setVoiceError(null);
           
-          await channel.track(presencePayload.current).catch(() => {});
+          await updatePresenceStatus({}, true);
           
           // УВЕДОМЛЕНИЕ О ВХОДЕ (ТОЛЬКО ЕСЛИ НЕ ТИХИЙ РЕКОННЕКТ)
           if (!isSilent) notifications.play('self_join');
           
           if (globalPresence.current) {
-            globalPresence.current.track({ ...presencePayload.current, channelId, joined_at: Date.now() }).catch(() => {});
-            
-            // ОПТИМИСТИЧНЫЙ АПДЕЙТ САЙДБАРА (ЧТОБЫ ИКОНКА СРАЗУ ПОЯВИЛАСЬ СЛЕВА)
             setAllParticipants(prev => {
               const next = { ...prev };
               const currentInCh = next[channelId] || [];
