@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { UserPanel } from './UserPanel';
 import { ProfileFooter } from './ProfileFooter';
 import { getUserAvatar } from '../lib/avatar';
+import { useUnreadCounts } from '../hooks/useUnreadCounts';
 import { MicOff, Headphones } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { ChannelItem } from './Sidebar/ChannelItem';
