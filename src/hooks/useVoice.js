@@ -554,6 +554,15 @@ export function useVoice() {
           setParticipants(prev => {
             const p = prev.find(item => item.userId === uid);
             if (!p || p.isSpeaking === rSpeaking) return prev;
+            
+            // Синхронизируем с общим списком для сайдбара
+            setAllParticipants(all => ({
+              ...all,
+              [activeChannelIdRef.current]: (all[activeChannelIdRef.current] || []).map(item => 
+                item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item
+              )
+            }));
+
             return prev.map(item => item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item);
           });
         });
@@ -569,9 +578,13 @@ export function useVoice() {
       channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
       channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
       
-      // БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ СЕТКИ
+      // БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ СЕТКИ И САЙДБАРА
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
         setParticipants(prev => prev.map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p));
+        setAllParticipants(all => ({
+          ...all,
+          [channelId]: (all[channelId] || []).map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p)
+        }));
       });
       
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
