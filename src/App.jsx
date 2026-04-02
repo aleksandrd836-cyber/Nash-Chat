@@ -1,10 +1,12 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from './hooks/useAuth';
 import { useVoice } from './hooks/useVoice';
 import { useMembers } from './hooks/useMembers';
 import { useUnreadDMs } from './hooks/useUnreadDMs';
 import { useRecentConversations } from './hooks/useRecentConversations';
 import { useAppUpdates } from './hooks/useAppUpdates';
+import { useStore } from './store/useStore';
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServerSidebar } from './components/ServerSidebar';
@@ -41,16 +43,20 @@ function App() {
   const auth  = useAuth();
   const voice = useVoice();
 
-  const [selectedChannel, setSelectedChannel] = useState(null);
-  const [settingsOpen, setSettingsOpen]       = useState(false);
-  const [localUsername, setLocalUsername]     = useState(null);
-  const [localColor, setLocalColor]           = useState(null);
-  const [theme, setTheme]                     = useState(() => localStorage.getItem('theme') || 'dark');
+  const {
+    theme, setTheme,
+    settingsOpen, setSettingsOpen,
+    serverEntryOpen, setServerEntryOpen,
+    serverSettingsOpen, setServerSettingsOpen,
+    isDMHubOpen, setIsDMHubOpen,
+    selectedServer, setSelectedServer,
+    selectedChannel, setSelectedChannel,
+    activeDM, setActiveDM,
+    serverRefresh, triggerServerRefresh,
+    localUsername, setLocalUsername,
+    localColor, setLocalColor
+  } = useStore();
 
-  // ── Серверы ──
-  const [selectedServer, setSelectedServer]   = useState(null);
-  const [serverEntryOpen, setServerEntryOpen] = useState(false);
-  const [isDMHubOpen, setIsDMHubOpen]         = useState(false);
   const { conversations: recentConvs, loading: recentLoading } = useRecentConversations(auth.user?.id);
 
   // Глобальный счетчик непрочитанных ЛС для баджей
@@ -60,13 +66,10 @@ function App() {
   // Сброс состояния хаба при переключении на сервер
   useEffect(() => {
     if (selectedServer) setIsDMHubOpen(false);
-  }, [selectedServer]);
+  }, [selectedServer, setIsDMHubOpen]);
   
-  const [serverSettingsOpen, setServerSettingsOpen] = useState(false);
-  const [serverRefresh, setServerRefresh]           = useState(0); // триггер для обновления ServerSidebar
-
   // DM
-  const [activeDM, setActiveDM] = useState(null);
+  // (Логика уже в сторе)
 
   useEffect(() => {
     if (auth.user && localColor === null) {
@@ -93,13 +96,11 @@ function App() {
   const displayColor    = localColor || null;
 
   function handleSelectChannel(channel) {
-    setActiveDM(null);
     setSelectedChannel(channel);
   }
 
   function handleOpenDM(member) {
     setActiveDM(member);
-    setSelectedChannel(null);
     unreadDMs.markAsRead(member.id);
   }
 
@@ -108,8 +109,6 @@ function App() {
   // При смене сервера — сбрасываем канал и DM
   function handleSelectServer(server) {
     setSelectedServer(server);
-    setSelectedChannel(null);
-    setActiveDM(null);
   }
 
   const { members } = useMembers(auth.user, selectedServer?.id);
@@ -329,45 +328,69 @@ function App() {
         )}
 
         {/* ── Модалки (с ленивой загрузкой) ── */}
-        <Suspense fallback={<LoadingFallback />}>
-          {settingsOpen && (
-            <SettingsModal
-              user={auth.user}
-              username={displayUsername}
-              userColor={displayColor}
-              ownerId={selectedServer?.owner_id}
-              onClose={() => setSettingsOpen(false)}
-              onSignOut={auth.signOut}
-              onUsernameChange={() => auth.refreshUser?.()}
-              theme={theme}
-              onThemeChange={setTheme}
-            />
-          )}
+        <AnimatePresence>
+          <Suspense fallback={<LoadingFallback />}>
+            {settingsOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-[100]"
+              >
+                <SettingsModal
+                  user={auth.user}
+                  username={displayUsername}
+                  userColor={displayColor}
+                  ownerId={selectedServer?.owner_id}
+                  onClose={() => setSettingsOpen(false)}
+                  onSignOut={auth.signOut}
+                  onUsernameChange={() => auth.refreshUser?.()}
+                  theme={theme}
+                  onThemeChange={setTheme}
+                />
+              </motion.div>
+            )}
 
-          {serverEntryOpen && (
-            <ServerEntryModal
-              currentUserId={auth.user.id}
-              onClose={() => setServerEntryOpen(false)}
-              onServerJoined={(server) => {
-                setServerEntryOpen(false);
-                setServerRefresh(r => r + 1);
-                handleSelectServer(server);
-              }}
-            />
-          )}
+            {serverEntryOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="fixed inset-0 z-[100]"
+              >
+                <ServerEntryModal
+                  currentUserId={auth.user.id}
+                  onClose={() => setServerEntryOpen(false)}
+                  onServerJoined={(server) => {
+                    setServerEntryOpen(false);
+                    triggerServerRefresh();
+                    handleSelectServer(server);
+                  }}
+                />
+              </motion.div>
+            )}
 
-          {serverSettingsOpen && selectedServer && (
-            <ServerSettingsModal
-              server={selectedServer}
-              currentUserId={auth.user.id}
-              onClose={() => setServerSettingsOpen(false)}
-              onServerDeleted={() => {
-                setSelectedServer(null);
-                setSelectedChannel(null);
-              }}
-            />
-          )}
-        </Suspense>
+            {serverSettingsOpen && selectedServer && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="fixed inset-0 z-[100]"
+              >
+                <ServerSettingsModal
+                  server={selectedServer}
+                  currentUserId={auth.user.id}
+                  onClose={() => setServerSettingsOpen(false)}
+                  onServerDeleted={() => {
+                    setSelectedServer(null);
+                    setSelectedChannel(null);
+                  }}
+                />
+              </motion.div>
+            )}
+          </Suspense>
+        </AnimatePresence>
       </div>
     </div>
   );

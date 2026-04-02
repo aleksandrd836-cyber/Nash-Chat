@@ -1,23 +1,23 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { UserPanel } from './UserPanel';
+import { useStore } from '../store/useStore';
 
 /**
  * Объединенный компонент профиля и виджета обновлений.
  * Используется в Sidebar и в App (когда сервер не выбран).
  */
-export function ProfileFooter({ 
-  username, userColor, onSignOut, voice, onOpenSettings,
+export const ProfileFooter = memo(({ 
+  onSignOut, voice,
   updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion,
   ownerId, currentUserId
-}) {
+}) => {
+  const { localUsername: username, localColor: userColor } = useStore();
+
   return (
-    <div className="flex flex-col flex-shrink-0 bg-ds-sidebar border-t border-white/5 relative z-10">
+    <div className="flex flex-col flex-shrink-0 bg-ds-sidebar border-t border-white/5 relative z-10 transition-all duration-300">
       <UserPanel 
-        username={username} 
-        userColor={userColor} 
         onSignOut={onSignOut} 
         voice={voice} 
-        onOpenSettings={onOpenSettings} 
         ownerId={ownerId}
         currentUserId={currentUserId}
       />
@@ -88,4 +88,4 @@ export function ProfileFooter({
       </div>
     </div>
   );
-}
+});

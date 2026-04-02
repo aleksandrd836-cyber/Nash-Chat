@@ -1,12 +1,18 @@
 import React from 'react';
 import { getUserAvatar } from '../lib/avatar';
 import { Mic, MicOff, Headphones, LogOut, Settings } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 /**
  * Нижняя панель пользователя (слева в сайдбаре).
  * Показывает аватар, имя, кнопки голоса и настроек.
  */
-export function UserPanel({ username, userColor, onSignOut, voice, onOpenSettings, ownerId, currentUserId }) {
+export const UserPanel = React.memo(({ onSignOut, voice, ownerId, currentUserId }) => {
+  const { 
+    localUsername: username, 
+    setSettingsOpen 
+  } = useStore();
+  
   const { activeChannelId, isMuted, isDeafened, isSpeaking, toggleMute, toggleDeafen, leaveVoiceChannel } = voice;
   const { imageUrl } = getUserAvatar(username);
 
@@ -96,7 +102,7 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
 
         {/* Settings */}
         <button
-          onClick={onOpenSettings}
+          onClick={() => setSettingsOpen(true)}
           title="Настройки"
           className="w-8 h-8 rounded-md flex items-center justify-center text-ds-muted hover:text-ds-text hover:bg-white/10 transition-all duration-200 flex-shrink-0"
         >
@@ -105,4 +111,4 @@ export function UserPanel({ username, userColor, onSignOut, voice, onOpenSetting
       </div>
     </div>
   );
-}
+});

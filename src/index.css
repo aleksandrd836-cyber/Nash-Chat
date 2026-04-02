@@ -126,12 +126,14 @@ html.light-theme {
 .vibe-nebula {
   animation: nebula-pulse 10s ease-in-out infinite;
   background: radial-gradient(circle at center, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+  will-change: transform, opacity;
 }
 
 .vibe-aurora {
   animation: aurora-flow 20s linear infinite;
   background: linear-gradient(45deg, rgba(0, 240, 255, 0.05), rgba(0, 240, 255, 0.1), transparent);
   filter: blur(80px);
+  will-change: transform, border-radius;
 }
 @keyframes border-pulse {
   0%, 100% { opacity: 0.1; }
@@ -345,5 +347,25 @@ html.light-theme .vibe-creator-badge {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Framer Motion Layout Transitions Helpers */
+.vibe-layout-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.animate-grow-y {
+  animation: grow-y 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform-origin: center;
+}
+
+/* Optimize Glow Performance */
+.vibe-glow-blue, .vibe-glow-green, .vibe-fab {
+  will-change: box-shadow, transform;
 }
 

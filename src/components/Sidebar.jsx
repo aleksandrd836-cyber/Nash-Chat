@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase';
 import { UserPanel } from './UserPanel';
 import { ProfileFooter } from './ProfileFooter';
 import { getUserAvatar } from '../lib/avatar';
-import { useUnreadCounts } from '../hooks/useUnreadCounts';
 import { MicOff, Headphones } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { ChannelItem } from './Sidebar/ChannelItem';
+import { VoiceParticipant } from './Sidebar/VoiceParticipant';
 
 
 /**
@@ -13,10 +15,21 @@ import { MicOff, Headphones } from 'lucide-react';
  * ПКМ по участникам голосовых каналов — микшер громкости.
  */
 export function Sidebar({ 
-  username, userColor, selectedChannel, onSelectChannel, onSignOut, voice, onOpenSettings, currentUserId,
+  onSignOut, voice, currentUserId,
   updateStatus, updateInfo, updateProgress, updateError, isElectron, onCheckUpdate, onDownload, onInstall, appVersion,
-  selectedServer, isOwner, onOpenServerSettings, ownerId
+  isOwner, ownerId
 }) {
+  const {
+    selectedServer,
+    selectedChannel, setSelectedChannel,
+    setSettingsOpen,
+    setServerSettingsOpen,
+    localUsername,
+    localColor
+  } = useStore();
+  
+  const username = localUsername;
+  const userColor = localColor;
   const [channels, setChannels] = useState([]);
   const [loading, setLoading]   = useState(true);
 
@@ -139,7 +152,7 @@ export function Sidebar({
       return;
     }
     setChannels(prev => prev.filter(c => c.id !== ch.id));
-    if (selectedChannel?.id === ch.id) onSelectChannel(null);
+    if (selectedChannel?.id === ch.id) setSelectedChannel(null);
     setChanCtx(null);
   }
 
@@ -182,7 +195,7 @@ export function Sidebar({
         <span className="text-ds-text font-bold text-[15px] truncate">{selectedServer?.name ?? 'Сервер'}</span>
         {isOwner && (
           <button
-            onClick={(e) => { e.stopPropagation(); onOpenServerSettings?.(); }}
+            onClick={(e) => { e.stopPropagation(); setServerSettingsOpen(true); }}
             title="Настройки сервера"
             className="w-6 h-6 flex items-center justify-center text-ds-muted hover:text-ds-text transition-colors rounded"
           >
@@ -221,77 +234,29 @@ export function Sidebar({
               </div>
 
               {textChannels.map(ch => (
-                <div key={ch.id} className="relative group">
-                  {editingId === ch.id ? (
-                    // ── Inline редактор ──
-                    <div className="flex items-center gap-1 px-2 py-1">
-                      <span className="text-base leading-none opacity-70 text-ds-muted">#</span>
-                      <input
-                        ref={editInputRef}
-                        value={editingName}
-                        onChange={e => setEditingName(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') renameChannel(ch.id, editingName);
-                          if (e.key === 'Escape') setEditingId(null);
-                        }}
-                        onBlur={() => renameChannel(ch.id, editingName)}
-                        className="flex-1 bg-ds-bg border border-ds-accent rounded px-2 py-0.5 text-sm text-ds-text outline-none"
-                      />
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        onSelectChannel(ch);
-                        markAsRead(ch.id);
-                      }}
-                      onContextMenu={(e) => handleChannelCtx(e, ch)}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-[14.5px] transition-all duration-200 group/item relative overflow-hidden
-                        ${selectedChannel?.id === ch.id
-                          ? 'bg-ds-accent/15 text-ds-text vibe-glow-blue border border-ds-accent/30 font-bold'
-                          : 'text-ds-muted hover:bg-ds-hover hover:text-ds-text'
-                        } ${counts[ch.id] > 0 ? 'text-ds-text font-bold' : ''}`}
-                    >
-                      {selectedChannel?.id === ch.id && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-ds-accent rounded-r-full shadow-[0_0_10px_#00f0ff]" />}
-                      
-                      <span className={`text-[17px] leading-none opacity-60 ${counts[ch.id] > 0 || selectedChannel?.id === ch.id ? 'text-ds-accent opacity-100' : ''}`}>#</span>
-                      <span className="truncate flex-1 text-left">{ch.name}</span>
-                      
-                      {/* Бейдж непрочитанных */}
-                      {counts[ch.id] > 0 && selectedChannel?.id !== ch.id && (
-                        <span className="px-1.5 py-0.5 bg-ds-red text-white text-[10px] font-bold rounded-full min-w-[18px] text-center shadow-lg animate-pulse">
-                          {counts[ch.id] > 99 ? '99+' : counts[ch.id]}
-                        </span>
-                      )}
-
-                      {/* Кнопки управления (при наведении) — только для владельца */}
-                      {isOwner && (
-                        <span
-                          className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <span
-                            title="Переименовать"
-                            onClick={() => { setEditingId(ch.id); setEditingName(ch.name); }}
-                            className="w-4 h-4 flex items-center justify-center hover:text-ds-text text-ds-muted"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                            </svg>
-                          </span>
-                          <span
-                            title="Удалить"
-                            onClick={() => deleteChannel(ch)}
-                            className="w-4 h-4 flex items-center justify-center hover:text-ds-red text-ds-muted"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                            </svg>
-                          </span>
-                        </span>
-                      )}
-                    </button>
-                  )}
-                </div>
+                <ChannelItem
+                  key={ch.id}
+                  channel={ch}
+                  isSelected={selectedChannel?.id === ch.id}
+                  isOwner={isOwner}
+                  unreadCount={counts[ch.id]}
+                  isEditing={editingId === ch.id}
+                  editingName={editingName}
+                  onSelect={(c) => {
+                    setSelectedChannel(c);
+                    markAsRead(c.id);
+                  }}
+                  onRenameStart={(c) => { setEditingId(c.id); setEditingName(c.name); }}
+                  onDelete={deleteChannel}
+                  onCtxMenu={handleChannelCtx}
+                  onEditChange={e => setEditingName(e.target.value)}
+                  onEditKeyDown={e => {
+                    if (e.key === 'Enter') renameChannel(ch.id, editingName);
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                  onEditBlur={() => renameChannel(ch.id, editingName)}
+                  editInputRef={editInputRef}
+                />
               ))}
             </div>
 
@@ -319,116 +284,41 @@ export function Sidebar({
                 const chParticipants = allParticipants[ch.id] || [];
 
                 return (
-                  <div key={ch.id} className="group">
-                    {editingId === ch.id ? (
-                      <div className="flex items-center gap-1 px-2 py-1">
-                        <svg className="w-4 h-4 flex-shrink-0 opacity-60 text-ds-muted" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-                        </svg>
-                        <input
-                          ref={editInputRef}
-                          value={editingName}
-                          onChange={e => setEditingName(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') renameChannel(ch.id, editingName);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          onBlur={() => renameChannel(ch.id, editingName)}
-                          className="flex-1 bg-ds-bg border border-ds-accent rounded px-2 py-0.5 text-sm text-ds-text outline-none"
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => onSelectChannel(ch)}
-                        onContextMenu={(e) => handleChannelCtx(e, ch)}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[14.5px] transition-all duration-200 group/item relative overflow-hidden
-                          ${selectedChannel?.id === ch.id
-                            ? 'bg-ds-accent/15 text-ds-text vibe-glow-blue border border-ds-accent/30 font-bold'
-                            : 'text-ds-muted hover:bg-ds-hover hover:text-ds-text'
-                          }`}
-                      >
-                        {selectedChannel?.id === ch.id && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-ds-accent rounded-r-full shadow-[0_0_10px_#00f0ff]" />}
-                        <svg className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-ds-accent' : 'opacity-60'}`}
-                          fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                        </svg>
-                        <span className="truncate flex-1 text-left">{ch.name}</span>
-                        {chParticipants.length > 0 && (
-                          <span className={`text-[10px] font-bold ${isActive ? 'text-ds-accent' : 'text-ds-muted'}`}>
-                            {chParticipants.length}
-                          </span>
-                        )}
-                        {/* Кнопки управления */}
-                        <span
-                          className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <span
-                            title="Переименовать"
-                            onClick={() => { setEditingId(ch.id); setEditingName(ch.name); }}
-                            className="w-4 h-4 flex items-center justify-center hover:text-ds-text text-ds-muted"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                            </svg>
-                          </span>
-                          <span
-                            title="Удалить"
-                            onClick={() => deleteChannel(ch)}
-                            className="w-4 h-4 flex items-center justify-center hover:text-ds-red text-ds-muted"
-                          >
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                            </svg>
-                          </span>
-                        </span>
-                      </button>
-                    )}
+                  <div key={ch.id}>
+                    <ChannelItem
+                      channel={ch}
+                      isSelected={selectedChannel?.id === ch.id}
+                      isOwner={isOwner}
+                      unreadCount={0}
+                      isEditing={editingId === ch.id}
+                      editingName={editingName}
+                      onSelect={setSelectedChannel}
+                      onRenameStart={(c) => { setEditingId(c.id); setEditingName(c.name); }}
+                      onDelete={deleteChannel}
+                      onCtxMenu={handleChannelCtx}
+                      onEditChange={e => setEditingName(e.target.value)}
+                      onEditKeyDown={e => {
+                        if (e.key === 'Enter') renameChannel(ch.id, editingName);
+                        if (e.key === 'Escape') setEditingId(null);
+                      }}
+                      onEditBlur={() => renameChannel(ch.id, editingName)}
+                      editInputRef={editInputRef}
+                      activeChannelId={activeChannelId}
+                    />
 
                     {/* Участники голосового канала */}
                     {chParticipants.length > 0 && (
                       <div className="ml-6 mt-0.5 space-y-0.5">
-                        {chParticipants.map(p => {
-                          const { imageUrl } = getUserAvatar(p.username);
-                          const isMe = p.userId === currentUserId;
-                          const vol  = volumes[p.userId] ?? 100;
-                          const isActuallySpeaking = isMe ? isSpeaking : p.isSpeaking;
-                          return (
-                            <div
-                              key={p.userId}
-                              className={`flex items-center gap-1.5 px-2 py-0.5 rounded ${!isMe ? 'hover:bg-ds-hover cursor-context-menu' : ''}`}
-                              onContextMenu={(e) => handleParticipantCtx(e, p)}
-                              title={!isMe ? 'ПКМ для регулировки громкости' : ''}
-                            >
-                              <div className={`w-[28px] h-[28px] rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0 transition-all duration-300 ${isActuallySpeaking ? 'ring-2 ring-ds-green shadow-[0_0_8px_rgba(35,165,89,0.5)] scale-105' : 'border border-white/5'}`}>
-                                <img src={imageUrl} alt={p.username} 
-                                  className="w-full h-full object-cover select-none" 
-                                />
-                              </div>
-                              <span className={`text-[13px] font-medium truncate flex-1 transition-colors ${isActuallySpeaking ? 'text-ds-green' : 'text-ds-muted group-hover:text-ds-text'}`} style={{ color: p.userId === ownerId ? '#ff4444' : '' }}>
-                                {p.username}
-                                {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(p.userId) && (
-                                  <span className="ml-1 px-1 py-0 rounded bg-ds-accent/10 border border-ds-accent/30 text-[7px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
-                                    СОЗДАТЕЛЬ
-                                  </span>
-                                )}
-                              </span>
-
-                              {/* Статус Мута/Деафена */}
-                              <div className="flex items-center gap-1 flex-shrink-0 ml-1">
-                                {p.isDeafened && (
-                                  <div className="slashed-container w-3.5 h-3.5 text-ds-red flex-shrink-0">
-                                    <Headphones className="w-full h-full" />
-                                    <div className="slashed-icon-line" style={{ height: '1.5px' }} />
-                                  </div>
-                                )}
-                                {p.isMuted && !p.isDeafened && (
-                                  <MicOff className="w-3.5 h-3.5 text-ds-red flex-shrink-0" />
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {chParticipants.map(p => (
+                          <VoiceParticipant
+                            key={p.userId}
+                            participant={p}
+                            isMe={p.userId === currentUserId}
+                            isActuallySpeaking={p.userId === currentUserId ? isSpeaking : p.isSpeaking}
+                            isOwner={p.userId === ownerId}
+                            onCtxMenu={handleParticipantCtx}
+                          />
+                        ))}
                       </div>
                     )}
                   </div>
@@ -445,7 +335,7 @@ export function Sidebar({
         userColor={userColor}
         onSignOut={onSignOut}
         voice={voice}
-        onOpenSettings={onOpenSettings}
+        onOpenSettings={() => setSettingsOpen(true)}
         updateStatus={updateStatus}
         updateInfo={updateInfo}
         updateProgress={updateProgress}
