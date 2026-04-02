@@ -248,7 +248,11 @@ export function useVoice() {
         if (isLeavingRef.current) return;
 
         setVoiceError(`[Network] Попытка восстановления связи с ${remoteUserId}...`);
-        pc.restartIce().catch(() => {});
+        try {
+          pc.restartIce();
+        } catch (e) {
+          console.warn('[WebRTC] restartIce error:', e);
+        }
         
         iceDisconnectTimers.current[remoteUserId] = setTimeout(() => {
           if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
@@ -555,25 +559,28 @@ export function useVoice() {
       
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.to !== user.id) return;
-        const pc = createPeerConnection(payload.from, channel);
+        console.log(`[WebRTC] Handle offer from ${payload.from}`);
+        
         try {
-          const polite = user.id < payload.from;
-          const collision = pc.signalingState !== 'stable' || makingOfferRef.current[payload.from];
-          ignoreOfferRef.current[payload.from] = !polite && collision;
-          if (ignoreOfferRef.current[payload.from]) return;
-          if (collision) {
-            console.log(`[WebRTC] Rollback offer from ${payload.from}`);
+          // Получаем или создаем соединение
+          const pc = peerConns.current[payload.from] || createPeerConnection(payload.from, channel);
+
+          // Простой механизм разрешения конфликтов (Perfect Negotiation)
+          if (pc.signalingState !== 'stable') {
+            console.warn('[WebRTC] State is not stable, rolling back for new offer');
             await pc.setLocalDescription({ type: 'rollback' });
           }
-          
+
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           
-          channel.send({ 
-            type: 'broadcast', event: 'answer', 
-            payload: { from: user.id, to: payload.from, sdp: pc.localDescription } 
-          });
+          if (channel.state === 'joined') {
+            channel.send({ 
+              type: 'broadcast', event: 'answer', 
+              payload: { from: user.id, to: payload.from, sdp: answer } 
+            });
+          }
         } catch (err) {
           console.error('[WebRTC] Error handling offer:', err);
           if (err.message.includes('m-lines') || err.message.includes('order')) {
@@ -583,8 +590,14 @@ export function useVoice() {
       });
 
       channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
-        if (payload.to === user.id && peerConns.current[payload.from] && !ignoreOfferRef.current[payload.from]) {
-          try { await peerConns.current[payload.from].setRemoteDescription(new RTCSessionDescription(payload.sdp)); } catch (err) {
+        if (payload.to === user.id && peerConns.current[payload.from]) {
+          console.log(`[WebRTC] Handle answer from ${payload.from}`);
+          try {
+            const pc = peerConns.current[payload.from];
+            if (pc.signalingState === 'have-local-offer') {
+               await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            }
+          } catch (err) {
             console.warn(`[Signaling] ${err.message}`);
             if (err.message.includes('m-lines') || err.message.includes('SDP')) {
               console.warn('[WebRTC] SDP Mismatch detected, forcing recreate...');
