@@ -116,6 +116,8 @@ export function useVoice() {
       // МГНОВЕННОЕ УДАЛЕНИЕ ПРИ УХОДЕ (БОРЬБА С ПРИЗРАКАМИ)
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
         console.log('[useVoice] Broadcast received: user-left', payload.userId);
+        
+        // Удаляем из сайдбара
         setAllParticipants(prev => {
           const next = { ...prev };
           Object.keys(next).forEach(chId => {
@@ -124,6 +126,9 @@ export function useVoice() {
           });
           return next;
         });
+
+        // Удаляем из центра (если мы в этом же канале)
+        setParticipants(prev => prev.filter(p => p.userId !== payload.userId));
       });
       channel.subscribe();
       globalPresence.current = channel;
@@ -264,15 +269,20 @@ export function useVoice() {
 
   const cleanupAll = useCallback(async () => {
     console.log('[useVoice] cleanupAll started (EXIT button clicked)');
-    isLeavingRef.current = true; // СТАВИМ МЕТКУ: ВЫХОДИМ САМИ
     
-    // Мгновенно сбрасываем UI
+    // СТАВИМ МЕТКУ ПЕРВОЙ ЖЕ СТРОЧКОЙ
+    isLeavingRef.current = true;
+    
+    // Мгновенно тушим все уведомления об ошибках
     setVoiceError(null);
-    setIsScreenSharing(false); 
-    setRemoteScreens({}); 
+    
+    // Силовое зануление всех списков
+    setParticipants([]);
+    setAllParticipants({}); 
     setActiveChannelId(null); 
     activeChannelIdRef.current = null;
-    setParticipants([]);
+    setIsScreenSharing(false); 
+    setRemoteScreens({}); 
 
     if (reconnectTimerRef.current) { 
       console.log('[useVoice] Clearing background reconnect timer');
@@ -310,12 +320,13 @@ export function useVoice() {
       console.log('[useVoice] Updating global presence (EXIT)...');
       const myId = currentUserRef.current?.id;
 
-      // СИЛОВОЕ УДАЛЕНИЕ: Кричим всем, что мы уходим, чтобы у них сразу пропала иконка
-      globalPresence.current.send({
-        type: 'broadcast',
-        event: 'user-left',
-        payload: { userId: myId }
-      }).catch(() => {});
+      // СИЛОВОЕ УДАЛЕНИЕ: Кричим во ВСЕ доступные каналы
+      const broadcastPayload = { type: 'broadcast', event: 'user-left', payload: { userId: myId } };
+      
+      globalPresence.current.send(broadcastPayload).catch(() => {});
+      if (realtimeChannel.current) {
+        realtimeChannel.current.send(broadcastPayload).catch(() => {});
+      }
 
       await globalPresence.current.track({
         ...presencePayload.current,
@@ -350,8 +361,14 @@ export function useVoice() {
     const seen = new Map();
     const myId = currentUserRef.current?.id;
     
+    // Если мы выходим — стейт ВСЕГДА пустой
+    if (isLeavingRef.current) {
+       setParticipants([]);
+       return;
+    }
+
     Object.values(state).flat().forEach(p => {
-      // ЗАЩИТА ОТ ПРИЗРАКОВ: Если мы выходим - не добавляем себя
+      // Игнорируем инфу о себе, если в процессе выхода
       if (isLeavingRef.current && p.userId === myId) return;
 
       seen.set(p.userId, { 
@@ -549,6 +566,12 @@ export function useVoice() {
         if (payload.to === user.id && peerConns.current[payload.from]) {
           peerConns.current[payload.from].addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(()=>{});
         }
+      });
+
+      // СЛУШАЕМ УХОД В ЛОКАЛЬНОМ КАНАЛЕ (БЫСТРАЯ ОЧИСТКА)
+      channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
+        setParticipants(prev => prev.filter(p => p.userId !== payload.userId));
+        closePeer(payload.userId, true);
       });
 
       channel.on('broadcast', { event: 'request-stream' }, ({ payload }) => {
