@@ -16,7 +16,10 @@ export function useRecentConversations(currentUserId) {
       return;
     }
 
+    let isCancelled = false;
+
     async function fetchConversations() {
+      if (isCancelled) return;
       setLoading(true);
       try {
         // Загружаем все сообщения, где юзер отправитель ИЛИ получатель
@@ -26,6 +29,7 @@ export function useRecentConversations(currentUserId) {
           .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
           .order('created_at', { ascending: false });
 
+        if (isCancelled) return;
         if (error) throw error;
         if (!data) {
           setConversations([]);
@@ -50,12 +54,13 @@ export function useRecentConversations(currentUserId) {
 
         // Теперь нам нужны актуальные данные профилей этих людей (аватары и т.д.)
         const partnerIds = Array.from(partners.keys());
-        if (partnerIds.length > 0) {
+        if (partnerIds.length > 0 && !isCancelled) {
           const { data: profiles, error: profError } = await supabase
             .from('profiles')
             .select('id, username, color')
             .in('id', partnerIds);
 
+          if (isCancelled) return;
           if (profError) throw profError;
 
           if (profiles) {
@@ -69,11 +74,13 @@ export function useRecentConversations(currentUserId) {
           }
         }
 
-        setConversations(Array.from(partners.values()));
+        if (!isCancelled) {
+          setConversations(Array.from(partners.values()));
+        }
       } catch (e) {
-        console.error('[useRecentConversations] Error:', e);
+        if (!isCancelled) console.error('[useRecentConversations] Error:', e);
       } finally {
-        setLoading(false);
+        if (!isCancelled) setLoading(false);
       }
     }
 
@@ -90,7 +97,10 @@ export function useRecentConversations(currentUserId) {
       })
       .subscribe();
 
-    return () => { channel.unsubscribe(); };
+    return () => { 
+      isCancelled = true;
+      channel.unsubscribe(); 
+    };
   }, [currentUserId]);
 
   return { conversations, loading };
