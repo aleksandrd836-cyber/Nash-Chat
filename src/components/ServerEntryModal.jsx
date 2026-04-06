@@ -48,7 +48,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
     setError(null);
     try {
       const { data, error: rpcErr } = await supabase
-        .rpc('join_server_by_invite', { p_invite_code: inviteCode.trim().toLowerCase() });
+        .rpc('join_server_by_invite', { p_invite_code: inviteCode.trim().toUpperCase() });
 
       if (rpcErr) throw rpcErr;
 

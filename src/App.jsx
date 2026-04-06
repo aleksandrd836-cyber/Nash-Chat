@@ -123,7 +123,7 @@ function App() {
     return (
       <div className="min-h-screen bg-ds-bg flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-ds-accent/10 rounded-full blur-[120px] animate-pulse-soft opacity-30" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-ds-accent/10 rounded-full animate-pulse-soft opacity-30" />
         </div>
         <div className="flex flex-col items-center gap-8 relative z-10">
           <div className="relative group">
@@ -162,10 +162,10 @@ function App() {
     <div className="flex h-screen overflow-hidden bg-ds-bg relative">
       {/* Global Vibe Atmosphere */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-ds-accent/15 rounded-full blur-[140px] animate-vibe-pulse mix-blend-screen" />
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-ds-accent/10 via-transparent to-purple-500/10 blur-[120px] animate-aurora-sweep opacity-30" />
-          <div className="absolute bottom-0 right-0 w-[80%] h-[80%] bg-gradient-to-bl from-blue-500/10 via-transparent to-ds-accent/10 blur-[100px] animate-aurora-shift opacity-40" />
-          <div className="absolute -top-20 -left-20 w-[45%] h-[45%] bg-purple-600/10 rounded-full blur-[130px] animate-vibe-pulse opacity-25 mix-blend-screen" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-ds-accent/15 rounded-full animate-vibe-pulse mix-blend-screen" />
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-ds-accent/10 via-transparent to-purple-500/10 animate-aurora-sweep opacity-30" />
+          <div className="absolute bottom-0 right-0 w-[80%] h-[80%] bg-gradient-to-bl from-blue-500/10 via-transparent to-ds-accent/10 animate-aurora-shift opacity-40" />
+          <div className="absolute -top-20 -left-20 w-[45%] h-[45%] bg-purple-600/10 rounded-full animate-vibe-pulse opacity-25 mix-blend-screen" />
       </div>
 
       <div className="flex w-full h-full relative z-10">

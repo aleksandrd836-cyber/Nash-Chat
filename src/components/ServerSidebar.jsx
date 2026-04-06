@@ -8,6 +8,7 @@ import { getUserAvatar } from '../lib/avatar';
  */
 export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, onHomeClick, refreshTrigger }) {
   const [servers, setServers] = useState([]);
+  const [imageErrors, setImageErrors] = useState({});
 
   const fetchServers = useCallback(async () => {
     if (!currentUserId) return;
@@ -90,10 +91,12 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
               style={!isSelected ? { borderColor: `${iconColor}44` } : {}}
             >
               {/* Буква (FALLBACK) или Иконка */}
-              {server.icon_url ? (
+              {server.icon_url && !imageErrors[server.id] ? (
                 <img 
                    src={server.icon_url} 
                    alt={server.name} 
+                   loading="lazy"
+                   onError={() => setImageErrors(prev => ({ ...prev, [server.id]: true }))}
                    className={`w-full h-full object-cover transition-transform duration-500 ${!isSelected ? 'group-hover/btn:scale-110' : ''}`}
                 />
               ) : (
@@ -138,3 +141,4 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
     </div>
   );
 }
+
