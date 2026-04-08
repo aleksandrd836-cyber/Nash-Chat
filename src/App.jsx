@@ -57,6 +57,8 @@ function App() {
     localColor, setLocalColor
   } = useStore();
 
+  const [centerImageError, setCenterImageError] = useState(false);
+
   const { conversations: recentConvs, loading: recentLoading } = useRecentConversations(auth.user?.id);
 
   // Глобальный счетчик непрочитанных ЛС для баджей
@@ -115,6 +117,7 @@ function App() {
   // При смене сервера — сбрасываем канал и DM
   function handleSelectServer(server) {
     setSelectedServer(server);
+    setCenterImageError(false); // Сброс ошибки при смене сервера
   }
 
   const { members } = useMembers(auth.user, selectedServer?.id);
@@ -270,8 +273,13 @@ function App() {
             <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
               <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                  <div className="absolute inset-0 vibe-moving-glow opacity-10" />
-                 {selectedServer.icon_url ? (
-                   <img src={selectedServer.icon_url} alt={selectedServer.name} className="w-full h-full object-cover z-10 transition-transform duration-500 group-hover:scale-110" />
+                 {selectedServer.icon_url && !centerImageError ? (
+                   <img 
+                     src={selectedServer.icon_url} 
+                     alt={selectedServer.name} 
+                     onError={() => setCenterImageError(true)}
+                     className="w-full h-full object-cover z-10 transition-transform duration-500 group-hover:scale-110" 
+                   />
                  ) : (
                    <span className="text-5xl font-black text-ds-accent uppercase tracking-tighter z-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]">
                      {selectedServer.name?.[0]?.toUpperCase() ?? '?'}
