@@ -125,16 +125,28 @@ html.light-theme {
 
 .vibe-nebula {
   animation: nebula-pulse 10s ease-in-out infinite;
-  background: radial-gradient(circle at center, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(0, 240, 255, 0.2) 0%, transparent 70%);
   will-change: transform, opacity;
 }
 
 .vibe-aurora {
   animation: aurora-flow 20s linear infinite;
-  background: linear-gradient(45deg, rgba(0, 240, 255, 0.05), rgba(0, 240, 255, 0.1), transparent);
-  filter: blur(80px);
+  background: linear-gradient(45deg, rgba(0, 240, 255, 0.1), rgba(0, 240, 255, 0.15), transparent);
   will-change: transform, border-radius;
 }
+
+/* ЭКСТРЕМАЛЬНОЕ РАЗМЫТИЕ ФОНА: Группирующее размытие для устранения граней */
+.vibe-background-nebula {
+  position: absolute;
+  inset: -100px;
+  filter: blur(140px);
+  transform: translateZ(0);
+  will-change: filter;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
 @keyframes border-pulse {
   0%, 100% { opacity: 0.1; }
   50% { opacity: 0.4; }
@@ -190,7 +202,7 @@ html.light-theme {
 
 .animate-vibe-pulse {
   animation: vibe-nebula-pulse 15s ease-in-out infinite;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
 }
 
 .animate-aurora-sweep {

@@ -643,16 +643,12 @@ export function useVoice() {
             const rRms = Math.sqrt(rSum / rData.length);
             const rSpeaking = rRms > 0.01;
 
-            setParticipants(prev => {
-              const p = prev.find(item => item.userId === uid);
-              if (!p || p.isSpeaking === rSpeaking) return prev;
-              
             // Синхронизируем с общим списком (все управление через AllParticipants)
             setAllParticipants(all => {
               const next = { ...all };
               let changed = false;
               Object.keys(next).forEach(chId => {
-                next[chId] = next[chId].map(item => {
+                next[chId] = (next[chId] || []).map(item => {
                   if (item.userId === uid && item.isSpeaking !== rSpeaking) {
                     changed = true;
                     return { ...item, isSpeaking: rSpeaking };
