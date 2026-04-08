@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
+import { AlertTriangle, Info } from 'lucide-react';
 
 /**
  * Вертикальная панель серверов слева.
@@ -9,16 +10,27 @@ import { getUserAvatar } from '../lib/avatar';
 export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, onHomeClick, refreshTrigger }) {
   const [servers, setServers] = useState([]);
   const [imageErrors, setImageErrors] = useState({});
+  const [isSlow, setIsSlow] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchServers = useCallback(async () => {
     if (!currentUserId) return;
+    setIsLoading(true);
+    const start = Date.now();
+    
     const { data, error } = await supabase
       .from('server_members')
       .select('server_id, role, servers(id, name, owner_id, invite_code, icon_url)')
       .eq('user_id', currentUserId);
+      
+    const end = Date.now();
+    if (end - start > 7000) setIsSlow(true); // Если грузится дольше 7 секунд
+    else setIsSlow(false);
+
     if (!error && data) {
       setServers(data.map(row => ({ ...row.servers, role: row.role })));
     }
+    setIsLoading(false);
   }, [currentUserId]);
 
   useEffect(() => {
@@ -138,6 +150,26 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
           </svg>
         </button>
       </div>
+
+      {/* Network Stability Warning (Zapret Compatibility) */}
+      {isSlow && (
+        <div className="mt-auto mb-4 px-3 flex flex-col items-center gap-2 group relative">
+          <div className="w-10 h-10 rounded-xl bg-ds-red/10 flex items-center justify-center text-ds-red animate-pulse cursor-help border border-ds-red/20 shadow-[0_0_15px_rgba(242,63,66,0.2)]">
+            <AlertTriangle size={20} />
+          </div>
+          
+          {/* Tooltip */}
+          <div className="absolute left-[70px] bg-ds-sidebar border border-ds-divider p-3 rounded-xl shadow-2xl w-56 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 z-[100] translate-x-2 group-hover:translate-x-0">
+             <div className="flex items-center gap-2 mb-2 text-ds-red">
+                <Info size={14} />
+                <span className="text-[10px] font-black uppercase tracking-wider">Сеть замедлена</span>
+             </div>
+             <p className="text-[10px] text-ds-text leading-relaxed font-medium">
+                Если у вас включен <b>Zapret</b>, запустите <span className="text-ds-accent font-bold">vibe_fixer.ps1</span> из папки с Запретом или добавьте <span className="text-ds-accent">supabase.co</span> в белый список.
+             </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

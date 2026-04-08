@@ -12,6 +12,9 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'stun:iphone-stun.strato-iphone.de:3478' },
+  { urls: 'stun:stun.nextcloud.com:443' },
+  { urls: 'stun:stun.bitmask.net:443' },
 ];
 
 export function useVoice() {
