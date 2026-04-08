@@ -111,12 +111,12 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
   const [volumes, setVolumes] = useState({});    // { [userId]: number 0-200 }
   const [quality, setQuality] = useState('720p'); // качество стрима
   const [showPicker, setShowPicker] = useState(false);
-  const [ignoredScreens, setIgnoredScreens] = useState(new Set());
+  const [watchedScreens, setWatchedScreens] = useState(new Set());
   const menuRef = useRef(null);
 
   // Сброс игнорируемых стримов при смене канала
   useEffect(() => {
-    setIgnoredScreens(new Set());
+    setWatchedScreens(new Set());
   }, [activeChannelId]);
 
   // Закрыть меню при клике вне его
@@ -264,16 +264,19 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               const { imageUrl } = getUserAvatar(p.username);
               const isMe = p.userId === user?.id;
               const vol = volumes[p.userId] ?? 100;
-              const stream = remoteScreens[p.userId];
-              const isActuallySpeaking = isMe ? voice.isSpeaking : p.isSpeaking;
+              const isWatched = watchedScreens.has(p.userId);
 
-              if (stream && !ignoredScreens.has(p.userId)) {
+              if (stream && isWatched) {
                 return (
                   <ScreenPlayer 
                     key={`screen-${p.userId}`} 
                     participant={p} 
                     stream={stream} 
-                    onClose={() => setIgnoredScreens(prev => new Set(prev).add(p.userId))}
+                    onClose={() => setWatchedScreens(prev => {
+                      const next = new Set(prev);
+                      next.delete(p.userId);
+                      return next;
+                    })}
                   />
                 );
               }
@@ -303,18 +306,10 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                           </span>
                         )}
                       </p>
-                    {p.isScreenSharing && !isMe && (!stream || ignoredScreens.has(p.userId)) && (
+                    {p.isScreenSharing && !isMe && !isWatched && (
                       <button 
                         onClick={() => {
-                          if (ignoredScreens.has(p.userId)) {
-                            setIgnoredScreens(prev => {
-                              const next = new Set(prev);
-                              next.delete(p.userId);
-                              return next;
-                            });
-                          } else {
-                            requestScreenView(p.userId);
-                          }
+                          setWatchedScreens(prev => new Set(prev).add(p.userId));
                         }}
                         className="mt-2 bg-ds-accent text-black px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-ds-accent/20 vibe-glow-blue"
                       >
