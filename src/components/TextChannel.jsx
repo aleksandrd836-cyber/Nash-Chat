@@ -17,14 +17,19 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
   const [attachment, setAttachment] = useState(null);   // { file, previewUrl }
   const [uploading, setUploading]  = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const bottomRef                  = useRef(null);
+  const scrollRef                 = useRef(null);
   const inputRef                   = useRef(null);
   const fileInputRef               = useRef(null);
   const pickerRef                  = useRef(null);
 
   // Автоскролл вниз при новых сообщениях
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [messages]);
 
   // Фокус на поле при смене канала
@@ -159,7 +164,10 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 flex flex-col min-h-0">
+      <div 
+        ref={scrollRef} 
+        className="flex-1 overflow-y-auto py-4 flex flex-col min-h-0 scroll-smooth no-scrollbar"
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex gap-1">
@@ -193,7 +201,6 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
             ))}
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Input */}

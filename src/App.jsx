@@ -162,7 +162,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-ds-bg relative">
+    <div className="fixed inset-0 flex overflow-hidden bg-ds-bg select-none">
       {/* Global Vibe Atmosphere */}
       <div className="vibe-background-nebula">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-ds-accent/20 rounded-full animate-vibe-pulse mix-blend-screen" />

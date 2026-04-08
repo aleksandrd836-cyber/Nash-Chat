@@ -27,13 +27,18 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   const [uploading, setUploading]     = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
-  const bottomRef                     = useRef(null);
+  const scrollRef                     = useRef(null);
   const inputRef                      = useRef(null);
   const fileInputRef                  = useRef(null);
   const pickerRef                     = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -188,7 +193,10 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto no-scrollbar py-6 flex flex-col min-h-0">
+      <div 
+        ref={scrollRef} 
+        className="flex-1 overflow-y-auto no-scrollbar py-6 flex flex-col min-h-0 scroll-smooth"
+      >
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
              <div className="w-12 h-12 border-[3px] border-ds-accent border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.2)]" />
@@ -225,7 +233,6 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
             ))}
           </div>
         )}
-        <div ref={bottomRef} className="h-4" />
       </div>
 
       {/* Input */}
