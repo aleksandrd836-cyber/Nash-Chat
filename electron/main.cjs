@@ -117,14 +117,13 @@ ipcMain.on('register-hotkeys', (event, shortcuts) => {
 ipcMain.handle('get-desktop-sources', async () => {
   const sources = await desktopCapturer.getSources({ 
     types: ['window', 'screen'],
-    thumbnailSize: { width: 400, height: 225 }, // Оптимальный размер для быстрой загрузки
+    thumbnailSize: { width: 1, height: 1 }, // Минимизируем нагрузку, так как превью больше не нужны
     fetchWindowIcons: true
   });
   
   return sources.map(source => ({
     id: source.id,
     name: source.name,
-    thumbnail: source.thumbnail.toDataURL(),
     appIcon: source.appIcon ? source.appIcon.toDataURL() : null
   }));
 });

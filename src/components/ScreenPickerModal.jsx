@@ -96,47 +96,40 @@ export function ScreenPickerModal({ onClose, onSelect }) {
               <p className="text-sm">Источники не найдены</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="flex flex-col gap-2">
               {filteredSources.map(source => (
                 <button
                   key={source.id}
                   onClick={() => onSelect(source.id, withAudio)}
-                  className="group flex flex-col bg-ds-servers/50 rounded-xl overflow-hidden hover:ring-2 hover:ring-ds-accent transition-all animate-fade-in"
+                  className="group flex items-center gap-4 p-4 bg-ds-servers/40 hover:bg-ds-accent/10 border border-white/5 hover:border-ds-accent/30 rounded-2xl transition-all animate-fade-in text-left relative overflow-hidden"
                 >
-                  <div className="relative aspect-video bg-ds-input flex items-center justify-center overflow-hidden border-b border-white/5 relative">
-                    {source.thumbnail ? (
-                      <img 
-                        src={source.thumbnail} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 block" 
-                        alt=""
-                      />
+                  <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-ds-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  
+                  {/* Icon Area */}
+                  <div className="w-12 h-12 rounded-xl bg-black/40 flex items-center justify-center border border-white/10 group-hover:border-ds-accent/20 transition-all flex-shrink-0 relative overflow-hidden">
+                    {source.appIcon ? (
+                      <img src={source.appIcon} className="w-8 h-8 object-contain relative z-10" alt="" />
                     ) : (
-                      <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
-                         {source.appIcon ? (
-                           <img src={source.appIcon} className="w-12 h-12" alt="" />
-                         ) : (
-                           <Monitor size={32} />
-                         )}
-                      </div>
+                      <Monitor size={24} className="text-ds-muted group-hover:text-ds-accent transition-colors relative z-10" />
                     )}
-                    
-                    {/* Fallback overlay if thumbnail is just a black placeholder */}
-                    {!source.thumbnail && source.appIcon && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-ds-bg/60 backdrop-blur-sm z-10">
-                         <img src={source.appIcon} className="w-12 h-12 shadow-2xl" alt="" />
-                      </div>
-                    )}
-
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-ds-accent/5 transition-colors" />
+                    <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-10" />
                   </div>
-                  {/* Footer */}
-                  <div className="p-3 flex items-center gap-2 text-left bg-ds-bg/40">
-                    {source.appIcon && (
-                      <img src={source.appIcon} className="w-4 h-4 rounded-sm flex-shrink-0" alt="" />
-                    )}
-                    <span className="text-ds-text text-[11px] font-semibold truncate leading-tight flex-1">
+
+                  {/* Text Information */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-ds-text font-bold text-sm truncate group-hover:text-ds-accent transition-colors">
                       {source.name}
-                    </span>
+                    </h4>
+                    <p className="text-[10px] text-ds-muted/60 font-black uppercase tracking-widest mt-0.5">
+                      {tab === 'window' ? 'Окно приложения' : 'Весь экран'}
+                    </p>
+                  </div>
+
+                  {/* Selection Indicator */}
+                  <div className="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center text-ds-muted group-hover:text-ds-accent group-hover:border-ds-accent/40 transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
                   </div>
                 </button>
               ))}
