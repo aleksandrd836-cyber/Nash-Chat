@@ -324,7 +324,7 @@ export function useVoice() {
         // ИГНОРИРУЕМ ОШИБКИ, ЕСЛИ МЫ ВЫХОДИМ (БОРЬБА С ЛОЖНЫМИ АЛЕРТАМИ)
         if (isLeavingRef.current) return;
 
-        setVoiceError(`[Network] Попытка восстановления связи с ${remoteUserId}...`);
+        console.log(`[WebRTC] Connection disconnected with ${remoteUserId}, attempting recovery...`);
         try {
           pc.restartIce();
         } catch (e) {
@@ -382,6 +382,7 @@ export function useVoice() {
     activeChannelIdRef.current = null;
     setIsScreenSharing(false); 
     setRemoteScreens({}); 
+    setVoiceError(null); 
 
     if (reconnectTimerRef.current) { 
       console.log('[useVoice] Clearing background reconnect timer');
