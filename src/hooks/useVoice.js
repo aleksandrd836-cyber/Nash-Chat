@@ -59,7 +59,18 @@ export function useVoice() {
   const presenceDebounceRef = useRef(null);
   const isSwitchingRef = useRef(false);
 
-  // СИНХРОНИЗАЦИЯ СТРИМОВ: удаляем стрим из remoteScreens, если участник перестал шарить
+  // ── СИНХРОНИЗАЦИЯ УЧАСТНИКОВ В ЦЕНТРЕ (derived state) ──
+  // Мы больше не управляем участниками канала отдельно, берем их из глобального списка
+  useEffect(() => {
+    if (!activeChannelId) {
+      setParticipants([]);
+      return;
+    }
+    const list = allParticipants[activeChannelId] || [];
+    setParticipants(list);
+  }, [allParticipants, activeChannelId]);
+
+  // СИНХРОНИЗАЦИЯ СТРИМОВ
   useEffect(() => {
     setRemoteScreens(prev => {
       const next = { ...prev };
@@ -92,7 +103,7 @@ export function useVoice() {
       });
 
       channel.on('presence', { event: 'sync' }, () => {
-        if (channel.state !== 'joined') return; // ЗАЩИТА: Не обновляем сайдбар при обрывах
+        if (channel.state !== 'joined') return; 
         
         const state = channel.presenceState();
         const latestUserPresence = new Map();
@@ -101,7 +112,6 @@ export function useVoice() {
         Object.values(state).flat().forEach(p => {
           if (!p.channelId || !p.userId || !p.username) return;
           if (isLeavingRef.current && p.userId === myId) return;
-          if (p.userId === myId && activeChannelIdRef.current && p.channelId !== activeChannelIdRef.current) return;
 
           const existing = latestUserPresence.get(p.userId);
           if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
@@ -118,18 +128,24 @@ export function useVoice() {
             isMuted: !!p.isMuted, isDeafened: !!p.isDeafened
           });
         });
+
         setAllParticipants(finalAll);
       });
 
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
         setAllParticipants(prev => {
           const next = { ...prev };
+          let changed = false;
           Object.keys(next).forEach(chId => {
-            next[chId] = next[chId].map(p => 
-              p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p
-            );
+            next[chId] = next[chId].map(p => {
+              if (p.userId === payload.userId && p.isSpeaking !== payload.isSpeaking) {
+                changed = true;
+                return { ...p, isSpeaking: payload.isSpeaking };
+              }
+              return p;
+            });
           });
-          return next;
+          return changed ? next : prev;
         });
       });
 
@@ -148,7 +164,6 @@ export function useVoice() {
           });
           return changed ? next : prev;
         });
-        setParticipants(prev => prev.filter(p => p.userId !== uid));
       });
 
       channel.subscribe(status => {
@@ -461,41 +476,34 @@ export function useVoice() {
   }, [activeChannelId]);
 
   const syncParticipants = useCallback((channel) => {
-    // ЗАЩИТА: Если канал не в статусе "joined", не пытаемся синхронизировать участников
-    // Это предотвращает очистку списка (блинкование) при обрывах
-    if (channel.state !== 'joined') return;
+    if (channel.state !== 'joined' || isLeavingRef.current) return;
 
     const state = channel.presenceState();
-    const seen = new Map();
     const myId = currentUserRef.current?.id;
+    const seenUids = new Set();
     
-    // Если мы выходим — стейт ВСЕГДА пустой
-    if (isLeavingRef.current) {
-       setParticipants([]);
-       return;
-    }
-
     Object.values(state).flat().forEach(p => {
-      // Игнорируем инфу о себе, если в процессе выхода
-      if (isLeavingRef.current && p.userId === myId) return;
+      if (!p.userId || (isLeavingRef.current && p.userId === myId)) return;
+      seenUids.add(p.userId);
 
-      seen.set(p.userId, { 
-        userId: p.userId, username: p.username, color: p.color, 
-        isScreenSharing: p.isScreenSharing, isSpeaking: p.isSpeaking, 
-        isMuted: p.isMuted, isDeafened: p.isDeafened 
-      });
+      // Локальный канал ТЕПЕРЬ отвечает ТОЛЬКО за создание пиров
       if (p.userId !== myId && !peerConns.current[p.userId] && !ghostPeersRef.current[p.userId]) {
         createPeerConnection(p.userId, channel);
       }
     });
+
+    // Очистка призраков: сокращаем интервал до 5 секунд для отзывчивости
     Object.keys(peerConns.current).forEach(uid => {
-      if (!seen.has(uid) && !ghostPeersRef.current[uid]) {
-        ghostPeersRef.current[uid] = setTimeout(() => { closePeer(uid, true); delete ghostPeersRef.current[uid]; }, 60000);
-      } else if (seen.has(uid) && ghostPeersRef.current[uid]) {
-        clearTimeout(ghostPeersRef.current[uid]); delete ghostPeersRef.current[uid];
+      if (!seenUids.has(uid) && !ghostPeersRef.current[uid]) {
+        ghostPeersRef.current[uid] = setTimeout(() => { 
+          closePeer(uid, true); 
+          delete ghostPeersRef.current[uid]; 
+        }, 5000); 
+      } else if (seenUids.has(uid) && ghostPeersRef.current[uid]) {
+        clearTimeout(ghostPeersRef.current[uid]); 
+        delete ghostPeersRef.current[uid];
       }
     });
-    setParticipants(Array.from(seen.values()));
   }, [createPeerConnection, closePeer]);
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color, isSilent = false) => {
@@ -639,18 +647,23 @@ export function useVoice() {
               const p = prev.find(item => item.userId === uid);
               if (!p || p.isSpeaking === rSpeaking) return prev;
               
-              // Синхронизируем с общим списком для сайдбара
-              setAllParticipants(all => ({
-                ...all,
-                [activeChannelIdRef.current]: (all[activeChannelIdRef.current] || []).map(item => 
-                  item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item
-                )
-              }));
-
-              return prev.map(item => item.userId === uid ? { ...item, isSpeaking: rSpeaking } : item);
+            // Синхронизируем с общим списком (все управление через AllParticipants)
+            setAllParticipants(all => {
+              const next = { ...all };
+              let changed = false;
+              Object.keys(next).forEach(chId => {
+                next[chId] = next[chId].map(item => {
+                  if (item.userId === uid && item.isSpeaking !== rSpeaking) {
+                    changed = true;
+                    return { ...item, isSpeaking: rSpeaking };
+                  }
+                  return item;
+                });
+              });
+              return changed ? next : all;
             });
           });
-        }, 250);
+        }, 150);
       } catch (err) {
         console.error('[useVoice] Media initialization failed:', err);
         setVoiceError(`Ошибка микрофона: ${err.message}`);
@@ -667,13 +680,18 @@ export function useVoice() {
     channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
     channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
     
-    // БЫСТРЫЕ ОБНОВЛЕНИЯ ГОЛОСА (BROADCAST) ДЛЯ СЕТКИ И САЙДБАРА
+    // ЛОКАЛЬНЫЙ КАНАЛ больше не трогает стейты участников, чтобы не было конфликтов с глобальным.
+    // Единственное исключение — индикация голоса, но мы ее тоже синхронизируем через все стейты
     channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-      setParticipants(prev => prev.map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p));
-      setAllParticipants(all => ({
-        ...all,
-        [channelId]: (all[channelId] || []).map(p => p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p)
-      }));
+      setAllParticipants(all => {
+        const next = { ...all };
+        Object.keys(next).forEach(chId => {
+          next[chId] = next[chId].map(p => 
+            p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p
+          );
+        });
+        return next;
+      });
     });
 
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
