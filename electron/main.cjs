@@ -124,8 +124,8 @@ ipcMain.handle('get-desktop-sources', async () => {
   return sources.map(source => ({
     id: source.id,
     name: source.name,
-    thumbnail: (source.thumbnail && !source.thumbnail.isEmpty()) ? source.thumbnail.toDataURL() : null,
-    appIcon: (source.appIcon && !source.appIcon.isEmpty()) ? source.appIcon.toDataURL() : null
+    thumbnail: source.thumbnail.toDataURL(),
+    appIcon: source.appIcon ? source.appIcon.toDataURL() : null
   }));
 });
 
