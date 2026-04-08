@@ -207,8 +207,15 @@ export function useVoice() {
 
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     
+    // Добавляем микрофон
     if (localStream.current) {
       localStream.current.getTracks().forEach(track => pc.addTrack(track, localStream.current));
+    }
+
+    // ВАЖНО: Если мы УЖЕ стримим экран — добавляем его новому пиру сразу
+    if (screenStreamRef.current) {
+      console.log(`[WebRTC] Adding existing screen stream for new peer ${remoteUserId}`);
+      screenStreamRef.current.getTracks().forEach(track => pc.addTrack(track, screenStreamRef.current));
     }
 
     pc.onnegotiationneeded = async () => {
@@ -217,6 +224,9 @@ export function useVoice() {
         makingOfferRef.current[remoteUserId] = true;
         
         const offer = await pc.createOffer();
+        // Если за это время стейт изменился (пришел чужой оффер), игнорируем свой оффер
+        if (pc.signalingState !== 'stable') return;
+
         await pc.setLocalDescription(offer);
         
         const myId = currentUserRef.current?.id;
@@ -236,11 +246,23 @@ export function useVoice() {
     };
 
     pc.ontrack = (event) => {
-      const stream = event.streams[0];
       const track = event.track;
+      console.log(`[WebRTC] Incoming track from ${remoteUserId}:`, track.kind);
+
       if (track.kind === 'video') {
+        const stream = event.streams[0] || new MediaStream([track]);
         setRemoteScreens(prev => ({ ...prev, [remoteUserId]: stream }));
+        
+        // Автоматически чистим, если трек завершился
+        track.onended = () => {
+          setRemoteScreens(prev => {
+            const next = { ...prev };
+            delete next[remoteUserId];
+            return next;
+          });
+        };
       } else if (track.kind === 'audio') {
+        const stream = event.streams[0] || new MediaStream([track]);
         if (!audioElements.current[remoteUserId]) {
           const audio = new Audio();
           audio.autoplay = true; audio.muted = true; audio.volume = 0;
@@ -659,12 +681,24 @@ export function useVoice() {
         console.log(`[WebRTC] Handle offer from ${payload.from}`);
         
         try {
-          // Получаем или создаем соединение
           const pc = peerConns.current[payload.from] || createPeerConnection(payload.from, channel);
+          const myId = user.id;
+          
+          // Механизм Perfect Negotiation (Polite peer logic)
+          const offerCollision = (payload.event === 'offer') && 
+                                 (makingOfferRef.current[payload.from] || pc.signalingState !== 'stable');
+          
+          // Мы вежливые (polite), если наш ID меньше ID собеседника (или любая другая стабильная логика)
+          const isPolite = myId < payload.from;
 
-          // Простой механизм разрешения конфликтов (Perfect Negotiation)
-          if (pc.signalingState !== 'stable') {
-            console.warn('[WebRTC] State is not stable, rolling back for new offer');
+          ignoreOfferRef.current[payload.from] = !isPolite && offerCollision;
+          if (ignoreOfferRef.current[payload.from]) {
+            console.warn(`[WebRTC] Collision: Ignoring offer from ${payload.from} (Impolite)`);
+            return;
+          }
+
+          if (offerCollision) {
+            console.log(`[WebRTC] Collision: Rolling back local for ${payload.from} (Polite)`);
             await pc.setLocalDescription({ type: 'rollback' });
           }
 
@@ -680,9 +714,6 @@ export function useVoice() {
           }
         } catch (err) {
           console.error('[WebRTC] Error handling offer:', err);
-          if (err.message.includes('m-lines') || err.message.includes('order')) {
-            closePeer(payload.from, true);
-          }
         }
       });
 
@@ -691,15 +722,9 @@ export function useVoice() {
           console.log(`[WebRTC] Handle answer from ${payload.from}`);
           try {
             const pc = peerConns.current[payload.from];
-            if (pc.signalingState === 'have-local-offer') {
-               await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-            }
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
           } catch (err) {
-            console.warn(`[Signaling] ${err.message}`);
-            if (err.message.includes('m-lines') || err.message.includes('SDP')) {
-              console.warn('[WebRTC] SDP Mismatch detected, forcing recreate...');
-              closePeer(payload.from, true);
-            }
+            console.warn(`[Signaling] Answer handling failed for ${payload.from}: ${err.message}`);
           }
         }
       });
@@ -718,7 +743,17 @@ export function useVoice() {
 
       channel.on('broadcast', { event: 'request-stream' }, ({ payload }) => {
         if (payload.to === user.id && screenStreamRef.current && peerConns.current[payload.from]) {
-          screenStreamRef.current.getTracks().forEach(t => peerConns.current[payload.from].addTrack(t, screenStreamRef.current));
+          const pc = peerConns.current[payload.from];
+          const currentSenders = pc.getSenders();
+          
+          screenStreamRef.current.getTracks().forEach(track => {
+            // ПРОВЕРКА: Если трек уже был добавлен ранее, не добавляем его снова
+            const alreadyAdded = currentSenders.some(s => s.track === track);
+            if (!alreadyAdded) {
+               console.log(`[WebRTC] Adding screen track for requester ${payload.from}`);
+               pc.addTrack(track, screenStreamRef.current);
+            }
+          });
         }
       });
 
