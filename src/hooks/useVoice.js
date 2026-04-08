@@ -201,7 +201,6 @@ export function useVoice() {
       globalPresence.current = channel;
     };
 
-      // ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ПРИ ЗАКРЫТИИ ОКНА
       const handleUnload = () => {
         if (activeChannelIdRef.current) {
           cleanupAll();
@@ -209,8 +208,8 @@ export function useVoice() {
       };
       window.addEventListener('beforeunload', handleUnload);
 
-      globalPresence.current = channel;
-      
+      initGlobalChannel();
+
       return () => {
         cancelled = true;
         window.removeEventListener('beforeunload', handleUnload);
@@ -219,10 +218,7 @@ export function useVoice() {
         }
         globalPresence.current = null;
       };
-    };
-
-    initGlobalChannel();
-  }, [cleanupAll]);
+    }, [cleanupAll]);
 
   const closePeer = useCallback((userId, force = false) => {
     if (!force && ghostPeersRef.current[userId]) return;
