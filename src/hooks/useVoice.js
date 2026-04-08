@@ -930,26 +930,46 @@ export function useVoice() {
       setTimeout(() => updatePresenceStatus({ isScreenSharing: false }), 300);
     }
   }, [updatePresenceStatus]);
+  
+  // Профили качества для трансляции
+  const qualityProfiles = {
+    '1080p': { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+    '720p':  { width: { ideal: 1280 }, height: { ideal: 720 },  frameRate: { ideal: 30 } },
+    '480p':  { width: { ideal: 854 },  height: { ideal: 480 },  frameRate: { ideal: 30 } }
+  };
 
   const startScreenShare = useCallback(async (quality = '720p', user = null, sourceId = null) => {
     try {
       console.log('[WebRTC] Starting screen share, sourceId:', sourceId);
       
+      const profile = qualityProfiles[quality] || qualityProfiles['720p'];
+
       let constraints;
       if (sourceId) {
-        // МАКСИМАЛЬНО упрощенный формат для Electron (без лишних ограничений)
+        // МАКСИМАЛЬНО упрощенный формат для Electron
         constraints = {
           audio: false, 
           video: {
             mandatory: {
               chromeMediaSource: 'desktop',
-              chromeMediaSourceId: sourceId
+              chromeMediaSourceId: sourceId,
+              minWidth: profile.width.ideal,
+              maxWidth: profile.width.ideal,
+              minHeight: profile.height.ideal,
+              maxHeight: profile.height.ideal,
+              maxFrameRate: profile.frameRate.ideal
             }
           }
         };
       } else {
         // Стандарт для браузера
-        constraints = { video: true, audio: false };
+        constraints = { 
+          video: {
+            ...profile,
+            cursor: 'always'
+          }, 
+          audio: false 
+        };
       }
 
       setVoiceError(null); 

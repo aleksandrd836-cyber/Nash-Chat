@@ -388,18 +388,27 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               </div>
 
               {!isScreenSharing ? (
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="bg-ds-sidebar/40 rounded-2xl border border-white/10 px-4 flex items-center group focus-within:border-ds-accent/30 transition-all flex-1 backdrop-blur-md">
+                <div className="flex items-center gap-3 w-full">
+                  <div className="relative group flex-1">
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none group-focus-within:text-ds-accent transition-colors">
+                      <Download size={14} className="opacity-40" />
+                    </div>
                     <select 
                       value={quality} 
                       onChange={e => setQuality(e.target.value)}
-                      className="bg-transparent text-ds-text text-[11px] font-black uppercase tracking-widest outline-none cursor-pointer appearance-none w-full h-12"
+                      className="w-full h-12 pl-10 pr-10 bg-ds-sidebar/40 hover:bg-ds-sidebar/60 border border-white/10 hover:border-ds-accent/30 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-ds-text outline-none appearance-none cursor-pointer transition-all backdrop-blur-md"
                     >
-                      <option value="1080p">1080P</option>
-                      <option value="720p">720P</option>
-                      <option value="480p">480P</option>
+                      <option value="1080p">1080P • 60 FPS</option>
+                      <option value="720p">720P • 30 FPS</option>
+                      <option value="480p">480P • 30 FPS</option>
                     </select>
+                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-ds-muted/40 group-hover:text-ds-accent/60 transition-colors">
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
                   </div>
+
                   <button 
                     onClick={() => {
                       if (window.electronAPI) {
@@ -408,10 +417,11 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                         startScreenShare(quality, user);
                       }
                     }}
-                    className="flex-[2] h-12 rounded-2xl bg-ds-accent/20 hover:bg-ds-accent/30 text-ds-accent border border-ds-accent/40 font-black uppercase tracking-widest text-[11px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-ds-accent/5"
+                    className="flex-[1.5] h-12 rounded-2xl bg-ds-accent text-black font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center justify-center gap-3 shadow-lg shadow-ds-accent/20 hover:scale-[1.03] active:scale-95 group relative overflow-hidden"
                   >
-                    <Monitor size={18} strokeWidth={3} />
-                    ТРАНСЛЯЦИЯ
+                    <div className="absolute inset-0 vibe-moving-glow opacity-30 group-hover:opacity-50 transition-opacity" />
+                    <Monitor size={18} strokeWidth={3} className="z-10" />
+                    <span className="z-10">ТРАНСЛЯЦИЯ</span>
                   </button>
                 </div>
               ) : (
