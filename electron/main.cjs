@@ -117,11 +117,10 @@ ipcMain.on('register-hotkeys', (event, shortcuts) => {
 ipcMain.handle('get-desktop-sources', async () => {
   const sources = await desktopCapturer.getSources({ 
     types: ['window', 'screen'],
-    thumbnailSize: { width: 1280, height: 720 }, // Увеличиваем размер для высокой четкости 16:9
+    thumbnailSize: { width: 400, height: 225 }, // Оптимальный размер для быстрой загрузки
     fetchWindowIcons: true
   });
   
-  // Конвертируем NativeImage в Data URL строку (иначе в React будет пусто)
   return sources.map(source => ({
     id: source.id,
     name: source.name,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Monitor, X } from 'lucide-react';
 
 /**
  * Модальное окно выбора экрана или окна для трансляции (только для Electron).
@@ -102,15 +103,31 @@ export function ScreenPickerModal({ onClose, onSelect }) {
                   onClick={() => onSelect(source.id, withAudio)}
                   className="group flex flex-col bg-ds-servers/50 rounded-xl overflow-hidden hover:ring-2 hover:ring-ds-accent transition-all animate-fade-in"
                 >
-                  <div className="relative aspect-video bg-black/40 flex items-center justify-center overflow-hidden border-b border-white/5">
-                    {source.thumbnail && (
+                  <div className="relative aspect-video bg-ds-input flex items-center justify-center overflow-hidden border-b border-white/5 relative">
+                    {source.thumbnail ? (
                       <img 
                         src={source.thumbnail} 
-                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 block" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 block" 
                         alt=""
                       />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
+                         {source.appIcon ? (
+                           <img src={source.appIcon} className="w-12 h-12" alt="" />
+                         ) : (
+                           <Monitor size={32} />
+                         )}
+                      </div>
                     )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                    
+                    {/* Fallback overlay if thumbnail is just a black placeholder */}
+                    {!source.thumbnail && source.appIcon && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-ds-bg/60 backdrop-blur-sm z-10">
+                         <img src={source.appIcon} className="w-12 h-12 shadow-2xl" alt="" />
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-ds-accent/5 transition-colors" />
                   </div>
                   {/* Footer */}
                   <div className="p-3 flex items-center gap-2 text-left bg-ds-bg/40">
