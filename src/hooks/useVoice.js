@@ -105,34 +105,47 @@ export function useVoice() {
         config: { presence: { key: user.id } }
       });
 
-      channel.on('presence', { event: 'sync' }, () => {
-        if (channel.state !== 'joined') return; 
+      const updateAllParticipants = () => {
+        if (channel.state !== 'joined' || isLeavingRef.current) return;
         
         const state = channel.presenceState();
         const latestUserPresence = new Map();
-        const myId = user.id;
+        const myId = currentUserRef.current?.id;
 
         Object.values(state).flat().forEach(p => {
-          if (!p.channelId || !p.userId || !p.username) return;
+          if (!p.userId || !p.username) return; // channelId может быть null, если юзер просто онлайн
           if (isLeavingRef.current && p.userId === myId) return;
 
           const existing = latestUserPresence.get(p.userId);
-          if (!existing || (p.joined_at && existing.joined_at && p.joined_at > existing.joined_at)) {
+          // Дедупликация: всегда берем самую свежую запись по joined_at
+          if (!existing || (p.joined_at > (existing.joined_at || 0))) {
             latestUserPresence.set(p.userId, p);
           }
         });
 
         const finalAll = {};
         latestUserPresence.forEach(p => {
+          // Если у юзера нет channelId — он не в голосовом канале, пропускаем
+          if (!p.channelId) return;
+          
           if (!finalAll[p.channelId]) finalAll[p.channelId] = [];
           finalAll[p.channelId].push({
             userId: p.userId, username: p.username, color: p.color,
             isScreenSharing: p.isScreenSharing, isSpeaking: !!p.isSpeaking,
-            isMuted: !!p.isMuted, isDeafened: !!p.isDeafened
+            isMuted: !!p.isMuted, isDeafened: !!p.isDeafened,
+            joined_at: p.joined_at
           });
         });
 
         setAllParticipants(finalAll);
+      };
+
+      channel.on('presence', { event: 'sync' }, updateAllParticipants);
+      channel.on('presence', { event: 'join' }, ({ newPresences }) => {
+        updateAllParticipants();
+      });
+      channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        updateAllParticipants();
       });
 
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
@@ -188,16 +201,28 @@ export function useVoice() {
       globalPresence.current = channel;
     };
 
-    initGlobalChannel();
+      // ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ПРИ ЗАКРЫТИИ ОКНА
+      const handleUnload = () => {
+        if (activeChannelIdRef.current) {
+          cleanupAll();
+        }
+      };
+      window.addEventListener('beforeunload', handleUnload);
 
-    return () => {
-      cancelled = true;
-      if (globalPresence.current) {
-        supabase.removeChannel(globalPresence.current).catch(() => {});
-      }
-      globalPresence.current = null;
+      globalPresence.current = channel;
+      
+      return () => {
+        cancelled = true;
+        window.removeEventListener('beforeunload', handleUnload);
+        if (globalPresence.current) {
+          supabase.removeChannel(globalPresence.current).catch(() => {});
+        }
+        globalPresence.current = null;
+      };
     };
-  }, []);
+
+    initGlobalChannel();
+  }, [cleanupAll]);
 
   const closePeer = useCallback((userId, force = false) => {
     if (!force && ghostPeersRef.current[userId]) return;
