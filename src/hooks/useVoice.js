@@ -90,135 +90,6 @@ export function useVoice() {
     });
   }, [participants]);
 
-  // Глобальный канал
-  useEffect(() => {
-    let cancelled = false;
-    const initGlobalChannel = async () => {
-      if (globalPresence.current) {
-        supabase.removeChannel(globalPresence.current).catch(() => {});
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
-
-      const channel = supabase.channel('global_voice_presence', {
-        config: { presence: { key: user.id } }
-      });
-
-      const updateAllParticipants = () => {
-        if (channel.state !== 'joined' || isLeavingRef.current) return;
-        
-        const state = channel.presenceState();
-        const latestUserPresence = new Map();
-        const myId = currentUserRef.current?.id;
-
-        Object.values(state).flat().forEach(p => {
-          if (!p.userId || !p.username) return; // channelId может быть null, если юзер просто онлайн
-          if (isLeavingRef.current && p.userId === myId) return;
-
-          const existing = latestUserPresence.get(p.userId);
-          // Дедупликация: всегда берем самую свежую запись по joined_at
-          if (!existing || (p.joined_at > (existing.joined_at || 0))) {
-            latestUserPresence.set(p.userId, p);
-          }
-        });
-
-        const finalAll = {};
-        latestUserPresence.forEach(p => {
-          // Если у юзера нет channelId — он не в голосовом канале, пропускаем
-          if (!p.channelId) return;
-          
-          if (!finalAll[p.channelId]) finalAll[p.channelId] = [];
-          finalAll[p.channelId].push({
-            userId: p.userId, username: p.username, color: p.color,
-            isScreenSharing: p.isScreenSharing, isSpeaking: !!p.isSpeaking,
-            isMuted: !!p.isMuted, isDeafened: !!p.isDeafened,
-            joined_at: p.joined_at
-          });
-        });
-
-        setAllParticipants(finalAll);
-      };
-
-      channel.on('presence', { event: 'sync' }, updateAllParticipants);
-      channel.on('presence', { event: 'join' }, ({ newPresences }) => {
-        updateAllParticipants();
-      });
-      channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        updateAllParticipants();
-      });
-
-      channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-        setAllParticipants(prev => {
-          const next = { ...prev };
-          let changed = false;
-          Object.keys(next).forEach(chId => {
-            next[chId] = next[chId].map(p => {
-              if (p.userId === payload.userId && p.isSpeaking !== payload.isSpeaking) {
-                changed = true;
-                return { ...p, isSpeaking: payload.isSpeaking };
-              }
-              return p;
-            });
-          });
-          return changed ? next : prev;
-        });
-      });
-
-      channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        const uid = payload.userId;
-        setAllParticipants(prev => {
-          const next = { ...prev };
-          let changed = false;
-          Object.keys(next).forEach(chId => {
-            const filtered = next[chId].filter(p => p.userId !== uid);
-            if (filtered.length !== next[chId].length) {
-              next[chId] = filtered;
-              if (next[chId].length === 0) delete next[chId];
-              changed = true;
-            }
-          });
-          return changed ? next : prev;
-        });
-      });
-
-      channel.subscribe(status => {
-        // ЗАЩИТА: Игнорируем статусы от "старых" каналов, которые мы сами закрыли
-        if (channel !== globalPresence.current) return;
-
-        console.log(`[useVoice] Global channel status: ${status}`);
-        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          if (!cancelled && !isLeavingRef.current) {
-            console.log('[useVoice] Global channel actually lost, recovering in 4s...');
-            setTimeout(() => { 
-              if (!cancelled && !isLeavingRef.current && globalPresence.current === channel) {
-                initGlobalChannel(); 
-              }
-            }, 4000);
-          }
-        }
-      });
-      globalPresence.current = channel;
-    };
-
-      const handleUnload = () => {
-        if (activeChannelIdRef.current) {
-          cleanupAll();
-        }
-      };
-      window.addEventListener('beforeunload', handleUnload);
-
-      initGlobalChannel();
-
-      return () => {
-        cancelled = true;
-        window.removeEventListener('beforeunload', handleUnload);
-        if (globalPresence.current) {
-          supabase.removeChannel(globalPresence.current).catch(() => {});
-        }
-        globalPresence.current = null;
-      };
-    }, [cleanupAll]);
 
   const closePeer = useCallback((userId, force = false) => {
     if (!force && ghostPeersRef.current[userId]) return;
@@ -468,6 +339,136 @@ export function useVoice() {
       return next;
     });
   }, [closePeer]);
+
+  // Глобальный канал (инициализация после всех функций)
+  useEffect(() => {
+    let cancelled = false;
+    const initGlobalChannel = async () => {
+      if (globalPresence.current) {
+        supabase.removeChannel(globalPresence.current).catch(() => {});
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      const channel = supabase.channel('global_voice_presence', {
+        config: { presence: { key: user.id } }
+      });
+
+      const updateAllParticipants = () => {
+        if (channel.state !== 'joined' || isLeavingRef.current) return;
+        
+        const state = channel.presenceState();
+        const latestUserPresence = new Map();
+        const myId = currentUserRef.current?.id;
+
+        Object.values(state).flat().forEach(p => {
+          if (!p.userId || !p.username) return; // channelId может быть null, если юзер просто онлайн
+          if (isLeavingRef.current && p.userId === myId) return;
+
+          const existing = latestUserPresence.get(p.userId);
+          // Дедупликация: всегда берем самую свежую запись по joined_at
+          if (!existing || (p.joined_at > (existing.joined_at || 0))) {
+            latestUserPresence.set(p.userId, p);
+          }
+        });
+
+        const finalAll = {};
+        latestUserPresence.forEach(p => {
+          // Если у юзера нет channelId — он не в голосовом канале, пропускаем
+          if (!p.channelId) return;
+          
+          if (!finalAll[p.channelId]) finalAll[p.channelId] = [];
+          finalAll[p.channelId].push({
+            userId: p.userId, username: p.username, color: p.color,
+            isScreenSharing: p.isScreenSharing, isSpeaking: !!p.isSpeaking,
+            isMuted: !!p.isMuted, isDeafened: !!p.isDeafened,
+            joined_at: p.joined_at
+          });
+        });
+
+        setAllParticipants(finalAll);
+      };
+
+      channel.on('presence', { event: 'sync' }, updateAllParticipants);
+      channel.on('presence', { event: 'join' }, ({ newPresences }) => {
+        updateAllParticipants();
+      });
+      channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        updateAllParticipants();
+      });
+
+      channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
+        setAllParticipants(prev => {
+          const next = { ...prev };
+          let changed = false;
+          Object.keys(next).forEach(chId => {
+            next[chId] = next[chId].map(p => {
+              if (p.userId === payload.userId && p.isSpeaking !== payload.isSpeaking) {
+                changed = true;
+                return { ...p, isSpeaking: payload.isSpeaking };
+              }
+              return p;
+            });
+          });
+          return changed ? next : prev;
+        });
+      });
+
+      channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
+        const uid = payload.userId;
+        setAllParticipants(prev => {
+          const next = { ...prev };
+          let changed = false;
+          Object.keys(next).forEach(chId => {
+            const filtered = next[chId].filter(p => p.userId !== uid);
+            if (filtered.length !== next[chId].length) {
+              next[chId] = filtered;
+              if (next[chId].length === 0) delete next[chId];
+              changed = true;
+            }
+          });
+          return changed ? next : prev;
+        });
+      });
+
+      channel.subscribe(status => {
+        // ЗАЩИТА: Игнорируем статусы от "старых" каналов, которые мы сами закрыли
+        if (channel !== globalPresence.current) return;
+
+        console.log(`[useVoice] Global channel status: ${status}`);
+        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          if (!cancelled && !isLeavingRef.current) {
+            console.log('[useVoice] Global channel actually lost, recovering in 4s...');
+            setTimeout(() => { 
+              if (!cancelled && !isLeavingRef.current && globalPresence.current === channel) {
+                initGlobalChannel(); 
+              }
+            }, 4000);
+          }
+        }
+      });
+      globalPresence.current = channel;
+    };
+
+    const handleUnload = () => {
+      if (activeChannelIdRef.current) {
+        cleanupAll();
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+
+    initGlobalChannel();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('beforeunload', handleUnload);
+      if (globalPresence.current) {
+        supabase.removeChannel(globalPresence.current).catch(() => {});
+      }
+      globalPresence.current = null;
+    };
+  }, [cleanupAll]);
 
   const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
     presencePayload.current = { ...presencePayload.current, ...updates };
