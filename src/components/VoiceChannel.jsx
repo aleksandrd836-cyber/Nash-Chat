@@ -265,6 +265,8 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               const isMe = p.userId === user?.id;
               const vol = volumes[p.userId] ?? 100;
               const isWatched = watchedScreens.has(p.userId);
+              const stream = remoteScreens[p.userId];
+              const isActuallySpeaking = isMe ? voice.isSpeaking : p.isSpeaking;
 
               if (stream && isWatched) {
                 return (
