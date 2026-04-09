@@ -381,7 +381,10 @@ export function useVoice() {
         heartbeatIntervalRef.current = setInterval(async () => {
           if (isLeavingRef.current) return;
           // Обновляем свое состояние
-          updatePresenceStatus({ last_seen: Date.now() });
+          updatePresenceStatus({ 
+            last_seen: Date.now(),
+            channelId: activeChannelIdRef.current // ГАРАНТИРУЕМ наличие ID канала
+          });
 
           // И ТУТ ЖЕ проверяем чужие состояния (Ghost Reaper)
           const now = Date.now();
@@ -390,8 +393,14 @@ export function useVoice() {
             let removedCount = 0;
             Object.keys(next).forEach(chId => {
               const before = next[chId].length;
-              // Удаляем сессии, которые не подавали признаков жизни более 30 сек
-              next[chId] = next[chId].filter(p => !p.last_seen || (now - p.last_seen < 30000));
+              // Удаляем сессии, которые не подавали признаков жизни более 60 сек
+              next[chId] = next[chId].filter(p => {
+                const isAlive = !p.last_seen || (now - p.last_seen < 60000);
+                if (!isAlive) {
+                  console.warn(`[HolyReaper] Session ${p.sessionId} of ${p.username} timed out after 60s`);
+                }
+                return isAlive;
+              });
               removedCount += (before - next[chId].length);
               if (next[chId].length === 0) delete next[chId];
             });
@@ -412,8 +421,8 @@ export function useVoice() {
           if (!p.userId || !p.username) return;
           if (isLeavingRef.current && p.userId === myId) return;
 
-          // Игнорируем мертвые сессии сразу при расчете
-          if (p.last_seen && (now - p.last_seen > 30000)) return;
+          // Игнорируем мертвые сессии сразу при расчете (60 сек)
+          if (p.last_seen && (now - p.last_seen > 60000)) return;
 
           const sId = p.sessionId || p.userId; // fallback если нет sessionId
           const existing = latestUserSessions.get(sId);
@@ -537,7 +546,8 @@ export function useVoice() {
       ...presencePayload.current, 
       ...updates, 
       sessionId: sessionIdRef.current,
-      last_seen: presencePayload.current.last_seen || Date.now() 
+      channelId: updates.channelId || activeChannelIdRef.current, // Сохраняем канал в основном пейлоаде
+      last_seen: updates.last_seen || presencePayload.current.last_seen || Date.now() 
     };
     
     if (presenceDebounceRef.current) {
