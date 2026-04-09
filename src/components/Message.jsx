@@ -69,7 +69,9 @@ function Attachment({ url, fileName, previewUrl = null }) {
   const [resolvedUrl, setResolvedUrl] = useState(() => (isPrivateAttachment ? (previewUrl || null) : url));
   const [resolveError, setResolveError] = useState('');
   const decodedPrivatePath = decodePrivateDmAttachment(url);
-  const sourceForType = resolvedUrl || decodedPrivatePath || url;
+  const sourceForType = isPrivateAttachment
+    ? (fileName || decodedPrivatePath || resolvedUrl || url)
+    : (resolvedUrl || url);
   const fallbackFileName = decodedPrivatePath?.split('/').pop()?.split('_').slice(2).join('_') || '';
   const displayFileName = fileName || fallbackFileName || 'Прикреплённый файл';
   const extensionLabel = sourceForType.includes('.') ? sourceForType.split('.').pop().toUpperCase() : 'FILE';
@@ -515,6 +517,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
     </div>
   );
 }
+
 
 
 
