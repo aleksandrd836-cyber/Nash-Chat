@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 import { useMessageReactions } from '../hooks/useReactions';
 import EmojiPicker, { Emoji, EmojiStyle } from 'emoji-picker-react';
-import { Smile } from 'lucide-react';
+import { Smile, Hourglass } from 'lucide-react';
 
 /** Константа стиля эмодзи для всего приложения */
 const EMOJI_STYLE = EmojiStyle.APPLE;
@@ -262,6 +262,31 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
   const isAdmin = authorId === ownerId;
   const displayColor = isAdmin ? '#ff4444' : 'var(--ds-text)';
   const isRead = msg.is_read;
+  
+  // Расчет времени до удаления (14 дней)
+  const getExpiryLabel = () => {
+    if (msg.isPending) return null;
+    const createdDate = new Date(msg.created_at);
+    const expiryDate = new Date(createdDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const diff = expiryDate - now;
+
+    if (diff <= 0) return "Удаляется...";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+    let parts = [];
+    if (days > 0) parts.push(`${days}д`);
+    if (hours > 0) parts.push(`${hours}ч`);
+    if (mins > 0) parts.push(`${mins}м`);
+    if (days === 0 && hours === 0) parts.push(`${secs}с`);
+
+    return `Удалится через ${parts.join(' ')}`;
+  };
+  const expiryLabel = getExpiryLabel();
 
   // Закрытие пикера по клику вне
   useEffect(() => {
@@ -335,7 +360,13 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         </div>
 
         {/* Time on hover on far right */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 pointer-events-none">
+           {expiryLabel && (
+             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-ds-bg/60 backdrop-blur-md border border-ds-accent/20 text-ds-accent animate-pulse" title={expiryLabel}>
+               <Hourglass size={10} strokeWidth={3} />
+               <span className="text-[9px] font-black uppercase tracking-tighter">14d</span>
+             </div>
+           )}
            <span className="text-[10px] text-ds-muted font-bold tracking-tighter bg-ds-bg/40 backdrop-blur-md px-2 py-0.5 rounded-lg border border-ds-divider/20">{time}</span>
         </div>
       </div>
@@ -391,7 +422,13 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
       </div>
 
       {/* Time on hover on far right */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 pointer-events-none">
+         {expiryLabel && (
+           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-ds-bg/60 backdrop-blur-md border border-ds-accent/20 text-ds-accent animate-pulse" title={expiryLabel}>
+             <Hourglass size={10} strokeWidth={3} />
+             <span className="text-[9px] font-black uppercase tracking-tighter">14d</span>
+           </div>
+         )}
          <span className="text-[10px] text-ds-muted font-bold tracking-tighter bg-ds-bg/40 backdrop-blur-md px-2 py-0.5 rounded-lg border border-ds-divider/20">{time}</span>
       </div>
     </div>
