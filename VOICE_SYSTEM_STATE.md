@@ -84,3 +84,9 @@
 - src/hooks/voice/channelStatus.js now owns the local voice channel status transitions and reconnect scheduling for the per-channel Realtime subscription.
 - Extracted modules now cover: participants, screen share, remote media tracks, peer lifecycle, runtime timer management, signaling handlers, and local channel status handling.
 - Remaining dense areas are mostly global presence bootstrap/heartbeat and the broader join-flow orchestration around media init + Realtime setup.
+
+## 2026-04-10 final major useVoice decomposition pass
+- src/hooks/voice/globalPresence.js now owns global presence participant rebuilding, presence leave removal, and global channel recovery status logic.
+- src/hooks/voice/mediaInit.js now owns local media bootstrap: mic acquisition, AI noise suppression setup, audio context wiring, and VAD loop startup.
+- After this pass, useVoice.js mainly acts as the coordination layer that wires helpers together instead of containing every subsystem inline.
+- Remaining work in the future is optional polish/refinement, not another giant monolith split.

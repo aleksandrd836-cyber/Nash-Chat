@@ -29,12 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 00:40`
+- Время: `2026-04-10 00:47`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/channelStatus.js`
+  - `src/hooks/voice/globalPresence.js`
+  - `src/hooks/voice/mediaInit.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -72,3 +73,8 @@ pm run build passes.
 - Added src/hooks/voice/channelStatus.js and wired useVoice.js to use it for local channel subscribe status handling.
 - The file is now substantially less monolithic; the main unresolved heavy zone is the join bootstrap + global presence lifecycle rather than per-peer or per-status callback bodies.
 - Build passes after this extraction.
+
+## 2026-04-10 major refactor checkpoint
+- The main useVoice.js decomposition pass is effectively complete for now.
+- Extracted modules now include: participants.js, screenShare.js, mediaTracks.js, peerLifecycle.js, untime.js, signaling.js, channelStatus.js, and globalPresence.js, plus mediaInit.js for local media startup.
+- Current guidance for future work: prefer testing and targeted bug-fixing before any more structural refactors.

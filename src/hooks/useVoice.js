@@ -37,6 +37,7 @@ import {
   restartManagedInterval,
   scheduleManagedTimeout,
 } from './voice/runtime';
+import { initializeLocalVoiceMedia } from './voice/mediaInit';
 import {
   createAnswerBroadcastHandler,
   createIceBroadcastHandler,
@@ -45,6 +46,11 @@ import {
   createUserLeftBroadcastHandler,
 } from './voice/signaling';
 import { createLocalVoiceChannelStatusHandler } from './voice/channelStatus';
+import {
+  createGlobalParticipantsUpdater,
+  createGlobalPresenceLeaveHandler,
+  createGlobalPresenceStatusHandler,
+} from './voice/globalPresence';
 import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
@@ -366,7 +372,7 @@ export function useVoice() {
 
   // Глобальный канал (инициализация после всех функций)
   useEffect(() => {
-    let cancelled = false;
+    const cancelledRef = { current: false };
     const initGlobalChannel = async () => {
       if (globalPresence.current) {
         await supabase.removeChannel(globalPresence.current).catch(() => {});
@@ -375,7 +381,7 @@ export function useVoice() {
       await removeChannelsByTopic('global_voice_presence');
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
+      if (!user || cancelledRef.current) return;
 
       const channel = supabase.channel('global_voice_presence', {
         config: { presence: { key: user.id } }
@@ -388,83 +394,58 @@ export function useVoice() {
         ));
       });
 
-      // HEARTBEAT REAPER: Удаляем принудительно, если last_seen устарел
       const startHeartbeat = () => {
         restartManagedInterval(heartbeatIntervalRef, async () => {
           if (isLeavingRef.current) return;
-          // Обновляем свое состояние
-          updatePresenceStatus({ 
+          updatePresenceStatus({
             last_seen: Date.now(),
-            channelId: activeChannelIdRef.current // ГАРАНТИРУЕМ наличие ID канала
+            channelId: activeChannelIdRef.current,
           });
 
-          // И ТУТ ЖЕ проверяем чужие состояния (Ghost Reaper)
           const now = Date.now();
           mutateRealtimeParticipants((prev) => pruneStaleParticipantMap(prev, now));
-        }, VOICE_HEARTBEAT_MS); // 10 секунд — золотой стандарт liveness
+        }, VOICE_HEARTBEAT_MS);
       };
 
-      const updateAllParticipants = () => {
-        if (channel.state !== 'joined' || isLeavingRef.current) return;
-        const nextParticipants = buildParticipantMapFromPresenceState(channel.presenceState(), {
-          currentUserId: currentUserRef.current?.id,
-          isLeaving: isLeavingRef.current,
-          now: Date.now(),
-        });
-        mutateRealtimeParticipants(() => nextParticipants);
-      };
+      const updateAllParticipants = createGlobalParticipantsUpdater({
+        channel,
+        currentUserRef,
+        isLeavingRef,
+        buildParticipantMapFromPresenceState,
+        mutateRealtimeParticipants,
+      });
 
       channel.on('presence', { event: 'sync' }, updateAllParticipants);
-      channel.on('presence', { event: 'join' }, ({ newPresences }) => {
-        updateAllParticipants();
-      });
-      channel.on('presence', { event: 'leave' }, ({ leftPresences, key }) => {
-        // МОМЕНТАЛЬНОЕ УДАЛЕНИЕ: если сессия ушла из Supabase, режем её из UI сразу
-        const leavingSessions = ((leftPresences && leftPresences.length > 0) ? leftPresences : [{ userId: key }]).map((presence) => ({
-          userId: presence.userId || key,
-          sessionId: presence.sessionId,
-        }));
-        mutateRealtimeParticipants((prev) => (
-          leavingSessions.reduce(
-            (items, leavingPresence) => removeSessionFromParticipantMap(items, leavingPresence),
-            prev
-          )
-        ));
-        updateAllParticipants();
-      });
+      channel.on('presence', { event: 'join' }, updateAllParticipants);
+      channel.on('presence', { event: 'leave' }, createGlobalPresenceLeaveHandler({
+        mutateRealtimeParticipants,
+        removeSessionFromParticipantMap,
+        updateAllParticipants,
+      }));
 
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
         mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, payload));
       });
 
-      channel.subscribe(async (status) => {
-        // ЗАЩИТА: Игнорируем статусы от "старых" каналов, которые мы сами закрыли
-        if (channel !== globalPresence.current) return;
-
-        console.log(`[useVoice] Global channel status: ${status}`);
-        if (status === 'SUBSCRIBED') {
-          if (currentUserRef.current?.id && activeChannelIdRef.current) {
-            await channel.track({
-              ...presencePayload.current,
-              channelId: activeChannelIdRef.current,
-              joined_at: presencePayload.current.joined_at || Date.now(),
-              sessionId: sessionIdRef.current,
-              last_seen: Date.now(),
-            }).catch(() => {});
-          }
-          return;
-        }
-        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          if (!cancelled && !isLeavingRef.current && !serverVoiceStateRef.current) {
-            console.log('[useVoice] Global channel actually lost, recovering in 4s...');
-            setTimeout(() => { 
-              if (!cancelled && !isLeavingRef.current && !serverVoiceStateRef.current && globalPresence.current === channel) {
-                initGlobalChannel(); 
-              }
-            }, RECONNECT_DELAY_MS);
-          }
-        }
-      });
+      channel.subscribe(createGlobalPresenceStatusHandler({
+        channel,
+        cancelledRef,
+        globalPresenceRef: globalPresence,
+        currentUserRef,
+        activeChannelIdRef,
+        presencePayloadRef: presencePayload,
+        sessionIdRef,
+        isLeavingRef,
+        serverVoiceStateRef,
+        RECONNECT_DELAY_MS,
+        scheduleRecovery: (delayMs, shouldRecover) => {
+          setTimeout(() => {
+            if (shouldRecover()) {
+              initGlobalChannel();
+            }
+          }, delayMs);
+        },
+      }));
       startHeartbeat();
     };
 
@@ -478,7 +459,7 @@ export function useVoice() {
     initGlobalChannel();
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
       window.removeEventListener('beforeunload', handleUnload);
       if (globalPresence.current) {
         supabase.removeChannel(globalPresence.current).catch(() => {});
@@ -608,115 +589,26 @@ export function useVoice() {
       activeChannelIdRef.current = channelId; // УСТАНАВЛИВАЕМ СРАЗУ, чтобы не было "невидимости" в сайдбаре
       setIsConnecting(true); setVoiceError(null);
       try {
-        const constraints = { 
-          audio: { 
-            echoCancellation: false, 
-            noiseSuppression: false, 
-            autoGainControl: true,
-            sampleRate: 48000 
-          }, 
-          video: false 
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        originalMicStreamRef.current = stream;
-        
-        // Принудительно ставим статус мута сразу при создании
-        stream.getAudioTracks().forEach(t => t.enabled = !(isMutedRef.current || isDeafenedRef.current));
-
-        // ── Интеллектуальное шумоподавление (RNNoise AI) ──
-        const nsEnabled = localStorage.getItem('vibe_noise_suppression') === 'true';
-        let finalStream = stream;
-
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
-        audioContextRef.current = audioCtx;
-        if (audioCtx.state === 'suspended') await audioCtx.resume();
-
-        if (nsEnabled) {
-          try {
-            console.log('[useVoice] Активация AI шумоподавления...');
-            await audioCtx.audioWorklet.addModule('/audio/rnnoise_processor.js');
-            
-            const source = audioCtx.createMediaStreamSource(stream);
-            const rnnoiseNode = new AudioWorkletNode(audioCtx, 'rnnoise-processor');
-            
-            // Сохраняем в Ref для внешнего управления
-            rnnoiseNodeRef.current = rnnoiseNode;
-
-            // Ставим начальную интенсивность
-            const initialIntensity = parseInt(localStorage.getItem('vibe_noise_intensity') || '100');
-            rnnoiseNode.port.postMessage({ type: 'setIntensity', value: initialIntensity });
-            
-            // Живое обновление интенсивности
-            const handleLiveIntensity = (e) => {
-              if (rnnoiseNodeRef.current) {
-                 rnnoiseNodeRef.current.port.postMessage({ type: 'setIntensity', value: e.detail.value });
-              }
-            };
-            window.addEventListener('vibe-update-ns-intensity', handleLiveIntensity);
-            
-            const destination = audioCtx.createMediaStreamDestination();
-            source.connect(rnnoiseNode).connect(destination);
-            
-            finalStream = destination.stream;
-            console.log('[useVoice] AI шумоподавление запущено (Интенсивность:', initialIntensity, '%) 🛡️🎙️');
-          } catch (err) {
-            console.error('[useVoice] Ошибка шумодава (Safe Fallback):', err);
-            finalStream = stream;
-          }
-        }
-
-        localStream.current = finalStream;
-
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
-        const vadSource = audioCtx.createMediaStreamSource(finalStream.clone());
-        vadSource.connect(analyser);
-
-        let lastPresenceUpdate = 0;
-        fakeVADIntervalRef.current = setInterval(() => {
-          // ПРОВЕРКА ПОТОКА: если поток умер — тормозим
-          if (!localStream.current || !localStream.current.active) return;
-
-          const data = new Float32Array(analyser.fftSize);
-          analyser.getFloatTimeDomainData(data);
-          let sumSquares = 0.0;
-          for (const amplitude of data) sumSquares += amplitude * amplitude;
-          const rms = Math.sqrt(sumSquares / data.length);
-          const speaking = rms > 0.015 && !isMutedRef.current;
-
-          if (speaking !== isSpeakingRef.current) {
-            setIsSpeaking(speaking);
-            isSpeakingRef.current = speaking;
-            
-            // БЫСТРЫЙ BROADCAST ДЛЯ ВСЕХ (БЕЗЛИМИТНЫЙ)
-            const payload = { userId: currentUserRef.current.id, isSpeaking: speaking };
-            if (realtimeChannel.current && realtimeChannel.current.state === 'joined') {
-              realtimeChannel.current.send({ type: 'broadcast', event: 'speaking-update', payload });
-            }
-            
-            // МЕДЛЕННЫЙ TRACK (ТОЛЬКО РАЗ В 500мс ДЛЯ СТАБИЛЬНОСТИ)
-            const now = Date.now();
-            if (now - lastPresenceUpdate > 500) {
-               lastPresenceUpdate = now;
-               updatePresenceStatus({ isSpeaking: speaking });
-            }
-          }
-
-          // 2. Анализируем ВСЕХ ОСТАЛЬНЫХ в канале (ЛОКАЛЬНО)
-          Object.keys(remoteAnalysersRef.current).forEach(uid => {
-            const { analyser: rAnalyser, data: rData } = remoteAnalysersRef.current[uid];
-            rAnalyser.getFloatTimeDomainData(rData);
-            let rSum = 0; for (let i = 0; i < rData.length; i++) rSum += rData[i] * rData[i];
-            const rRms = Math.sqrt(rSum / rData.length);
-            const rSpeaking = rRms > 0.01;
-
-            // Синхронизируем с общим списком (все управление через AllParticipants)
-            mutateRealtimeParticipants((all) => updateParticipantSpeakingMap(all, uid, rSpeaking));
-          });
-        }, 150);
+        await initializeLocalVoiceMedia({
+          isMutedRef,
+          isDeafenedRef,
+          originalMicStreamRef,
+          audioContextRef,
+          rnnoiseNodeRef,
+          localStreamRef: localStream,
+          fakeVADIntervalRef,
+          remoteAnalysersRef,
+          currentUserRef,
+          realtimeChannelRef: realtimeChannel,
+          isSpeakingRef,
+          setIsSpeaking,
+          mutateRealtimeParticipants,
+          updateParticipantSpeakingMap,
+          updatePresenceStatus,
+        });
       } catch (err) {
         console.error('[useVoice] Media initialization failed:', err);
-        setVoiceError(`Ошибка микрофона: ${err.message}`);
+        setVoiceError(`Microphone error: ${err.message}`);
         setIsConnecting(false);
         return;
       }

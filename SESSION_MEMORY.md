@@ -129,3 +129,20 @@ pm run build; build is green on 2.5.16.
   - `public/version.json`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/channelStatus.js`
+
+### 2026-04-10 global presence and media bootstrap extraction
+- Added src/hooks/voice/globalPresence.js for global voice presence participant sync, presence leave cleanup, and global channel status recovery handling.
+- Added src/hooks/voice/mediaInit.js for local microphone/audio-context/noise-suppression/VAD bootstrap.
+- Updated src/hooks/useVoice.js to delegate both the global presence effect internals and the heavy local media initialization path.
+- src/hooks/useVoice.js length is now down to ~891 lines in this checkpoint, versus a much larger monolith before the staged refactor.
+- Verified with 
+pm run build; build is green on 2.5.17.
+
+### Auto Log — 2026-04-10 00:47
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/globalPresence.js`
+  - `src/hooks/voice/mediaInit.js`
