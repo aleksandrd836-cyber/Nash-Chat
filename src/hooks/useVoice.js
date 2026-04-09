@@ -71,6 +71,7 @@ export function useVoice() {
   const heartbeatIntervalRef = useRef(null);
   const voiceSessionsPollRef = useRef(null);
   const lastVoiceSessionCleanupRef = useRef(0);
+  const lastStableChannelIdRef = useRef(null);
   const serverVoiceStateRef = useRef(false);
 
   const getParticipantSessionKey = useCallback((participant) => (
@@ -384,6 +385,7 @@ export function useVoice() {
 
     setActiveChannelId(null); 
     activeChannelIdRef.current = null;
+    lastStableChannelIdRef.current = null;
     setIsScreenSharing(false); 
     setRemoteScreens({}); 
     setVoiceError(null); 
@@ -762,6 +764,7 @@ export function useVoice() {
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color, isSilent = false) => {
     if (!channelId || !user) return;
+    const currentStableChannelId = lastStableChannelIdRef.current || activeChannelIdRef.current || presencePayload.current.channelId || null;
     
     // Если мы уже подключаемся к ЭТОМУ ЖЕ каналу — игнорируем повторный вызов
     if (isConnecting && activeChannelIdRef.current === channelId) {
@@ -780,13 +783,13 @@ export function useVoice() {
     isSwitchingRef.current = true;
 
     // 2. Полная очистка МЕДИА (микрофон, пиры) — ТОЛЬКО если мы реально меняем комнату
-    if (activeChannelIdRef.current && activeChannelIdRef.current !== channelId) {
+    if (currentStableChannelId && currentStableChannelId !== channelId) {
       console.log('[useVoice] Changing channel, full cleanup...');
       await cleanupAll();
     }
     
     // МЯГКИЙ РЕКОННЕКТ: Если это тихий перезапуск того же канала — не убиваем поток и пиры
-    const isActuallyReconnecting = isSilent && activeChannelIdRef.current === channelId && localStream.current;
+    const isActuallyReconnecting = isSilent && currentStableChannelId === channelId && localStream.current;
     
     if (isActuallyReconnecting && localStream.current) {
       console.log('[useVoice] Reusing existing streams for soft reconnect');
@@ -1057,6 +1060,7 @@ export function useVoice() {
           reconnectAttemptsRef.current = 0;
           setServerStatus('online');
           setVoiceError(null);
+          lastStableChannelIdRef.current = channelId;
           
           await updatePresenceStatus({}, true);
           await upsertVoiceSession({ ...presencePayload.current, channelId }).catch(() => {});
@@ -1099,9 +1103,10 @@ export function useVoice() {
           } else {
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
             reconnectTimerRef.current = setTimeout(() => {
-              if (activeChannelIdRef.current && !isLeavingRef.current && realtimeChannel.current === channel) {
+              const reconnectChannelId = lastStableChannelIdRef.current || activeChannelIdRef.current || presencePayload.current.channelId;
+              if (reconnectChannelId && !isLeavingRef.current && realtimeChannel.current === channel) {
                 console.log(`[useVoice] Attempting background reconnect...`);
-                joinVoiceChannel(activeChannelIdRef.current, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color, true);
+                joinVoiceChannel(reconnectChannelId, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color, true);
               }
             }, 4000);
           }
@@ -1348,5 +1353,6 @@ export function useVoice() {
     clearVoiceError: () => setVoiceError(null)
   };
 }
+
 
 
