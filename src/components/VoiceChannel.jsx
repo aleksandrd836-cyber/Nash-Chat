@@ -396,11 +396,13 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                     <select 
                       value={quality} 
                       onChange={e => setQuality(e.target.value)}
-                      className="w-full h-12 pl-10 pr-10 bg-ds-sidebar/40 hover:bg-ds-sidebar/60 border border-white/10 hover:border-ds-accent/30 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-ds-text outline-none appearance-none cursor-pointer transition-all backdrop-blur-md"
+                      className={`w-full h-12 pl-10 pr-10 bg-ds-sidebar/40 hover:bg-ds-sidebar/60 border border-white/10 hover:border-ds-accent/30 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-ds-text outline-none appearance-none cursor-pointer transition-all backdrop-blur-md ${
+                        quality === '1080p' ? 'shadow-[0_0_15px_rgba(0,240,255,0.2)] border-ds-accent/40' : ''
+                      }`}
                     >
-                      <option value="1080p">1080P • 60 FPS</option>
-                      <option value="720p">720P • 30 FPS</option>
-                      <option value="480p">480P • 30 FPS</option>
+                      <option value="1080p">1080P • 60 FPS • ULTRA</option>
+                      <option value="720p">720P • 30 FPS • HD</option>
+                      <option value="480p">480P • 30 FPS • SD</option>
                     </select>
                     <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-ds-muted/40 group-hover:text-ds-accent/60 transition-colors">
                       <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">

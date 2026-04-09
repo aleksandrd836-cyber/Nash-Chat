@@ -1033,9 +1033,18 @@ export function useVoice() {
   
   // Профили качества для трансляции
   const qualityProfiles = {
-    '1080p': { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
-    '720p':  { width: { ideal: 1280 }, height: { ideal: 720 },  frameRate: { ideal: 30 } },
-    '480p':  { width: { ideal: 854 },  height: { ideal: 480 },  frameRate: { ideal: 30 } }
+    '1080p': { 
+      width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 },
+      bitrate: 6000000, contentHint: 'detail' 
+    },
+    '720p':  { 
+      width: { ideal: 1280 }, height: { ideal: 720 },  frameRate: { ideal: 30 },
+      bitrate: 2500000, contentHint: 'detail'
+    },
+    '480p':  { 
+      width: { ideal: 854 },  height: { ideal: 480 },  frameRate: { ideal: 30 },
+      bitrate: 1000000, contentHint: 'detail'
+    }
   };
 
   const startScreenShare = useCallback(async (quality = '720p', user = null, sourceId = null) => {
@@ -1076,13 +1085,38 @@ export function useVoice() {
       const stream = sourceId 
         ? await navigator.mediaDevices.getUserMedia(constraints)
         : await navigator.mediaDevices.getDisplayMedia(constraints);
-      screenStreamRef.current = stream; setIsScreenSharing(true);
-      setVoiceError(null); // Сбрасываем старые ошибки
+      
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack && profile.contentHint) {
+        // Подсказка браузеру: приоритет четкости (текста) над плавностью
+        videoTrack.contentHint = profile.contentHint;
+      }
+
+      screenStreamRef.current = stream; 
+      setIsScreenSharing(true);
+      setVoiceError(null); 
       
       // Добавляем трек всем существующим пирам
-      // WebRTC сам триггернет onnegotiationneeded при добавлении трека
-      Object.values(peerConns.current).forEach(pc => {
-        stream.getTracks().forEach(t => pc.addTrack(t, stream));
+      Object.values(peerConns.current).forEach(async (pc) => {
+        const tracks = stream.getTracks();
+        for (const t of tracks) {
+          const sender = pc.addTrack(t, stream);
+          
+          // ПРИМЕНЯЕМ ПАРАМЕТРЫ КАЧЕСТВА (БИТРЕЙТ)
+          if (t.kind === 'video' && sender && sender.getParameters) {
+            try {
+              const params = sender.getParameters();
+              if (!params.encodings) params.encodings = [{}];
+              params.encodings[0].maxBitrate = profile.bitrate;
+              // Для стрима экрана также полезно разрешить масштабирование вниз при плохой сети
+              params.encodings[0].networkPriority = 'high';
+              await sender.setParameters(params);
+              console.log(`[WebRTC] Bitrate set to ${profile.bitrate} for sender`);
+            } catch (e) {
+              console.warn('[WebRTC] Failed to set encoding parameters:', e);
+            }
+          }
+        }
       });
 
       updatePresenceStatus({ isScreenSharing: true });
