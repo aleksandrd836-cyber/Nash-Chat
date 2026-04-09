@@ -123,7 +123,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                      </label>
                   </div>
                   <input
-                    type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)}
+                    type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())}
                     placeholder="VIBE-XXXX-XXXX"
                     required
                     className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
