@@ -61,6 +61,9 @@ export function useVoice() {
   const reconnectAttemptsRef = useRef(0);
   const presenceDebounceRef = useRef(null);
   const isSwitchingRef = useRef(false);
+  const sessionIdRef = useRef(Math.random().toString(36).substring(7));
+  const heartbeatIntervalRef = useRef(null);
+
 
   // ── СИНХРОНИЗАЦИЯ УЧАСТНИКОВ В ЦЕНТРЕ (derived state) ──
   // Мы больше не управляем участниками канала отдельно, берем их из глобального списка
@@ -355,49 +358,6 @@ export function useVoice() {
         config: { presence: { key: user.id } }
       });
 
-      const updateAllParticipants = () => {
-        if (channel.state !== 'joined' || isLeavingRef.current) return;
-        
-        const state = channel.presenceState();
-        const latestUserPresence = new Map();
-        const myId = currentUserRef.current?.id;
-
-        Object.values(state).flat().forEach(p => {
-          if (!p.userId || !p.username) return; // channelId может быть null, если юзер просто онлайн
-          if (isLeavingRef.current && p.userId === myId) return;
-
-          const existing = latestUserPresence.get(p.userId);
-          // Дедупликация: всегда берем самую свежую запись по joined_at
-          if (!existing || (p.joined_at > (existing.joined_at || 0))) {
-            latestUserPresence.set(p.userId, p);
-          }
-        });
-
-        const finalAll = {};
-        latestUserPresence.forEach(p => {
-          // Если у юзера нет channelId — он не в голосовом канале, пропускаем
-          if (!p.channelId) return;
-          
-          if (!finalAll[p.channelId]) finalAll[p.channelId] = [];
-          finalAll[p.channelId].push({
-            userId: p.userId, username: p.username, color: p.color,
-            isScreenSharing: p.isScreenSharing, isSpeaking: !!p.isSpeaking,
-            isMuted: !!p.isMuted, isDeafened: !!p.isDeafened,
-            joined_at: p.joined_at
-          });
-        });
-
-        setAllParticipants(finalAll);
-      };
-
-      channel.on('presence', { event: 'sync' }, updateAllParticipants);
-      channel.on('presence', { event: 'join' }, ({ newPresences }) => {
-        updateAllParticipants();
-      });
-      channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        updateAllParticipants();
-      });
-
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
         setAllParticipants(prev => {
           const next = { ...prev };
@@ -413,6 +373,106 @@ export function useVoice() {
           });
           return changed ? next : prev;
         });
+      });
+
+      // HEARTBEAT REAPER: Удаляем принудительно, если last_seen устарел
+      const startHeartbeat = () => {
+        if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = setInterval(async () => {
+          if (isLeavingRef.current) return;
+          // Обновляем свое состояние
+          updatePresenceStatus({ last_seen: Date.now() });
+
+          // И ТУТ ЖЕ проверяем чужие состояния (Ghost Reaper)
+          const now = Date.now();
+          setAllParticipants(prev => {
+            const next = { ...prev };
+            let removedCount = 0;
+            Object.keys(next).forEach(chId => {
+              const before = next[chId].length;
+              // Удаляем сессии, которые не подавали признаков жизни более 30 сек
+              next[chId] = next[chId].filter(p => !p.last_seen || (now - p.last_seen < 30000));
+              removedCount += (before - next[chId].length);
+              if (next[chId].length === 0) delete next[chId];
+            });
+            return removedCount > 0 ? next : prev;
+          });
+        }, 10000); // 10 секунд — золотой стандарт liveness
+      };
+
+      const updateAllParticipants = () => {
+        if (channel.state !== 'joined' || isLeavingRef.current) return;
+        
+        const state = channel.presenceState();
+        const latestUserSessions = new Map(); // sessionId -> presence
+        const myId = currentUserRef.current?.id;
+        const now = Date.now();
+
+        Object.values(state).flat().forEach(p => {
+          if (!p.userId || !p.username) return;
+          if (isLeavingRef.current && p.userId === myId) return;
+
+          // Игнорируем мертвые сессии сразу при расчете
+          if (p.last_seen && (now - p.last_seen > 30000)) return;
+
+          const sId = p.sessionId || p.userId; // fallback если нет sessionId
+          const existing = latestUserSessions.get(sId);
+          
+          // Дедупликация сессий
+          if (!existing || (p.joined_at > (existing.joined_at || 0))) {
+            latestUserSessions.set(sId, p);
+          }
+        });
+
+        const finalAll = {};
+        latestUserSessions.forEach(p => {
+          if (!p.channelId) return;
+          
+          if (!finalAll[p.channelId]) finalAll[p.channelId] = [];
+          finalAll[p.channelId].push({
+            userId: p.userId, 
+            username: p.username, 
+            color: p.color,
+            isScreenSharing: p.isScreenSharing, 
+            isSpeaking: !!p.isSpeaking,
+            isMuted: !!p.isMuted, 
+            isDeafened: !!p.isDeafened,
+            joined_at: p.joined_at,
+            last_seen: p.last_seen,
+            sessionId: p.sessionId
+          });
+        });
+
+        // Сортируем участников внутри каналов по времени входа для стабильности UI
+        Object.keys(finalAll).forEach(chId => {
+          finalAll[chId].sort((a, b) => a.joined_at - b.joined_at);
+        });
+
+        setAllParticipants(finalAll);
+      };
+
+      channel.on('presence', { event: 'sync' }, updateAllParticipants);
+      channel.on('presence', { event: 'join' }, ({ newPresences }) => {
+        updateAllParticipants();
+      });
+      channel.on('presence', { event: 'leave' }, ({ leftPresences, key }) => {
+        // МОМЕНТАЛЬНОЕ УДАЛЕНИЕ: если сессия ушла из Supabase, режем её из UI сразу
+        const leavingSessionKey = key; // usually userId
+        setAllParticipants(prev => {
+          const next = { ...prev };
+          let changed = false;
+          Object.keys(next).forEach(chId => {
+            const before = next[chId].length;
+            // Если ключ совпадает ИЛИ userId внутри совпадает с ключом ушедшего
+            next[chId] = next[chId].filter(p => (p.userId + ":" + p.sessionId) !== leavingSessionKey && p.userId !== leavingSessionKey);
+            if (next[chId].length !== before) {
+              changed = true;
+              if (next[chId].length === 0) delete next[chId];
+            }
+          });
+          return changed ? next : prev;
+        });
+        updateAllParticipants();
       });
 
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
@@ -449,6 +509,7 @@ export function useVoice() {
         }
       });
       globalPresence.current = channel;
+      startHeartbeat();
     };
 
     const handleUnload = () => {
@@ -466,12 +527,18 @@ export function useVoice() {
       if (globalPresence.current) {
         supabase.removeChannel(globalPresence.current).catch(() => {});
       }
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
       globalPresence.current = null;
     };
   }, [cleanupAll]);
 
   const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
-    presencePayload.current = { ...presencePayload.current, ...updates };
+    presencePayload.current = { 
+      ...presencePayload.current, 
+      ...updates, 
+      sessionId: sessionIdRef.current,
+      last_seen: presencePayload.current.last_seen || Date.now() 
+    };
     
     if (presenceDebounceRef.current) {
       clearTimeout(presenceDebounceRef.current);
@@ -696,7 +763,17 @@ export function useVoice() {
 
     try {
       currentUserRef.current = { id: user.id, username };
-      presencePayload.current = { userId: user.id, username, color, isScreenSharing: false, isSpeaking: false, isMuted: isMutedRef.current, isDeafened: isDeafenedRef.current };
+      presencePayload.current = { 
+        userId: user.id, 
+        username, 
+        color, 
+        isScreenSharing: false, 
+        isSpeaking: false, 
+        isMuted: isMutedRef.current, 
+        isDeafened: isDeafenedRef.current,
+        sessionId: sessionIdRef.current,
+        last_seen: Date.now()
+      };
 
       const channel = supabase.channel(`voice:${channelId}`, { config: { presence: { key: user.id } } });
     channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
