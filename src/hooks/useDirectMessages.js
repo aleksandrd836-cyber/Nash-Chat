@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { notifications } from '../lib/notifications';
 import { compressImage } from '../lib/image';
+import { createPrivateDmAttachmentPath, DM_PRIVATE_BUCKET, encodePrivateDmAttachment } from '../lib/dmAttachments';
 
 /**
  * Хук для личных сообщений между двумя пользователями.
@@ -13,6 +14,14 @@ export function useDirectMessages(currentUserId, targetUserId) {
   const [loading, setLoading]   = useState(false);
   const [sending, setSending]   = useState(false);
   const subRef                  = useRef(null);
+
+  const normalizeMessage = useCallback((message) => {
+    if (!message) return message;
+    return {
+      ...message,
+      resolved_image_url: message.resolved_image_url ?? null,
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUserId || !targetUserId) {
@@ -34,7 +43,7 @@ export function useDirectMessages(currentUserId, targetUserId) {
         .order('created_at', { ascending: true })
         .limit(200);
 
-      if (!error && data) setMessages(data);
+      if (!error && data) setMessages(data.map(normalizeMessage));
       setLoading(false);
     }
 
@@ -57,15 +66,15 @@ export function useDirectMessages(currentUserId, targetUserId) {
           
           if (isRelevant) {
             if (payload.eventType === 'INSERT') {
-              setMessages(prev => [...prev, msg]);
-              if (msg.sender_id === targetUserId) {
-                notifications.play('dm');
+                setMessages(prev => [...prev, normalizeMessage(msg)]);
+                if (msg.sender_id === targetUserId) {
+                  notifications.play('dm');
+                }
+              } else if (payload.eventType === 'UPDATE') {
+                setMessages(prev => prev.map(m => m.id === msg.id ? normalizeMessage(msg) : m));
               }
-            } else if (payload.eventType === 'UPDATE') {
-              setMessages(prev => prev.map(m => m.id === msg.id ? msg : m));
             }
           }
-        }
       )
       .subscribe();
 
@@ -74,24 +83,33 @@ export function useDirectMessages(currentUserId, targetUserId) {
     return () => {
       sub.unsubscribe();
     };
-  }, [currentUserId, targetUserId]);
+  }, [currentUserId, targetUserId, normalizeMessage]);
 
   /** Загрузить файл в Supabase Storage, вернуть публичный URL (аналогично useMessages) */
   const uploadFile = useCallback(async (file) => {
+    if (!currentUserId || !targetUserId) {
+      throw new Error('DM attachment upload requires both participants');
+    }
+
     // Применяем сжатие, если это изображение
     const finalFile = await compressImage(file);
-    
-    const ext = finalFile.name.split('.').pop();
-    const fileName = `${Date.now()}_dm_${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage
-      .from('chat-images')
-      .upload(fileName, finalFile, { cacheControl: '3600', upsert: false });
-    if (error) throw error;
-    const { data } = supabase.storage.from('chat-images').getPublicUrl(fileName);
-    return data.publicUrl;
-  }, []);
 
-  const sendMessage = useCallback(async (content, senderUsername, senderColor, imageUrl = null, fileName = null) => {
+    const filePath = createPrivateDmAttachmentPath(currentUserId, targetUserId, finalFile.name);
+    const { error } = await supabase.storage
+      .from(DM_PRIVATE_BUCKET)
+      .upload(filePath, finalFile, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    return encodePrivateDmAttachment(filePath);
+  }, [currentUserId, targetUserId]);
+
+  const sendMessage = useCallback(async (
+    content,
+    senderUsername,
+    senderColor,
+    imageUrl = null,
+    fileName = null,
+    resolvedImageUrl = null,
+  ) => {
     if (!content.trim() && !imageUrl) return;
     if (!currentUserId || !targetUserId) return;
     
@@ -107,6 +125,7 @@ export function useDirectMessages(currentUserId, targetUserId) {
       sender_color: senderColor ?? null,
       content: content.trim(),
       image_url: imageUrl,
+      resolved_image_url: resolvedImageUrl ?? null,
       file_name: fileName,
       created_at: new Date().toISOString(),
       is_read: false,

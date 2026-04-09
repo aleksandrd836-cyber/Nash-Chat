@@ -3,6 +3,7 @@ import { getUserAvatar } from '../lib/avatar';
 import { useMessageReactions } from '../hooks/useReactions';
 import EmojiPicker, { Emoji, EmojiStyle } from 'emoji-picker-react';
 import { Smile, Trash2 } from 'lucide-react';
+import { createPrivateDmSignedUrl, decodePrivateDmAttachment, isPrivateDmAttachment } from '../lib/dmAttachments';
 
 /** Константа стиля эмодзи для всего приложения */
 const EMOJI_STYLE = EmojiStyle.APPLE;
@@ -62,36 +63,116 @@ const MessageContent = ({ content, isJumbo = false }) => {
 };
 
 /** Компонент для отображения вложения (картинка, видео или файл) */
-function Attachment({ url, fileName }) {
+function Attachment({ url, fileName, previewUrl = null }) {
   const [fullscreen, setFullscreen] = useState(false);
-  
-  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url);
-  const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(url);
+  const isPrivateAttachment = isPrivateDmAttachment(url);
+  const [resolvedUrl, setResolvedUrl] = useState(() => (isPrivateAttachment ? (previewUrl || null) : url));
+  const [resolveError, setResolveError] = useState('');
+  const decodedPrivatePath = decodePrivateDmAttachment(url);
+  const sourceForType = resolvedUrl || decodedPrivatePath || url;
+  const fallbackFileName = decodedPrivatePath?.split('/').pop()?.split('_').slice(2).join('_') || '';
+  const displayFileName = fileName || fallbackFileName || 'Прикреплённый файл';
+  const extensionLabel = sourceForType.includes('.') ? sourceForType.split('.').pop().toUpperCase() : 'FILE';
+  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(sourceForType);
+  const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(sourceForType);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!isPrivateAttachment) {
+      setResolvedUrl(url);
+      setResolveError('');
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setResolvedUrl(previewUrl || null);
+    setResolveError('');
+
+    createPrivateDmSignedUrl(url)
+      .then((signedUrl) => {
+        if (!isActive) return;
+        setResolvedUrl(signedUrl);
+      })
+      .catch((err) => {
+        if (!isActive) return;
+        console.error('[DM Attachment] Не удалось создать signed URL:', err);
+        setResolveError('Не удалось открыть вложение');
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isPrivateAttachment, previewUrl, url]);
+
+  const ensureResolvedUrl = async () => {
+    if (!isPrivateAttachment) return url;
+    if (resolvedUrl) return resolvedUrl;
+
+    const signedUrl = await createPrivateDmSignedUrl(url);
+    setResolvedUrl(signedUrl);
+    setResolveError('');
+    return signedUrl;
+  };
 
   const handleDownload = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(url);
+      const downloadUrl = await ensureResolvedUrl();
+      if (!downloadUrl) {
+        throw new Error('Attachment URL is unavailable');
+      }
+
+      const response = await fetch(downloadUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = fileName || url.split('/').pop();
+      link.download = fileName || fallbackFileName || downloadUrl.split('/').pop();
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error('Ошибка скачивания:', err);
-      window.open(url, '_blank');
+      if (resolvedUrl) {
+        window.open(resolvedUrl, '_blank');
+      }
     }
   };
+
+  if (isPrivateAttachment && !resolvedUrl && !resolveError) {
+    return (
+      <div className="mt-2 flex items-center gap-3 p-3 bg-ds-sidebar rounded-xl border border-ds-divider/30 max-w-sm animate-pulse">
+        <div className="w-10 h-10 rounded-lg bg-ds-bg/70" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 rounded bg-ds-bg/70 w-2/3" />
+          <div className="h-2 rounded bg-ds-bg/40 w-1/3" />
+        </div>
+      </div>
+    );
+  }
+
+  if (resolveError) {
+    return (
+      <div className="mt-2 flex items-center gap-3 p-3 bg-ds-red/10 rounded-xl border border-ds-red/20 max-w-sm">
+        <div className="w-10 h-10 rounded-lg bg-ds-red/10 flex items-center justify-center text-ds-red">
+          <Trash2 size={16} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-ds-red text-sm font-bold truncate">{fileName || '��������'}</p>
+          <p className="text-ds-red/70 text-[10px] uppercase font-bold tracking-wider mt-0.5">{resolveError}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isImage) {
     return (
       <>
         <img
-          src={url}
+          src={resolvedUrl}
           alt={fileName || "Вложение"}
           onClick={() => setFullscreen(true)}
           className="mt-2 max-w-sm max-h-72 rounded-xl object-cover cursor-pointer hover:opacity-95 transition-opacity border border-ds-divider/30"
@@ -102,7 +183,7 @@ function Attachment({ url, fileName }) {
             onClick={() => setFullscreen(false)}
           >
             <img
-              src={url}
+              src={resolvedUrl}
               alt={fileName || "Вложение (полный размер)"}
               className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
             />
@@ -124,7 +205,7 @@ function Attachment({ url, fileName }) {
     return (
       <>
         <video
-          src={url}
+          src={resolvedUrl}
           onClick={() => setFullscreen(true)}
           className="mt-2 max-w-sm max-h-72 rounded-xl object-cover cursor-pointer hover:opacity-95 transition-opacity border border-ds-divider/30"
           controls={false}
@@ -139,7 +220,7 @@ function Attachment({ url, fileName }) {
             onClick={() => setFullscreen(false)}
           >
             <video
-              src={url}
+              src={resolvedUrl}
               controls
               autoPlay
               className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
@@ -167,11 +248,11 @@ function Attachment({ url, fileName }) {
         </svg>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-ds-text text-sm font-medium truncate" title={fileName || 'Файл'}>
-          {fileName || url.split('/').pop().split('_').slice(1).join('_') || 'Прикреплённый файл'}
+        <p className="text-ds-text text-sm font-medium truncate" title={displayFileName}>
+          {displayFileName}
         </p>
         <p className="text-ds-muted text-[10px] uppercase font-bold tracking-wider mt-0.5">
-          {url.split('.').pop().toUpperCase()} файл
+          {extensionLabel} ����
         </p>
       </div>
       <button
@@ -355,7 +436,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
               )}
             </div>
           )}
-          {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} />}
+          {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} previewUrl={msg.resolved_image_url} />}
           <ReactionList reactions={reactions} userId={currentUserId} onToggle={toggleReaction} />
         </div>
 
@@ -417,7 +498,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
             )}
           </div>
         )}
-        {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} />}
+        {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} previewUrl={msg.resolved_image_url} />}
         <ReactionList reactions={reactions} userId={currentUserId} onToggle={toggleReaction} />
       </div>
 
@@ -434,3 +515,8 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
     </div>
   );
 }
+
+
+
+
+

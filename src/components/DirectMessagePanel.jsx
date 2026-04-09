@@ -140,7 +140,14 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
       setUploading(false);
     }
 
-    await sendMessage(content, username, userColor, imageUrl || currentAttachment?.previewUrl, currentAttachment?.file.name);
+    await sendMessage(
+      content,
+      username,
+      userColor,
+      imageUrl || currentAttachment?.previewUrl,
+      currentAttachment?.file.name,
+      currentAttachment?.previewUrl || null,
+    );
   }, [draft, attachment, sending, uploading, sendMessage, uploadFile, username, userColor]);
 
   const handleKeyDown = (e) => {
