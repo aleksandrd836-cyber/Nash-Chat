@@ -359,7 +359,11 @@ function App() {
                   ownerId={selectedServer?.owner_id}
                   onClose={() => setSettingsOpen(false)}
                   onSignOut={auth.signOut}
-                  onUsernameChange={() => auth.refreshUser?.()}
+                  onUsernameChange={(nextUsername, nextColor) => {
+                    setLocalUsername(nextUsername);
+                    setLocalColor(nextColor ?? null);
+                    auth.refreshUser?.();
+                  }}
                   theme={theme}
                   onThemeChange={setTheme}
                 />

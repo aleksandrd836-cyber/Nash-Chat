@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
 import { notifications } from '../lib/notifications';
+import { updateCurrentUserProfile } from '../lib/profile';
 import { HotkeysSettings } from './HotkeysSettings';
 import { 
   X, User, Mic, Headphones, Bell, Monitor, LogOut, Check, AlertTriangle, 
@@ -140,29 +140,31 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
 
   async function saveSettings() {
     try {
-      if (!username.trim() || username.trim().length < 2) {
+      const cleanUsername = username.trim();
+
+      if (!cleanUsername || cleanUsername.length < 2) {
         setNickMsg({ type: 'err', text: 'Минимум 2 символа' });
         return;
       }
-      setSavingNick(true);
-      const { error } = await supabase.auth.updateUser({
-        data: { username: username.trim(), user_color: color },
-      });
-      
-      if (user?.id && !error) {
-        await Promise.all([
-          supabase.from('messages').update({ username: username.trim() }).eq('user_id', user.id),
-          supabase.from('profiles').update({ username: username.trim() }).eq('id', user.id),
-          supabase.from('direct_messages').update({ sender_username: username.trim() }).eq('sender_id', user.id)
-        ]);
+
+      if (!user?.id) {
+        setNickMsg({ type: 'err', text: '������������ �� ������' });
+        return;
       }
 
+      setSavingNick(true);
+      const result = await updateCurrentUserProfile(user.id, cleanUsername, color);
+
       setSavingNick(false);
-      if (error) {
-        setNickMsg({ type: 'err', text: 'Ошибка сохранения' });
+      if (!result.ok) {
+        setNickMsg({ type: 'err', text: result.message || 'Ошибка сохранения' });
       } else {
+        const nextUsername = result.profile?.username ?? cleanUsername;
+        const nextColor = result.profile?.color ?? color ?? null;
+        setUsername(nextUsername);
+        setColor(nextColor ?? '#ffffff');
         setNickMsg({ type: 'ok', text: 'Сохранено!' });
-        onUsernameChange?.(username.trim(), color);
+        onUsernameChange?.(nextUsername, nextColor);
         setTimeout(() => onClose?.(), 600);
       }
     } catch (err) {
@@ -475,3 +477,5 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     </div>
   );
 }
+
+

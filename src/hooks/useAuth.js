@@ -42,8 +42,16 @@ export function useAuth() {
 
   /** Принудительно обновить данные пользователя (например, после смены user_metadata) */
   const refreshUser = useCallback(async () => {
+    const { data: refreshData } = await supabase.auth.refreshSession();
+    if (refreshData?.session?.user) {
+      setUser({ ...refreshData.session.user });
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) setUser({ ...session.user });
+    if (session?.user) {
+      setUser({ ...session.user });
+    }
   }, []);
 
   /** Отображаемое имя пользователя */
