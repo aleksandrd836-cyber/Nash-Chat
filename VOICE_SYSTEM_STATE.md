@@ -69,3 +69,8 @@
 - Refactor status by subsystem now:
   - extracted: participants, screen-share helpers, remote media tracks, peer lifecycle callbacks
   - still dense: signaling channel orchestration, join/leave flow, reconnect/session sync
+
+## 2026-04-10 runtime timer helper extraction
+- src/hooks/voice/runtime.js now owns managed timeout/interval cleanup helpers for the voice subsystem.
+- useVoice.js now uses the shared runtime helpers for reconnect timer cleanup, ghost-peer timer cleanup, heartbeat loop restart, and fatal reconnect cancellation.
+- The remaining dense slice is the Supabase signaling/join/reconnect orchestration itself rather than the raw timer plumbing.

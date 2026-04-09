@@ -31,6 +31,13 @@ import {
   createNegotiationNeededHandler,
 } from './voice/peerLifecycle';
 import {
+  clearManagedInterval,
+  clearManagedTimeout,
+  clearManagedTimeoutMap,
+  restartManagedInterval,
+  scheduleManagedTimeout,
+} from './voice/runtime';
+import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
   removeVoiceSession,
@@ -299,24 +306,10 @@ export function useVoice() {
     await removeVoiceSession(sessionIdRef.current).catch(() => {});
     await refreshVoiceSessions();
 
-    if (reconnectTimerRef.current) { 
-      console.log('[useVoice] Clearing background reconnect timer');
-      clearTimeout(reconnectTimerRef.current); 
-      reconnectTimerRef.current = null; 
-    }
-
-    if (presenceDebounceRef.current) {
-      clearTimeout(presenceDebounceRef.current);
-      presenceDebounceRef.current = null;
-    }
-    
-    if (fakeVADIntervalRef.current) {
-      clearInterval(fakeVADIntervalRef.current);
-      fakeVADIntervalRef.current = null;
-    }
-
-    Object.values(ghostPeersRef.current).forEach(clearTimeout); 
-    ghostPeersRef.current = {};
+    clearManagedTimeout(reconnectTimerRef, '[useVoice] Clearing background reconnect timer');
+    clearManagedTimeout(presenceDebounceRef);
+    clearManagedInterval(fakeVADIntervalRef);
+    clearManagedTimeoutMap(ghostPeersRef);
     
     console.log('[useVoice] Closing peer connections...');
     Object.keys(peerConns.current).forEach(id => closePeer(id, true));
@@ -389,8 +382,7 @@ export function useVoice() {
 
       // HEARTBEAT REAPER: Удаляем принудительно, если last_seen устарел
       const startHeartbeat = () => {
-        if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
-        heartbeatIntervalRef.current = setInterval(async () => {
+        restartManagedInterval(heartbeatIntervalRef, async () => {
           if (isLeavingRef.current) return;
           // Обновляем свое состояние
           updatePresenceStatus({ 
@@ -483,7 +475,7 @@ export function useVoice() {
       if (globalPresence.current) {
         supabase.removeChannel(globalPresence.current).catch(() => {});
       }
-      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      clearManagedInterval(heartbeatIntervalRef);
       globalPresence.current = null;
     };
   }, [buildParticipantMapFromPresenceState, cleanupAll, mutateRealtimeParticipants, pruneStaleParticipantMap, removeChannelsByTopic, removeSessionFromParticipantMap, updateParticipantSpeakingMap]);
@@ -505,10 +497,7 @@ export function useVoice() {
       joined_at: updates.joined_at || presencePayload.current.joined_at || Date.now() 
     };
     
-    if (presenceDebounceRef.current) {
-      clearTimeout(presenceDebounceRef.current);
-      presenceDebounceRef.current = null;
-    }
+    clearManagedTimeout(presenceDebounceRef);
 
     const sendUpdate = async () => {
       const payload = { ...presencePayload.current };
@@ -892,8 +881,7 @@ export function useVoice() {
             setIsConnecting(false);
             setConnectingChannelId(null);
           } else {
-            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-            reconnectTimerRef.current = setTimeout(() => {
+            scheduleManagedTimeout(reconnectTimerRef, () => {
               const reconnectChannelId = resolveStableVoiceChannelId(
                 lastStableChannelIdRef.current,
                 activeChannelIdRef.current,
@@ -915,10 +903,7 @@ export function useVoice() {
       setIsConnecting(false); 
       setConnectingChannelId(null);
       // При фатальной ошибке зануляем реконнект, чтобы не спамить
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
+      clearManagedTimeout(reconnectTimerRef);
     }
   }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 

@@ -29,12 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 00:25`
+- Время: `2026-04-10 00:32`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/peerLifecycle.js`
+  - `src/hooks/voice/runtime.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -57,3 +57,8 @@ pm run build passes.
 - Finished another useVoice.js split: peer lifecycle helper module added at src/hooks/voice/peerLifecycle.js.
 - Latest safe checkpoint: build passes after screen-share, remote media, and peer lifecycle extractions.
 - Best next refactor target is the join/reconnect/signaling orchestration around Realtime channels and background reconnect timers.
+
+## 2026-04-10 runtime helper handoff
+- Added src/hooks/voice/runtime.js and wired it into useVoice.js.
+- Voice refactor status now includes extracted modules for: participants, screen share, remote media tracks, peer lifecycle callbacks, and runtime timer management.
+- Next logical target is the actual join/reconnect signaling flow around Realtime channels.

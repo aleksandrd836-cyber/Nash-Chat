@@ -84,3 +84,18 @@ pm run build; build is green and synced version moved to 2.5.13.
   - `public/version.json`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/peerLifecycle.js`
+
+### 2026-04-10 reconnect runtime helper extraction
+- Added src/hooks/voice/runtime.js for managed timeout/interval helpers (clearManagedTimeout, clearManagedInterval, clearManagedTimeoutMap, estartManagedInterval, scheduleManagedTimeout).
+- Updated src/hooks/useVoice.js cleanup and reconnect-related code to use the shared runtime helpers instead of open-coded timer cleanup.
+- This reduces repeated timer logic in cleanupAll, heartbeat setup, presence debounce, and reconnect cancellation paths.
+- Verified with 
+pm run build; build stays green on 2.5.14.
+
+### Auto Log — 2026-04-10 00:32
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/runtime.js`
