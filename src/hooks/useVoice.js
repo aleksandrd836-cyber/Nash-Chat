@@ -71,6 +71,7 @@ export function useVoice() {
   const heartbeatIntervalRef = useRef(null);
   const voiceSessionsPollRef = useRef(null);
   const lastVoiceSessionCleanupRef = useRef(0);
+  const serverVoiceStateRef = useRef(false);
 
   const getParticipantSessionKey = useCallback((participant) => (
     participant?.sessionId ? `${participant.userId}:${participant.sessionId}` : participant?.userId
@@ -118,6 +119,7 @@ export function useVoice() {
   const refreshVoiceSessions = useCallback(async () => {
     try {
       const nextParticipants = await fetchActiveVoiceSessions();
+      serverVoiceStateRef.current = true;
       setAllParticipants(nextParticipants);
     } catch (error) {
       const message = error?.message?.toLowerCase?.() ?? '';
@@ -127,10 +129,19 @@ export function useVoice() {
         message.includes('voice_sessions') ||
         message.includes('cleanup_stale_voice_sessions');
 
+      if (isSchemaMissing) {
+        serverVoiceStateRef.current = false;
+      }
+
       if (!isSchemaMissing) {
         console.warn('[useVoice] Voice sessions refresh failed:', error);
       }
     }
+  }, []);
+
+  const mutateRealtimeParticipants = useCallback((updater) => {
+    if (serverVoiceStateRef.current) return;
+    setAllParticipants(updater);
   }, []);
 
 
@@ -353,7 +364,7 @@ export function useVoice() {
     setParticipants([]);
     
     // В САЙДБАРЕ УДАЛЯЕМ ТОЛЬКО СЕБЯ, ЧТОБЫ НЕ БЫЛО ПУСТОТЫ
-    setAllParticipants(prev => {
+    mutateRealtimeParticipants(prev => {
       const next = { ...prev };
       const myId = currentUserRef.current?.id;
       let changed = false;
@@ -383,6 +394,11 @@ export function useVoice() {
       console.log('[useVoice] Clearing background reconnect timer');
       clearTimeout(reconnectTimerRef.current); 
       reconnectTimerRef.current = null; 
+    }
+
+    if (presenceDebounceRef.current) {
+      clearTimeout(presenceDebounceRef.current);
+      presenceDebounceRef.current = null;
     }
     
     if (fakeVADIntervalRef.current) {
@@ -432,7 +448,7 @@ export function useVoice() {
       await globalPresence.current.untrack().catch(() => {});
     }
     
-    setAllParticipants(prev => {
+    mutateRealtimeParticipants(prev => {
       const next = { ...prev };
       const myId = currentUserRef.current?.id;
       Object.keys(next).forEach(chId => {
@@ -444,7 +460,7 @@ export function useVoice() {
       });
       return next;
     });
-  }, [closePeer, removeParticipantSession]);
+  }, [closePeer, mutateRealtimeParticipants, removeParticipantSession]);
 
   // Глобальный канал (инициализация после всех функций)
   useEffect(() => {
@@ -465,7 +481,7 @@ export function useVoice() {
       globalPresence.current = channel;
 
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-        setAllParticipants(prev => {
+        mutateRealtimeParticipants(prev => {
           const next = { ...prev };
           let changed = false;
           Object.keys(next).forEach(chId => {
@@ -494,7 +510,7 @@ export function useVoice() {
 
           // И ТУТ ЖЕ проверяем чужие состояния (Ghost Reaper)
           const now = Date.now();
-          setAllParticipants(prev => {
+          mutateRealtimeParticipants(prev => {
             const next = { ...prev };
             let removedCount = 0;
             Object.keys(next).forEach(chId => {
@@ -563,7 +579,7 @@ export function useVoice() {
           finalAll[chId].sort((a, b) => a.joined_at - b.joined_at);
         });
 
-        setAllParticipants(finalAll);
+        mutateRealtimeParticipants(finalAll);
       };
 
       channel.on('presence', { event: 'sync' }, updateAllParticipants);
@@ -576,7 +592,7 @@ export function useVoice() {
           userId: presence.userId || key,
           sessionId: presence.sessionId,
         }));
-        setAllParticipants(prev => {
+        mutateRealtimeParticipants(prev => {
           const next = { ...prev };
           let changed = false;
           Object.keys(next).forEach(chId => {
@@ -596,7 +612,7 @@ export function useVoice() {
       });
 
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        setAllParticipants(prev => {
+        mutateRealtimeParticipants(prev => {
           const next = { ...prev };
           let changed = false;
           Object.keys(next).forEach(chId => {
@@ -660,7 +676,7 @@ export function useVoice() {
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
       globalPresence.current = null;
     };
-  }, [cleanupAll, removeChannelsByTopic, removeParticipantSession]);
+  }, [cleanupAll, mutateRealtimeParticipants, removeChannelsByTopic, removeParticipantSession]);
 
   const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
     const nextChannelId = Object.prototype.hasOwnProperty.call(updates, 'channelId')
@@ -882,7 +898,7 @@ export function useVoice() {
             const rSpeaking = rRms > 0.01;
 
             // Синхронизируем с общим списком (все управление через AllParticipants)
-            setAllParticipants(all => {
+            mutateRealtimeParticipants(all => {
               const next = { ...all };
               let changed = false;
               Object.keys(next).forEach(chId => {
@@ -931,7 +947,7 @@ export function useVoice() {
     // ЛОКАЛЬНЫЙ КАНАЛ больше не трогает стейты участников, чтобы не было конфликтов с глобальным.
     // Единственное исключение — индикация голоса, но мы ее тоже синхронизируем через все стейты
     channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-      setAllParticipants(all => {
+      mutateRealtimeParticipants(all => {
         const next = { ...all };
         Object.keys(next).forEach(chId => {
           next[chId] = next[chId].map(p => 
@@ -1051,7 +1067,7 @@ export function useVoice() {
           if (!isSilent) notifications.play('self_join');
           
           if (globalPresence.current) {
-            setAllParticipants(prev => {
+            mutateRealtimeParticipants(prev => {
               const next = { ...prev };
               const currentInCh = next[channelId] || [];
               if (!currentInCh.find(p => p.userId === user.id && p.sessionId === sessionIdRef.current)) {
@@ -1103,7 +1119,7 @@ export function useVoice() {
         reconnectTimerRef.current = null;
       }
     }
-  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, refreshVoiceSessions, removeChannelsByTopic, removeParticipantSession, syncParticipants, updatePresenceStatus]);
+  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeParticipantSession, syncParticipants, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
