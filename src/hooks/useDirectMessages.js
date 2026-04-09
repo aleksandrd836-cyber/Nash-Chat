@@ -74,6 +74,9 @@ export function useDirectMessages(currentUserId, targetUserId) {
                 setMessages(prev => prev.map(m => m.id === msg.id ? normalizeMessage(msg) : m));
               }
             }
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setMessages(prev => prev.filter(m => m.id !== deletedId));
           }
       )
       .subscribe();
@@ -170,10 +173,41 @@ export function useDirectMessages(currentUserId, targetUserId) {
     }
   }, [currentUserId, targetUserId]);
 
+  /** Редактировать ЛС */
+  const editMessage = useCallback(async (id, newContent) => {
+    if (!newContent.trim()) return;
+    const { error } = await supabase
+      .from('direct_messages')
+      .update({ 
+        content: newContent.trim(),
+        is_edited: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+    if (error) console.error('DM edit error:', error);
+    return { error };
+  }, []);
+
+  /** Удалить ЛС */
+  const deleteMessage = useCallback(async (id) => {
+    // Оптимистичное удаление
+    setMessages(prev => prev.filter(m => m.id !== id));
+
+    const { error } = await supabase
+      .from('direct_messages')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+       console.error('DM delete error:', error);
+    }
+    return { error };
+  }, []);
+
   // Объединяем реальные и оптимистичные
   const allMessages = [...messages, ...optimisticMessages].sort((a, b) => 
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  return { messages: allMessages, loading, sending, sendMessage, markMessagesAsRead, uploadFile };
+  return { messages: allMessages, loading, sending, sendMessage, markMessagesAsRead, uploadFile, editMessage, deleteMessage };
 }
