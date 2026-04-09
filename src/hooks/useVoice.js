@@ -3,9 +3,15 @@ import { supabase } from '../lib/supabase';
 import { notifications } from '../lib/notifications';
 import { GHOST_PEER_GRACE_MS, ICE_SERVERS, RECONNECT_DELAY_MS, VOICE_HEARTBEAT_MS } from './voice/constants';
 import {
+  appendParticipantToChannel,
+  buildParticipantMapFromPresenceState,
+  pruneStaleParticipantMap,
+  removeSessionFromParticipantMap,
+  updateParticipantSpeakingMap,
+} from './voice/participants';
+import {
   getParticipantSessionKey,
   isSameRealtimeTopic,
-  removeParticipantSession,
   resolveStableVoiceChannelId,
 } from './voice/utils';
 import {
@@ -336,23 +342,10 @@ export function useVoice() {
     setParticipants([]);
     
     // В САЙДБАРЕ УДАЛЯЕМ ТОЛЬКО СЕБЯ, ЧТОБЫ НЕ БЫЛО ПУСТОТЫ
-    mutateRealtimeParticipants(prev => {
-      const next = { ...prev };
-      const myId = currentUserRef.current?.id;
-      let changed = false;
-      Object.keys(next).forEach(chId => {
-        const filtered = removeParticipantSession(next[chId], {
-          userId: myId,
-          sessionId: sessionIdRef.current,
-        });
-        if (filtered.length !== next[chId].length) {
-          next[chId] = filtered;
-          if (next[chId].length === 0) delete next[chId];
-          changed = true;
-        }
-      });
-      return changed ? next : prev;
-    });
+    mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, {
+      userId: currentUserRef.current?.id,
+      sessionId: sessionIdRef.current,
+    }));
 
     setActiveChannelId(null); 
     activeChannelIdRef.current = null;
@@ -422,19 +415,11 @@ export function useVoice() {
       await globalPresence.current.untrack().catch(() => {});
     }
     
-    mutateRealtimeParticipants(prev => {
-      const next = { ...prev };
-      const myId = currentUserRef.current?.id;
-      Object.keys(next).forEach(chId => {
-        next[chId] = removeParticipantSession(next[chId], {
-          userId: myId,
-          sessionId: sessionIdRef.current,
-        });
-        if (next[chId].length === 0) delete next[chId];
-      });
-      return next;
-    });
-  }, [closePeer, mutateRealtimeParticipants, removeParticipantSession]);
+    mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, {
+      userId: currentUserRef.current?.id,
+      sessionId: sessionIdRef.current,
+    }));
+  }, [closePeer, mutateRealtimeParticipants, removeSessionFromParticipantMap]);
 
   // Глобальный канал (инициализация после всех функций)
   useEffect(() => {
@@ -455,20 +440,9 @@ export function useVoice() {
       globalPresence.current = channel;
 
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-        mutateRealtimeParticipants(prev => {
-          const next = { ...prev };
-          let changed = false;
-          Object.keys(next).forEach(chId => {
-            next[chId] = next[chId].map(p => {
-              if (p.userId === payload.userId && p.isSpeaking !== payload.isSpeaking) {
-                changed = true;
-                return { ...p, isSpeaking: payload.isSpeaking };
-              }
-              return p;
-            });
-          });
-          return changed ? next : prev;
-        });
+        mutateRealtimeParticipants((prev) => (
+          updateParticipantSpeakingMap(prev, payload.userId, payload.isSpeaking)
+        ));
       });
 
       // HEARTBEAT REAPER: Удаляем принудительно, если last_seen устарел
@@ -484,76 +458,18 @@ export function useVoice() {
 
           // И ТУТ ЖЕ проверяем чужие состояния (Ghost Reaper)
           const now = Date.now();
-          mutateRealtimeParticipants(prev => {
-            const next = { ...prev };
-            let removedCount = 0;
-            Object.keys(next).forEach(chId => {
-              const before = next[chId].length;
-              // Удаляем сессии, которые не подавали признаков жизни более 60 сек
-              next[chId] = next[chId].filter(p => {
-                const isAlive = !p.last_seen || (now - p.last_seen < 60000);
-                if (!isAlive) {
-                  console.warn(`[HolyReaper] Session ${p.sessionId} of ${p.username} timed out after 60s`);
-                }
-                return isAlive;
-              });
-              removedCount += (before - next[chId].length);
-              if (next[chId].length === 0) delete next[chId];
-            });
-            return removedCount > 0 ? next : prev;
-          });
+          mutateRealtimeParticipants((prev) => pruneStaleParticipantMap(prev, now));
         }, VOICE_HEARTBEAT_MS); // 10 секунд — золотой стандарт liveness
       };
 
       const updateAllParticipants = () => {
         if (channel.state !== 'joined' || isLeavingRef.current) return;
-        
-        const state = channel.presenceState();
-        const latestUserSessions = new Map(); // sessionId -> presence
-        const myId = currentUserRef.current?.id;
-        const now = Date.now();
-
-        Object.values(state).flat().forEach(p => {
-          if (!p.userId || !p.username) return;
-          if (isLeavingRef.current && p.userId === myId) return;
-
-          // Игнорируем мертвые сессии сразу при расчете (60 сек)
-          if (p.last_seen && (now - p.last_seen > 60000)) return;
-
-          const sId = p.sessionId || p.userId; // fallback если нет sessionId
-          const existing = latestUserSessions.get(sId);
-          
-          // Дедупликация сессий
-          if (!existing || (p.joined_at > (existing.joined_at || 0))) {
-            latestUserSessions.set(sId, p);
-          }
+        const nextParticipants = buildParticipantMapFromPresenceState(channel.presenceState(), {
+          currentUserId: currentUserRef.current?.id,
+          isLeaving: isLeavingRef.current,
+          now: Date.now(),
         });
-
-        const finalAll = {};
-        latestUserSessions.forEach(p => {
-          if (!p.channelId) return;
-          
-          if (!finalAll[p.channelId]) finalAll[p.channelId] = [];
-          finalAll[p.channelId].push({
-            userId: p.userId, 
-            username: p.username, 
-            color: p.color,
-            isScreenSharing: p.isScreenSharing, 
-            isSpeaking: !!p.isSpeaking,
-            isMuted: !!p.isMuted, 
-            isDeafened: !!p.isDeafened,
-            joined_at: p.joined_at,
-            last_seen: p.last_seen,
-            sessionId: p.sessionId
-          });
-        });
-
-        // Сортируем участников внутри каналов по времени входа для стабильности UI
-        Object.keys(finalAll).forEach(chId => {
-          finalAll[chId].sort((a, b) => a.joined_at - b.joined_at);
-        });
-
-        mutateRealtimeParticipants(finalAll);
+        mutateRealtimeParticipants(() => nextParticipants);
       };
 
       channel.on('presence', { event: 'sync' }, updateAllParticipants);
@@ -566,39 +482,17 @@ export function useVoice() {
           userId: presence.userId || key,
           sessionId: presence.sessionId,
         }));
-        mutateRealtimeParticipants(prev => {
-          const next = { ...prev };
-          let changed = false;
-          Object.keys(next).forEach(chId => {
-            const before = next[chId].length;
-            next[chId] = leavingSessions.reduce(
-              (items, leavingPresence) => removeParticipantSession(items, leavingPresence),
-              next[chId]
-            );
-            if (next[chId].length !== before) {
-              changed = true;
-              if (next[chId].length === 0) delete next[chId];
-            }
-          });
-          return changed ? next : prev;
-        });
+        mutateRealtimeParticipants((prev) => (
+          leavingSessions.reduce(
+            (items, leavingPresence) => removeSessionFromParticipantMap(items, leavingPresence),
+            prev
+          )
+        ));
         updateAllParticipants();
       });
 
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        mutateRealtimeParticipants(prev => {
-          const next = { ...prev };
-          let changed = false;
-          Object.keys(next).forEach(chId => {
-            const filtered = removeParticipantSession(next[chId], payload);
-            if (filtered.length !== next[chId].length) {
-              next[chId] = filtered;
-              if (next[chId].length === 0) delete next[chId];
-              changed = true;
-            }
-          });
-          return changed ? next : prev;
-        });
+        mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, payload));
       });
 
       channel.subscribe(async (status) => {
@@ -650,7 +544,7 @@ export function useVoice() {
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
       globalPresence.current = null;
     };
-  }, [cleanupAll, mutateRealtimeParticipants, removeChannelsByTopic, removeParticipantSession]);
+  }, [buildParticipantMapFromPresenceState, cleanupAll, mutateRealtimeParticipants, pruneStaleParticipantMap, removeChannelsByTopic, removeSessionFromParticipantMap, updateParticipantSpeakingMap]);
 
   const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
     const nextChannelId = Object.prototype.hasOwnProperty.call(updates, 'channelId')
@@ -878,20 +772,7 @@ export function useVoice() {
             const rSpeaking = rRms > 0.01;
 
             // Синхронизируем с общим списком (все управление через AllParticipants)
-            mutateRealtimeParticipants(all => {
-              const next = { ...all };
-              let changed = false;
-              Object.keys(next).forEach(chId => {
-                next[chId] = (next[chId] || []).map(item => {
-                  if (item.userId === uid && item.isSpeaking !== rSpeaking) {
-                    changed = true;
-                    return { ...item, isSpeaking: rSpeaking };
-                  }
-                  return item;
-                });
-              });
-              return changed ? next : all;
-            });
+            mutateRealtimeParticipants((all) => updateParticipantSpeakingMap(all, uid, rSpeaking));
           });
         }, 150);
       } catch (err) {
@@ -923,20 +804,13 @@ export function useVoice() {
       realtimeChannel.current = channel;
       channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
       channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
-    
-    // ЛОКАЛЬНЫЙ КАНАЛ больше не трогает стейты участников, чтобы не было конфликтов с глобальным.
-    // Единственное исключение — индикация голоса, но мы ее тоже синхронизируем через все стейты
-    channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-      mutateRealtimeParticipants(all => {
-        const next = { ...all };
-        Object.keys(next).forEach(chId => {
-          next[chId] = next[chId].map(p => 
-            p.userId === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p
-          );
-        });
-        return next;
+      // ?????????????????? ?????????? ???????????? ???? ?????????????? ???????????? ????????????????????, ?????????? ???? ???????? ???????????????????? ?? ????????????????????.
+      // ???????????????????????? ???????????????????? ??? ?????????????????? ????????????, ???? ???? ???? ???????? ???????????????????????????? ?????????? ?????? ????????????
+      channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
+        mutateRealtimeParticipants((prev) => (
+          updateParticipantSpeakingMap(prev, payload.userId, payload.isSpeaking)
+        ));
       });
-    });
 
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (payload.to !== user.id) return;
@@ -999,7 +873,7 @@ export function useVoice() {
 
       // СЛУШАЕМ УХОД В ЛОКАЛЬНОМ КАНАЛЕ (БЫСТРАЯ ОЧИСТКА)
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        setParticipants(prev => removeParticipantSession(prev, payload));
+        mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, payload));
         closePeer(payload.userId, true);
       });
 
@@ -1049,15 +923,10 @@ export function useVoice() {
           if (!isSilent) notifications.play('self_join');
           
           if (globalPresence.current) {
-            mutateRealtimeParticipants(prev => {
-              const next = { ...prev };
-              const currentInCh = next[channelId] || [];
-              if (!currentInCh.find(p => p.userId === user.id && p.sessionId === sessionIdRef.current)) {
-                next[channelId] = [...currentInCh, { ...presencePayload.current, channelId }];
-                return next;
-              }
-              return prev;
-            });
+            mutateRealtimeParticipants((prev) => appendParticipantToChannel(prev, channelId, {
+              ...presencePayload.current,
+              channelId,
+            }));
           }
           
           setActiveChannelId(channelId); 
@@ -1109,7 +978,7 @@ export function useVoice() {
         reconnectTimerRef.current = null;
       }
     }
-  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeParticipantSession, syncParticipants, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
@@ -1338,6 +1207,8 @@ export function useVoice() {
     clearVoiceError: () => setVoiceError(null)
   };
 }
+
+
 
 
 
