@@ -1,6 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { notifications } from '../lib/notifications';
+import {
+  cleanupStaleVoiceSessions,
+  fetchActiveVoiceSessions,
+  removeVoiceSession,
+  upsertVoiceSession,
+} from '../lib/voiceSessions';
 
 /**
  * Хук голосового чата (V7 - Ультра-стабильный)
@@ -63,6 +69,8 @@ export function useVoice() {
   const isSwitchingRef = useRef(false);
   const sessionIdRef = useRef(Math.random().toString(36).substring(7));
   const heartbeatIntervalRef = useRef(null);
+  const voiceSessionsPollRef = useRef(null);
+  const lastVoiceSessionCleanupRef = useRef(0);
 
   const getParticipantSessionKey = useCallback((participant) => (
     participant?.sessionId ? `${participant.userId}:${participant.sessionId}` : participant?.userId
@@ -107,6 +115,24 @@ export function useVoice() {
     )));
   }, [isSameRealtimeTopic]);
 
+  const refreshVoiceSessions = useCallback(async () => {
+    try {
+      const nextParticipants = await fetchActiveVoiceSessions();
+      setAllParticipants(nextParticipants);
+    } catch (error) {
+      const message = error?.message?.toLowerCase?.() ?? '';
+      const isSchemaMissing =
+        error?.code === 'PGRST205' ||
+        error?.code === '42P01' ||
+        message.includes('voice_sessions') ||
+        message.includes('cleanup_stale_voice_sessions');
+
+      if (!isSchemaMissing) {
+        console.warn('[useVoice] Voice sessions refresh failed:', error);
+      }
+    }
+  }, []);
+
 
   // ── СИНХРОНИЗАЦИЯ УЧАСТНИКОВ В ЦЕНТРЕ (derived state) ──
   // Мы больше не управляем участниками канала отдельно, берем их из глобального списка
@@ -118,6 +144,32 @@ export function useVoice() {
     const list = allParticipants[activeChannelId] || [];
     setParticipants(list);
   }, [allParticipants, activeChannelId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) return;
+
+      await refreshVoiceSessions();
+
+      if (Date.now() - lastVoiceSessionCleanupRef.current > 60000) {
+        lastVoiceSessionCleanupRef.current = Date.now();
+        cleanupStaleVoiceSessions(25).catch(() => {});
+      }
+    };
+
+    tick();
+    voiceSessionsPollRef.current = setInterval(tick, 1500);
+
+    return () => {
+      cancelled = true;
+      if (voiceSessionsPollRef.current) {
+        clearInterval(voiceSessionsPollRef.current);
+        voiceSessionsPollRef.current = null;
+      }
+    };
+  }, [refreshVoiceSessions]);
 
   // СИНХРОНИЗАЦИЯ СТРИМОВ
   useEffect(() => {
@@ -324,6 +376,8 @@ export function useVoice() {
     setIsScreenSharing(false); 
     setRemoteScreens({}); 
     setVoiceError(null); 
+    await removeVoiceSession(sessionIdRef.current).catch(() => {});
+    await refreshVoiceSessions();
 
     if (reconnectTimerRef.current) { 
       console.log('[useVoice] Clearing background reconnect timer');
@@ -635,6 +689,12 @@ export function useVoice() {
       
       // БЛОКИРОВКА: Не шлем, если мы в процессе смены канала или вылета
       if (isLeavingRef.current || isSwitchingRef.current) return;
+
+      if (payload.channelId && payload.userId) {
+        await upsertVoiceSession(payload).catch(() => {});
+      } else if (!payload.channelId) {
+        await removeVoiceSession(sessionIdRef.current).catch(() => {});
+      }
 
       if (realtimeChannel.current && realtimeChannel.current.state === 'joined') {
         await realtimeChannel.current.track(payload).catch(() => {});
@@ -983,6 +1043,9 @@ export function useVoice() {
           setVoiceError(null);
           
           await updatePresenceStatus({}, true);
+          await upsertVoiceSession({ ...presencePayload.current, channelId }).catch(() => {});
+          await refreshVoiceSessions();
+
           
           // УВЕДОМЛЕНИЕ О ВХОДЕ (ТОЛЬКО ЕСЛИ НЕ ТИХИЙ РЕКОННЕКТ)
           if (!isSilent) notifications.play('self_join');
@@ -1040,7 +1103,7 @@ export function useVoice() {
         reconnectTimerRef.current = null;
       }
     }
-  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, removeChannelsByTopic, removeParticipantSession, syncParticipants, updatePresenceStatus]);
+  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, refreshVoiceSessions, removeChannelsByTopic, removeParticipantSession, syncParticipants, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
