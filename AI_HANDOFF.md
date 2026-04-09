@@ -29,12 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 00:35`
+- Время: `2026-04-10 00:40`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/signaling.js`
+  - `src/hooks/voice/channelStatus.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -66,4 +66,9 @@ pm run build passes.
 ## 2026-04-10 signaling handoff
 - Latest refactor slice completed: signaling event handlers moved to src/hooks/voice/signaling.js.
 - Current useVoice.js still needs one more serious pass over channel status transitions and reconnect flow, but the file is materially less monolithic now.
+- Build passes after this extraction.
+
+## 2026-04-10 local channel status handoff
+- Added src/hooks/voice/channelStatus.js and wired useVoice.js to use it for local channel subscribe status handling.
+- The file is now substantially less monolithic; the main unresolved heavy zone is the join bootstrap + global presence lifecycle rather than per-peer or per-status callback bodies.
 - Build passes after this extraction.

@@ -114,3 +114,18 @@ pm run build; build is green on 2.5.15.
   - `public/version.json`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/signaling.js`
+
+### 2026-04-10 local channel status extraction
+- Added src/hooks/voice/channelStatus.js for local voice channel subscribe-status handling (SUBSCRIBED, CLOSED, CHANNEL_ERROR) and reconnect scheduling.
+- Replaced the large inline channel.subscribe(async (status) => ...) block in src/hooks/useVoice.js with createLocalVoiceChannelStatusHandler(...).
+- joinVoiceChannel(...) now delegates per-event signaling and per-status channel transitions to helper modules, leaving mainly top-level orchestration in the hook.
+- Verified with 
+pm run build; build is green on 2.5.16.
+
+### Auto Log — 2026-04-10 00:40
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`

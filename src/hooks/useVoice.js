@@ -44,6 +44,7 @@ import {
   createRequestStreamBroadcastHandler,
   createUserLeftBroadcastHandler,
 } from './voice/signaling';
+import { createLocalVoiceChannelStatusHandler } from './voice/channelStatus';
 import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
@@ -782,77 +783,39 @@ export function useVoice() {
         peerConnsRef: peerConns,
       }));
 
-      channel.subscribe(async (status) => {
-        console.log(`[useVoice] Channel status: ${status} for instance:`, channel.topic);
-        
-        if (status === 'SUBSCRIBED') {
-          // ЗАЩИТА ОТ ГОНКИ: Если мы уже нажали выход ИЛИ переключились на другой канал
-          if (isLeavingRef.current || activeChannelIdRef.current !== channelId || channel !== realtimeChannel.current) {
-             console.warn('[useVoice] Late subscription aborted to prevent ghosting.');
-             if (channel !== realtimeChannel.current) {
-               supabase.removeChannel(channel).catch(() => {});
-             }
-             setIsConnecting(false);
-             setConnectingChannelId(null);
-             return;
-          }
 
-          isSwitchingRef.current = false;
-          reconnectAttemptsRef.current = 0;
-          setServerStatus('online');
-          setVoiceError(null);
-          lastStableChannelIdRef.current = channelId;
-          
-          await updatePresenceStatus({}, true);
-          await upsertVoiceSession({ ...presencePayload.current, channelId }).catch(() => {});
-          await refreshVoiceSessions();
-
-          
-          // УВЕДОМЛЕНИЕ О ВХОДЕ (ТОЛЬКО ЕСЛИ НЕ ТИХИЙ РЕКОННЕКТ)
-          if (!isSilent) notifications.play('self_join');
-          
-          if (globalPresence.current) {
-            mutateRealtimeParticipants((prev) => appendParticipantToChannel(prev, channelId, {
-              ...presencePayload.current,
-              channelId,
-            }));
-          }
-          
-          setActiveChannelId(channelId); 
-          activeChannelIdRef.current = channelId;
-          setIsConnecting(false);
-          setConnectingChannelId(null);
-        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          // ЗАЩИТА: Игнорируем статусы от старых инстансов канала
-          if (channel !== realtimeChannel.current || isLeavingRef.current || isSwitchingRef.current) {
-            return;
-          }
-          
-          reconnectAttemptsRef.current++;
-          console.warn(`[useVoice] Realtime lost (${status}). Attempt ${reconnectAttemptsRef.current}/5`);
-          
-          setServerStatus('reconnecting');
-          
-          if (reconnectAttemptsRef.current > 5) {
-            setServerStatus('offline');
-            setVoiceError('[Server] Соединение полностью потеряно');
-            setIsConnecting(false);
-            setConnectingChannelId(null);
-          } else {
-            scheduleManagedTimeout(reconnectTimerRef, () => {
-              const reconnectChannelId = resolveStableVoiceChannelId(
-                lastStableChannelIdRef.current,
-                activeChannelIdRef.current,
-                presencePayload.current.channelId
-              );
-              if (reconnectChannelId && !isLeavingRef.current && realtimeChannel.current === channel) {
-                console.log(`[useVoice] Attempting background reconnect...`);
-                joinVoiceChannel(reconnectChannelId, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color, true);
-              }
-            }, RECONNECT_DELAY_MS);
-          }
-        }
-      });
+      channel.subscribe(createLocalVoiceChannelStatusHandler({
+        channel,
+        channelId,
+        isSilent,
+        user,
+        realtimeChannelRef: realtimeChannel,
+        isLeavingRef,
+        isSwitchingRef,
+        activeChannelIdRef,
+        reconnectAttemptsRef,
+        reconnectTimerRef,
+        lastStableChannelIdRef,
+        presencePayloadRef: presencePayload,
+        globalPresenceRef: globalPresence,
+        currentUserRef,
+        setServerStatus,
+        setVoiceError,
+        setIsConnecting,
+        setConnectingChannelId,
+        setActiveChannelId,
+        updatePresenceStatus,
+        upsertVoiceSession,
+        refreshVoiceSessions,
+        mutateRealtimeParticipants,
+        appendParticipantToChannel,
+        scheduleManagedTimeout,
+        resolveStableVoiceChannelId,
+        joinVoiceChannel,
+        notifications,
+        RECONNECT_DELAY_MS,
+        removeSupabaseChannel: supabase.removeChannel.bind(supabase),
+      }));
     } catch (err) { 
       console.error('[useVoice] Fatal join error:', err);
       if (reconnectAttemptsRef.current === 0 || reconnectAttemptsRef.current > 5) {

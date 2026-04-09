@@ -79,3 +79,8 @@
 - src/hooks/voice/signaling.js now owns the voice broadcast event handlers for offer/answer/ICE/user-left/request-stream.
 - useVoice.js still contains the higher-level join/subscription status orchestration, but the channel event payload handling is now factored out.
 - Remaining dense area is mainly the channel status / reconnect orchestration inside joinVoiceChannel(...) plus some global presence setup.
+
+## 2026-04-10 local channel status helper extraction
+- src/hooks/voice/channelStatus.js now owns the local voice channel status transitions and reconnect scheduling for the per-channel Realtime subscription.
+- Extracted modules now cover: participants, screen share, remote media tracks, peer lifecycle, runtime timer management, signaling handlers, and local channel status handling.
+- Remaining dense areas are mostly global presence bootstrap/heartbeat and the broader join-flow orchestration around media init + Realtime setup.
