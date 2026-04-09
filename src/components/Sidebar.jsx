@@ -312,7 +312,7 @@ export function Sidebar({
                       <div className="ml-6 mt-0.5 space-y-0.5">
                         {chParticipants.map(p => (
                           <VoiceParticipant
-                            key={p.userId}
+                            key={p.sessionId ? `${p.userId}:${p.sessionId}` : p.userId}
                             participant={p}
                             isMe={p.userId === currentUserId}
                             isActuallySpeaking={p.userId === currentUserId ? isSpeaking : p.isSpeaking}

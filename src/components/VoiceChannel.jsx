@@ -261,6 +261,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
         {isInThisChannel && participants.length > 0 && (
           <div className="flex flex-wrap gap-8 justify-center w-full max-w-6xl">
             {participants.map((p) => {
+              const participantKey = p.sessionId ? `${p.userId}:${p.sessionId}` : p.userId;
               const { imageUrl } = getUserAvatar(p.username);
               const isMe = p.userId === user?.id;
               const vol = volumes[p.userId] ?? 100;
@@ -271,7 +272,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
               if (stream && isWatched) {
                 return (
                   <ScreenPlayer 
-                    key={`screen-${p.userId}`} 
+                    key={`screen-${participantKey}`} 
                     participant={p} 
                     stream={stream} 
                     onClose={() => setWatchedScreens(prev => {
@@ -285,7 +286,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
 
               return (
                 <div
-                  key={p.userId}
+                  key={participantKey}
                   className={`flex flex-col items-center gap-3 animate-fade-in select-none ${!isMe ? 'cursor-context-menu' : ''}`}
                   onContextMenu={(e) => handleContextMenu(e, p)}
                 >

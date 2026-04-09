@@ -64,6 +64,24 @@ export function useVoice() {
   const sessionIdRef = useRef(Math.random().toString(36).substring(7));
   const heartbeatIntervalRef = useRef(null);
 
+  const getParticipantSessionKey = useCallback((participant) => (
+    participant?.sessionId ? `${participant.userId}:${participant.sessionId}` : participant?.userId
+  ), []);
+
+  const removeParticipantSession = useCallback((items, payload = {}) => {
+    const exactSessionKey = payload.userId && payload.sessionId
+      ? `${payload.userId}:${payload.sessionId}`
+      : null;
+
+    return items.filter((participant) => {
+      const participantKey = getParticipantSessionKey(participant);
+      if (exactSessionKey) {
+        return participantKey !== exactSessionKey;
+      }
+      return participant.userId !== payload.userId;
+    });
+  }, [getParticipantSessionKey]);
+
 
   // ── СИНХРОНИЗАЦИЯ УЧАСТНИКОВ В ЦЕНТРЕ (derived state) ──
   // Мы больше не управляем участниками канала отдельно, берем их из глобального списка
@@ -263,7 +281,10 @@ export function useVoice() {
       const myId = currentUserRef.current?.id;
       let changed = false;
       Object.keys(next).forEach(chId => {
-        const filtered = next[chId].filter(p => p.userId !== myId);
+        const filtered = removeParticipantSession(next[chId], {
+          userId: myId,
+          sessionId: sessionIdRef.current,
+        });
         if (filtered.length !== next[chId].length) {
           next[chId] = filtered;
           if (next[chId].length === 0) delete next[chId];
@@ -304,29 +325,29 @@ export function useVoice() {
       audioContextRef.current = null; 
     }
     
-    if (realtimeChannel.current) {
-      const chan = realtimeChannel.current;
+    const currentRealtimeChannel = realtimeChannel.current;
+    if (currentRealtimeChannel) {
       realtimeChannel.current = null; // Зануляем ДО удаления
       console.log('[useVoice] Removing Realtime channel...');
-      await supabase.removeChannel(chan).catch(() => {});
+      await supabase.removeChannel(currentRealtimeChannel).catch(() => {});
     }
 
     if (globalPresence.current) {
       console.log('[useVoice] Updating global presence (EXIT)...');
       // СИЛОВОЕ УДАЛЕНИЕ: Кричим во ВСЕ доступные каналы (если они подключены)
-      const broadcastPayload = { type: 'broadcast', event: 'user-left', payload: { userId: myId } };
+      const broadcastPayload = { type: 'broadcast', event: 'user-left', payload: { userId: myId, sessionId: sessionIdRef.current } };
       
       if (globalPresence.current?.state === 'joined') {
         globalPresence.current.send(broadcastPayload).catch(() => {});
       }
-      if (realtimeChannel.current?.state === 'joined') {
-        realtimeChannel.current.send(broadcastPayload).catch(() => {});
+      if (currentRealtimeChannel?.state === 'joined') {
+        currentRealtimeChannel.send(broadcastPayload).catch(() => {});
       }
 
       await globalPresence.current.track({
         ...presencePayload.current,
         channelId: null,
-        joined_at: Date.now()
+        joined_at: presencePayload.current.joined_at || Date.now()
       }).catch(() => {});
       
       await globalPresence.current.untrack().catch(() => {});
@@ -336,12 +357,15 @@ export function useVoice() {
       const next = { ...prev };
       const myId = currentUserRef.current?.id;
       Object.keys(next).forEach(chId => {
-        next[chId] = next[chId].filter(p => p.userId !== myId);
+        next[chId] = removeParticipantSession(next[chId], {
+          userId: myId,
+          sessionId: sessionIdRef.current,
+        });
         if (next[chId].length === 0) delete next[chId];
       });
       return next;
     });
-  }, [closePeer]);
+  }, [closePeer, removeParticipantSession]);
 
   // Глобальный канал (инициализация после всех функций)
   useEffect(() => {
@@ -466,14 +490,19 @@ export function useVoice() {
       });
       channel.on('presence', { event: 'leave' }, ({ leftPresences, key }) => {
         // МОМЕНТАЛЬНОЕ УДАЛЕНИЕ: если сессия ушла из Supabase, режем её из UI сразу
-        const leavingSessionKey = key; // usually userId
+        const leavingSessions = ((leftPresences && leftPresences.length > 0) ? leftPresences : [{ userId: key }]).map((presence) => ({
+          userId: presence.userId || key,
+          sessionId: presence.sessionId,
+        }));
         setAllParticipants(prev => {
           const next = { ...prev };
           let changed = false;
           Object.keys(next).forEach(chId => {
             const before = next[chId].length;
-            // Если ключ совпадает ИЛИ userId внутри совпадает с ключом ушедшего
-            next[chId] = next[chId].filter(p => (p.userId + ":" + p.sessionId) !== leavingSessionKey && p.userId !== leavingSessionKey);
+            next[chId] = leavingSessions.reduce(
+              (items, leavingPresence) => removeParticipantSession(items, leavingPresence),
+              next[chId]
+            );
             if (next[chId].length !== before) {
               changed = true;
               if (next[chId].length === 0) delete next[chId];
@@ -485,12 +514,11 @@ export function useVoice() {
       });
 
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        const uid = payload.userId;
         setAllParticipants(prev => {
           const next = { ...prev };
           let changed = false;
           Object.keys(next).forEach(chId => {
-            const filtered = next[chId].filter(p => p.userId !== uid);
+            const filtered = removeParticipantSession(next[chId], payload);
             if (filtered.length !== next[chId].length) {
               next[chId] = filtered;
               if (next[chId].length === 0) delete next[chId];
@@ -501,11 +529,23 @@ export function useVoice() {
         });
       });
 
-      channel.subscribe(status => {
+      channel.subscribe(async (status) => {
         // ЗАЩИТА: Игнорируем статусы от "старых" каналов, которые мы сами закрыли
         if (channel !== globalPresence.current) return;
 
         console.log(`[useVoice] Global channel status: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          if (currentUserRef.current?.id && activeChannelIdRef.current) {
+            await channel.track({
+              ...presencePayload.current,
+              channelId: activeChannelIdRef.current,
+              joined_at: presencePayload.current.joined_at || Date.now(),
+              sessionId: sessionIdRef.current,
+              last_seen: Date.now(),
+            }).catch(() => {});
+          }
+          return;
+        }
         if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           if (!cancelled && !isLeavingRef.current) {
             console.log('[useVoice] Global channel actually lost, recovering in 4s...');
@@ -539,15 +579,23 @@ export function useVoice() {
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
       globalPresence.current = null;
     };
-  }, [cleanupAll]);
+  }, [cleanupAll, removeParticipantSession]);
 
   const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
+    const nextChannelId = Object.prototype.hasOwnProperty.call(updates, 'channelId')
+      ? updates.channelId
+      : activeChannelIdRef.current;
+    const nextLastSeen = Object.prototype.hasOwnProperty.call(updates, 'last_seen')
+      ? updates.last_seen
+      : (presencePayload.current.last_seen || Date.now());
+
     presencePayload.current = { 
       ...presencePayload.current, 
       ...updates, 
       sessionId: sessionIdRef.current,
-      channelId: updates.channelId || activeChannelIdRef.current, // Сохраняем канал в основном пейлоаде
-      last_seen: updates.last_seen || presencePayload.current.last_seen || Date.now() 
+      channelId: nextChannelId,
+      last_seen: nextLastSeen,
+      joined_at: updates.joined_at || presencePayload.current.joined_at || Date.now() 
     };
     
     if (presenceDebounceRef.current) {
@@ -565,9 +613,9 @@ export function useVoice() {
         await realtimeChannel.current.track(payload).catch(() => {});
       }
       
-      const chId = activeChannelIdRef.current;
+      const chId = payload.channelId;
       if (globalPresence.current && globalPresence.current.state === 'joined' && chId) {
-        await globalPresence.current.track({ ...payload, channelId: chId, joined_at: Date.now() }).catch(() => {});
+        await globalPresence.current.track({ ...payload, channelId: chId }).catch(() => {});
       }
     };
 
@@ -576,7 +624,7 @@ export function useVoice() {
     } else {
       presenceDebounceRef.current = setTimeout(sendUpdate, 400); // 400ms – золотая середина
     }
-  }, [activeChannelId]);
+  }, []);
 
   const syncParticipants = useCallback((channel) => {
     if (channel.state !== 'joined' || isLeavingRef.current) return;
@@ -777,6 +825,8 @@ export function useVoice() {
         userId: user.id, 
         username, 
         color, 
+        channelId,
+        joined_at: Date.now(),
         isScreenSharing: false, 
         isSpeaking: false, 
         isMuted: isMutedRef.current, 
@@ -864,7 +914,7 @@ export function useVoice() {
 
       // СЛУШАЕМ УХОД В ЛОКАЛЬНОМ КАНАЛЕ (БЫСТРАЯ ОЧИСТКА)
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        setParticipants(prev => prev.filter(p => p.userId !== payload.userId));
+        setParticipants(prev => removeParticipantSession(prev, payload));
         closePeer(payload.userId, true);
       });
 
@@ -912,7 +962,7 @@ export function useVoice() {
             setAllParticipants(prev => {
               const next = { ...prev };
               const currentInCh = next[channelId] || [];
-              if (!currentInCh.find(p => p.userId === user.id)) {
+              if (!currentInCh.find(p => p.userId === user.id && p.sessionId === sessionIdRef.current)) {
                 next[channelId] = [...currentInCh, { ...presencePayload.current, channelId }];
                 return next;
               }
@@ -962,7 +1012,7 @@ export function useVoice() {
         reconnectTimerRef.current = null;
       }
     }
-  }, [activeChannelId, cleanupAll, createPeerConnection, syncParticipants, updatePresenceStatus]);
+  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, removeParticipantSession, syncParticipants, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
@@ -1156,7 +1206,7 @@ export function useVoice() {
       try { await supabase.from('profiles').select('id').limit(1); setPing(Date.now() - start); } catch { setPing(null); }
     }, 3000);
     return () => clearInterval(interval);
-  }, [activeChannelId]);
+  }, []);
 
   // ЭФФЕКТ ДЛЯ ГЛОБАЛЬНЫХ ГОРЯЧИХ КЛАВИШ (EXE-ONLY)
   useEffect(() => {
@@ -1191,3 +1241,5 @@ export function useVoice() {
     clearVoiceError: () => setVoiceError(null)
   };
 }
+
+
