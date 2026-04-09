@@ -15,6 +15,16 @@ import {
   resolveStableVoiceChannelId,
 } from './voice/utils';
 import {
+  attachScreenShareToPeers,
+  buildScreenShareConstraints,
+  detachScreenShareFromPeers,
+  getScreenShareProfile,
+} from './voice/screenShare';
+import {
+  attachRemoteAudioTrack,
+  attachRemoteVideoTrack,
+} from './voice/mediaTracks';
+import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
   removeVoiceSession,
@@ -39,6 +49,7 @@ export function useVoice() {
   const [voiceError, setVoiceError]            = useState(null);
   const [serverStatus, setServerStatus]        = useState('online'); // 'online' | 'offline'
   const [connectingChannelId, setConnectingChannelId] = useState(null);
+  const [ping, setPing]                        = useState(null);
 
   const isDeafenedRef   = useRef(false);
   const isMutedRef      = useRef(false);
@@ -247,43 +258,17 @@ export function useVoice() {
       console.log(`[WebRTC] Incoming track from ${remoteUserId}:`, track.kind);
 
       if (track.kind === 'video') {
-        const stream = event.streams[0] || new MediaStream([track]);
-        setRemoteScreens(prev => ({ ...prev, [remoteUserId]: stream }));
-        
-        // Автоматически чистим, если трек завершился
-        track.onended = () => {
-          setRemoteScreens(prev => {
-            const next = { ...prev };
-            delete next[remoteUserId];
-            return next;
-          });
-        };
+        attachRemoteVideoTrack(remoteUserId, event, setRemoteScreens);
       } else if (track.kind === 'audio') {
-        const stream = event.streams[0] || new MediaStream([track]);
-        if (!audioElements.current[remoteUserId]) {
-          const audio = new Audio();
-          audio.autoplay = true; audio.muted = true; audio.volume = 0;
-          document.body.appendChild(audio); audioElements.current[remoteUserId] = audio;
-        }
-        if (!gainNodesRef.current[remoteUserId] && audioContextRef.current) {
-          try {
-            const source = audioContextRef.current.createMediaStreamSource(stream);
-            
-            // ── Создаем Analyser для ЛОКАЛЬНОГО детектирования голоса ──
-            const analyser = audioContextRef.current.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-            remoteAnalysersRef.current[remoteUserId] = { analyser, data: new Float32Array(analyser.fftSize) };
-
-            const gain = audioContextRef.current.createGain();
-            const savedVol = localStorage.getItem(`vol_${remoteUserId}`);
-            gain.gain.value = isDeafenedRef.current ? 0 : (savedVol !== null ? Number(savedVol)/100 : 1.0);
-            source.connect(gain); gain.connect(audioContextRef.current.destination);
-            gainNodesRef.current[remoteUserId] = gain;
-          } catch {}
-        }
-        audioElements.current[remoteUserId].srcObject = stream;
-        audioElements.current[remoteUserId].play().catch(() => {});
+        attachRemoteAudioTrack({
+          remoteUserId,
+          event,
+          audioElementsRef: audioElements,
+          gainNodesRef,
+          audioContextRef,
+          remoteAnalysersRef,
+          isDeafenedRef,
+        });
       }
     };
 
@@ -1037,142 +1022,78 @@ export function useVoice() {
       console.log('[WebRTC] Stopping screen share safely...');
       const tracks = screenStreamRef.current.getTracks();
       
-      // Вместо removeTrack используем replaceTrack(null), 
-      // чтобы не ломать порядок m-lines в SDP
-      Object.values(peerConns.current).forEach(pc => {
-        pc.getSenders().forEach(async (s) => { 
-          if (s.track?.kind === 'video') {
-            try {
-              await s.replaceTrack(null);
-              // Теперь можно безопасно убрать, т.к. стейт стабилен
-              pc.removeTrack(s);
-            } catch (e) { console.warn(e); }
-          }
-        });
-      });
+      // Keep the SDP sender order stable while removing the screen video track.
+
+      await detachScreenShareFromPeers(peerConns.current);
 
       tracks.forEach(t => t.stop());
       screenStreamRef.current = null; setIsScreenSharing(false);
       setTimeout(() => updatePresenceStatus({ isScreenSharing: false }), 300);
     }
   }, [updatePresenceStatus]);
-  
-  // Профили качества для трансляции
-  const qualityProfiles = {
-    '1080p': { 
-      width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 },
-      bitrate: 6000000, contentHint: 'detail' 
-    },
-    '720p':  { 
-      width: { ideal: 1280 }, height: { ideal: 720 },  frameRate: { ideal: 30 },
-      bitrate: 2500000, contentHint: 'detail'
-    },
-    '480p':  { 
-      width: { ideal: 854 },  height: { ideal: 480 },  frameRate: { ideal: 30 },
-      bitrate: 1000000, contentHint: 'detail'
-    }
-  };
 
   const startScreenShare = useCallback(async (quality = '720p', user = null, sourceId = null) => {
     try {
       console.log('[WebRTC] Starting screen share, sourceId:', sourceId);
-      
-      const profile = qualityProfiles[quality] || qualityProfiles['720p'];
 
-      let constraints;
-      if (sourceId) {
-        // МАКСИМАЛЬНО упрощенный формат для Electron
-        constraints = {
-          audio: false, 
-          video: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: sourceId,
-              minWidth: profile.width.ideal,
-              maxWidth: profile.width.ideal,
-              minHeight: profile.height.ideal,
-              maxHeight: profile.height.ideal,
-              maxFrameRate: profile.frameRate.ideal
-            }
-          }
-        };
-      } else {
-        // Стандарт для браузера
-        constraints = { 
-          video: {
-            ...profile,
-            cursor: 'always'
-          }, 
-          audio: false 
-        };
-      }
+      const profile = getScreenShareProfile(quality);
+      const constraints = buildScreenShareConstraints(profile, sourceId);
 
-      setVoiceError(null); 
-      const stream = sourceId 
+      setVoiceError(null);
+      const stream = sourceId
         ? await navigator.mediaDevices.getUserMedia(constraints)
         : await navigator.mediaDevices.getDisplayMedia(constraints);
-      
+
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack && profile.contentHint) {
-        // Подсказка браузеру: приоритет четкости (текста) над плавностью
+        // Prefer screen clarity for text/code over smoother motion.
         videoTrack.contentHint = profile.contentHint;
       }
 
-      screenStreamRef.current = stream; 
+      screenStreamRef.current = stream;
       setIsScreenSharing(true);
-      setVoiceError(null); 
-      
-      // Добавляем трек всем существующим пирам
-      Object.values(peerConns.current).forEach(async (pc) => {
-        const tracks = stream.getTracks();
-        for (const t of tracks) {
-          const sender = pc.addTrack(t, stream);
-          
-          // ПРИМЕНЯЕМ ПАРАМЕТРЫ КАЧЕСТВА (БИТРЕЙТ)
-          if (t.kind === 'video' && sender && sender.getParameters) {
-            try {
-              const params = sender.getParameters();
-              if (!params.encodings) params.encodings = [{}];
-              params.encodings[0].maxBitrate = profile.bitrate;
-              // Для стрима экрана также полезно разрешить масштабирование вниз при плохой сети
-              params.encodings[0].networkPriority = 'high';
-              await sender.setParameters(params);
-              console.log(`[WebRTC] Bitrate set to ${profile.bitrate} for sender`);
-            } catch (e) {
-              console.warn('[WebRTC] Failed to set encoding parameters:', e);
-            }
-          }
-        }
-      });
+      setVoiceError(null);
+
+      // Attach the screen stream to already connected peers.
+      await attachScreenShareToPeers(peerConns.current, stream, profile);
 
       updatePresenceStatus({ isScreenSharing: true });
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
-    } catch (err) { 
+    } catch (err) {
       console.error('Screen sharing error', err);
-      
-      // Игнорируем ошибку, если пользователь просто нажал "Отмена"
+
+      // Ignore the cancellation case when the user closes the picker.
       if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
         setIsScreenSharing(false);
         screenStreamRef.current = null;
         return;
       }
 
-      setVoiceError(`Не удалось запустить трансляцию: ${err.message}`);
+      setVoiceError(`Unable to start stream: ${err.message}`);
       setIsScreenSharing(false);
       screenStreamRef.current = null;
-      stopScreenShare(); // Финальная очистка
+      stopScreenShare(); // Final cleanup guard.
     }
   }, [updatePresenceStatus, stopScreenShare]);
-
-  const [ping, setPing] = useState(null);
   useEffect(() => {
-    if (!activeChannelId) return;
+    if (!activeChannelId) {
+      setPing(null);
+      return;
+    }
+
     const interval = setInterval(async () => {
       const start = Date.now();
-      try { await supabase.from('profiles').select('id').limit(1); setPing(Date.now() - start); } catch { setPing(null); }
+      try {
+        await supabase.from('profiles').select('id').limit(1);
+        setPing(Date.now() - start);
+      } catch {
+        setPing(null);
+      }
     }, 3000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [activeChannelId]);
+
 
   // ЭФФЕКТ ДЛЯ ГЛОБАЛЬНЫХ ГОРЯЧИХ КЛАВИШ (EXE-ONLY)
   useEffect(() => {

@@ -51,3 +51,14 @@
 ## Recent stream fix
 - Viewer-side stream recovery logic was strengthened in `src/components/VoiceChannel.jsx`.
 - If a remote stream disappears but the participant is still marked as screen sharing, the UI can now request it again instead of getting stuck in a hidden watched state.
+
+## 2026-04-10 screen-share extraction
+- src/hooks/voice/screenShare.js is now the canonical place for stream quality profiles and screen track attach/detach helpers.
+- useVoice.js still owns the public API (startScreenShare / stopScreenShare), but the low-level peer sender work moved out.
+- ping polling remains in useVoice.js and was restored after extraction.
+- Next refactor slice: isolate peer negotiation/reconnect state from UI-facing session state.
+
+## 2026-04-10 remote media helper extraction
+- src/hooks/voice/mediaTracks.js now owns remote screen stream attach/cleanup and remote audio analyser/gain wiring.
+- createPeerConnection(...).ontrack in src/hooks/useVoice.js was reduced to routing by 	rack.kind.
+- This reduces one more dense branch inside useVoice.js; next good target remains peer negotiation/reconnect state.

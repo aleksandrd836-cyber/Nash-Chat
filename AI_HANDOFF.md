@@ -29,13 +29,27 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-09 23:55`
+- Время: `2026-04-10 00:20`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/components/VoiceChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/mediaTracks.js`
+  - `src/hooks/voice/screenShare.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
 - Screen-share watch flow was patched in `src/components/VoiceChannel.jsx`.
 - If someone reports "stream disappeared and the watch button is gone", inspect watcher-side `watchedScreens` and `remoteScreens` first.
+
+## 2026-04-10 handoff note
+- Finished the next voice refactor slice: screen-share helpers now live in src/hooks/voice/screenShare.js and are wired into src/hooks/useVoice.js.
+- Build is green after the refactor (
+pm run build).
+- Watch next for regressions around Electron/browser parity during stream start/stop and reconnect after stream loss.
+
+## 2026-04-10 additional handoff note
+- After the screen-share helper extraction, the next slice is also done: remote media track handling is now in src/hooks/voice/mediaTracks.js.
+- useVoice.js still needs further decomposition, but two dense areas are already out: screen-share peer wiring and remote media attach logic.
+- Latest verification: 
+pm run build passes.
