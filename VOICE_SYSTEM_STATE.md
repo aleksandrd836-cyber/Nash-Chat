@@ -47,3 +47,7 @@
 - Быстрое переключение между двумя каналами.
 - Переподключение после `Realtime CLOSED`.
 - Проверка, что иконка не залипает в старом канале.
+
+## Recent stream fix
+- Viewer-side stream recovery logic was strengthened in `src/components/VoiceChannel.jsx`.
+- If a remote stream disappears but the participant is still marked as screen sharing, the UI can now request it again instead of getting stuck in a hidden watched state.

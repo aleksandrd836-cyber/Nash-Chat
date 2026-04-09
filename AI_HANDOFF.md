@@ -29,10 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-09 22:21`
+- Время: `2026-04-09 23:55`
 - Последние staged-файлы перед коммитом:
-  - `.githooks/pre-commit`
   - `package.json`
   - `public/version.json`
-  - `scripts/update-ai-memory.js`
+  - `src/components/VoiceChannel.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
+
+## Manual note 2026-04-09
+- Screen-share watch flow was patched in `src/components/VoiceChannel.jsx`.
+- If someone reports "stream disappeared and the watch button is gone", inspect watcher-side `watchedScreens` and `remoteScreens` first.

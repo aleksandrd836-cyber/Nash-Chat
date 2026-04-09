@@ -31,3 +31,17 @@
   - `package.json`
   - `public/version.json`
   - `scripts/update-ai-memory.js`
+
+### 2026-04-09 stream watch recovery
+- Fixed a voice stream viewer bug in `src/components/VoiceChannel.jsx`.
+- Root cause: watcher-side `watchedScreens` could remain true after the remote video stream disappeared.
+- Result: the stream window vanished and the watch button did not come back.
+- Fix: stale watched entries are cleaned up, the button can reappear when the stream is missing, and the viewer auto-requests the stream again with a short cooldown while the participant is still marked as sharing.
+- Validation: `npm run build` passed after the change.
+
+### Auto Log — 2026-04-09 23:55
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/VoiceChannel.jsx`

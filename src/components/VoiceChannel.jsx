@@ -117,6 +117,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
   const [showPicker, setShowPicker] = useState(false);
   const [watchedScreens, setWatchedScreens] = useState(new Set());
   const menuRef = useRef(null);
+  const screenRequestCooldownRef = useRef({});
 
   // Сброс игнорируемых стримов при смене канала
   useEffect(() => {
@@ -149,6 +150,33 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     window.addEventListener('volumeChanged', handleVolChange);
     return () => window.removeEventListener('volumeChanged', handleVolChange);
   }, [participants]);
+
+  useEffect(() => {
+    setWatchedScreens((prev) => {
+      const next = new Set(
+        [...prev].filter((userId) => {
+          const participant = participants.find((item) => item.userId === userId);
+          return Boolean(participant?.isScreenSharing);
+        })
+      );
+
+      return next.size === prev.size ? prev : next;
+    });
+  }, [participants]);
+
+  useEffect(() => {
+    watchedScreens.forEach((userId) => {
+      const participant = participants.find((item) => item.userId === userId);
+      const stream = remoteScreens[userId];
+      if (!participant?.isScreenSharing || stream) return;
+
+      const lastRequestedAt = screenRequestCooldownRef.current[userId] || 0;
+      if (Date.now() - lastRequestedAt < 3000) return;
+
+      screenRequestCooldownRef.current[userId] = Date.now();
+      requestScreenView?.(userId);
+    });
+  }, [participants, remoteScreens, requestScreenView, watchedScreens]);
 
   const handleContextMenu = useCallback((e, participant) => {
     if (participant.userId === user?.id) return;
@@ -282,6 +310,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                     onClose={() => setWatchedScreens(prev => {
                       const next = new Set(prev);
                       next.delete(p.userId);
+                      delete screenRequestCooldownRef.current[p.userId];
                       return next;
                     })}
                   />
@@ -313,14 +342,16 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                           </span>
                         )}
                       </p>
-                    {p.isScreenSharing && !isMe && !isWatched && (
+                    {p.isScreenSharing && !isMe && (!isWatched || !stream) && (
                       <button 
                         onClick={() => {
+                          screenRequestCooldownRef.current[p.userId] = Date.now();
+                          requestScreenView?.(p.userId);
                           setWatchedScreens(prev => new Set(prev).add(p.userId));
                         }}
                         className="mt-2 bg-ds-accent text-black px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-ds-accent/20 vibe-glow-blue"
                       >
-                        СМОТРЕТЬ
+                        {stream ? 'WATCH' : 'RETRY STREAM'}
                       </button>
                     )}
                   </div>
@@ -517,3 +548,4 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     </div>
   );
 }
+
