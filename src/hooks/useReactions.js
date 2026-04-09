@@ -60,25 +60,33 @@ export function useMessageReactions(messageId, isDM = false) {
 
   const toggleReaction = useCallback(async (userId, emoji) => {
     if (!userId || !messageId) return;
+    
+    // Блокируем реакции для временных сообщений (они еще не в БД)
+    if (String(messageId).startsWith('temp-')) return;
 
     // Ищем, есть ли уже реакция этого пользователя на это сообщение
+    // Используем актуальный стейт через замыкание или передачу в аргумент (в данном случае стейт в компоненте актуален для события клика)
     const existing = reactions.find(r => r.user_id === userId);
 
-    if (existing) {
-      if (existing.emoji === emoji) {
-        // Если эмодзи тот же — удаляем реакцию
-        await supabase.from(table).delete().eq('id', existing.id);
+    try {
+      if (existing) {
+        if (existing.emoji === emoji) {
+          // Если эмодзи тот же — удаляем реакцию
+          await supabase.from(table).delete().eq('id', existing.id);
+        } else {
+          // Если другой — обновляем
+          await supabase.from(table).update({ emoji }).eq('id', existing.id);
+        }
       } else {
-        // Если другой — обновляем (благодаря UNIQUE(message_id, user_id) можно и upsert, но update надежнее)
-        await supabase.from(table).update({ emoji }).eq('id', existing.id);
+        // Если реакции нет — вставляем новую
+        await supabase.from(table).insert({
+          message_id: messageId,
+          user_id:    userId,
+          emoji:      emoji
+        });
       }
-    } else {
-      // Если реакции нет — вставляем новую
-      await supabase.from(table).insert({
-        message_id: messageId,
-        user_id:    userId,
-        emoji:      emoji
-      });
+    } catch (err) {
+      console.error('Ошибка при переключении реакции:', err);
     }
   }, [messageId, table, reactions]);
 

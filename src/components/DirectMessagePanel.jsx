@@ -92,6 +92,10 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   }, []);
 
   function pickFile(file) {
+    if (file.type === 'image/gif') {
+      alert('Гифки — это пережиток прошлого! VibeChat поддерживает только качественные статические изображения и видео.');
+      return;
+    }
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       alert(`Файл слишком большой! Максимальный размер: ${MAX_FILE_SIZE_MB} МБ.`);
       return;
@@ -116,26 +120,33 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
     const isBusy = sending || uploading;
     if ((!draft.trim() && !attachment) || isBusy) return;
 
+    // Очищаем ввод сразу для мгновенной реакции
+    const content = draft;
+    const currentAttachment = attachment;
+    setDraft('');
+    removeAttachment();
+
     let imageUrl = null;
-    if (attachment) {
+    if (currentAttachment) {
       setUploading(true);
       try {
-        imageUrl = await uploadFile(attachment.file);
+        imageUrl = await uploadFile(currentAttachment.file);
       } catch (err) {
         setUploading(false);
+        setDraft(content);
+        setAttachment(currentAttachment);
         return;
       }
       setUploading(false);
-      removeAttachment();
     }
 
-    await sendMessage(draft, username, userColor, imageUrl, attachment?.file.name);
-    setDraft('');
+    await sendMessage(content, username, userColor, imageUrl || currentAttachment?.previewUrl, currentAttachment?.file.name);
   }, [draft, attachment, sending, uploading, sendMessage, uploadFile, username, userColor]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       handleSend();
     }
   };

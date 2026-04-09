@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { notifications } from '../lib/notifications';
+import { compressImage } from '../lib/image';
 
 const PAGE_SIZE = 50;
 
@@ -11,6 +12,7 @@ const PAGE_SIZE = 50;
  */
 export function useMessages(channelId, currentUserId) {
   const [messages, setMessages]   = useState([]);
+  const [optimisticMessages, setOptimisticMessages] = useState([]);
   const [loading, setLoading]     = useState(false);
   const [sending, setSending]     = useState(false);
   const subscriptionRef           = useRef(null);
@@ -67,11 +69,14 @@ export function useMessages(channelId, currentUserId) {
 
   /** Загрузить файл в Supabase Storage, вернуть публичный URL */
   const uploadFile = useCallback(async (file) => {
-    const ext = file.name.split('.').pop();
+    // Применяем сжатие, если это изображение
+    const finalFile = await compressImage(file);
+    
+    const ext = finalFile.name.split('.').pop();
     const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage
       .from('chat-images')
-      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+      .upload(fileName, finalFile, { cacheControl: '3600', upsert: false });
     if (error) throw error;
     const { data } = supabase.storage.from('chat-images').getPublicUrl(fileName);
     return data.publicUrl;
@@ -79,14 +84,30 @@ export function useMessages(channelId, currentUserId) {
 
   /** Отправить сообщение (text и/или image_url) */
   const sendMessage = useCallback(async (content, userId, username, imageUrl = null, userColor = null, fileName = null) => {
+    // Если контента нет и картинки нет - выходим
     if (!content.trim() && !imageUrl) return;
     if (!channelId) return;
+
     setSending(true);
     
-    // ОТЛАДКА: чтобы видеть, какой ID улетает в базу
-    console.log('[DEBUG] Отправка сообщения:', { channelId, userId, auth_uid: (await supabase.auth.getUser()).data.user?.id });
-
+    // Создаем "оптимистичное" сообщение для мгновенного отображения
+    const tempId = `temp-${Date.now()}`;
     const dbUsername = userColor ? `${username}@@${userColor}` : username;
+    
+    const optimisticMsg = {
+      id: tempId,
+      channel_id: channelId,
+      user_id: userId,
+      username: dbUsername,
+      content: content.trim(),
+      image_url: imageUrl,
+      file_name: fileName,
+      created_at: new Date().toISOString(),
+      isPending: true // Флаг для UI
+    };
+    
+    setOptimisticMessages(prev => [...prev, optimisticMsg]);
+
     const { error } = await supabase.from('messages').insert({
       channel_id: channelId,
       user_id: userId,
@@ -95,10 +116,19 @@ export function useMessages(channelId, currentUserId) {
       image_url: imageUrl ?? null,
       file_name: fileName ?? null,
     });
+
     setSending(false);
+    // Удаляем из оптимистичных, так как придет Realtime вставка
+    setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
+    
     if (error) console.error('Ошибка отправки:', error);
     return { error };
   }, [channelId]);
 
-  return { messages, loading, sending, sendMessage, uploadFile };
+  // Объединяем реальные и оптимистичные сообщения
+  const allMessages = [...messages, ...optimisticMessages].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  return { messages: allMessages, loading, sending, sendMessage, uploadFile };
 }

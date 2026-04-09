@@ -5,6 +5,7 @@ import {
   X, Settings, Copy, RefreshCw, UserPlus, Trash2, 
   Shield, Crown, User, Check, AlertCircle, Camera 
 } from 'lucide-react';
+import { compressImage } from '../lib/image';
 
 /**
  * Надёжная функция копирования — работает и в браузере, и в Electron
@@ -109,21 +110,22 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
 
   async function handleAvatarUpload(e) {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Файл слишком большой! Максимальный размер — 2Мб.');
+    if (file.type === 'image/gif') {
+      alert('Гифки — это пережиток прошлого! Для аватаров используйте JPG или PNG.');
       return;
     }
 
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
+      // Сжимаем аватар перед загрузкой
+      const finalFile = await compressImage(file);
+      
+      const ext = finalFile.name.split('.').pop();
       const fileName = `${server.id}_${Date.now()}.${ext}`;
       
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+        .upload(fileName, finalFile, { cacheControl: '3600', upsert: true });
 
       if (uploadError) throw uploadError;
 

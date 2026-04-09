@@ -79,6 +79,10 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
   }, []);
 
   function pickFile(file) {
+    if (file.type === 'image/gif') {
+      alert('Гифки — это пережиток прошлого! VibeChat поддерживает только качественные статические изображения и видео.');
+      return;
+    }
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       alert(`Файл слишком большой! Максимальный размер: ${MAX_FILE_SIZE_MB} МБ.`);
       return;
@@ -102,35 +106,44 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
     e?.preventDefault();
     if ((!draft.trim() && !attachment) || sending || uploading) return;
 
+    // Сохраняем данные для отправки и очищаем ввод сразу для "мгновенности"
+    const content = draft;
+    const currentAttachment = attachment;
+    
+    setDraft('');
+    removeAttachment();
+
     let imageUrl = null;
 
-    if (attachment) {
+    if (currentAttachment) {
       setUploading(true);
       try {
-        imageUrl = await uploadFile(attachment.file);
+        imageUrl = await uploadFile(currentAttachment.file);
       } catch (err) {
         console.error('Ошибка загрузки файла:', err);
         alert('Не удалось загрузить файл. Попробуй ещё раз.');
         setUploading(false);
+        // Возвращаем текст в поле, если произошла ошибка
+        setDraft(content);
+        setAttachment(currentAttachment);
         return;
       }
       setUploading(false);
-      removeAttachment();
     }
 
-    const { error } = await sendMessage(draft, user.id, username, imageUrl, userColor, attachment?.file.name);
+    const { error } = await sendMessage(content, user.id, username, imageUrl || currentAttachment?.previewUrl, userColor, currentAttachment?.file.name);
     
     if (error) {
       alert(`Ошибка при отправке: ${error.message || 'Неизвестная ошибка'}`);
+      setDraft(content); // Возвращаем текст при ошибке
       return;
     }
-
-    setDraft('');
   }, [draft, attachment, sending, uploading, sendMessage, uploadFile, user.id, username, userColor]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       handleSend();
     }
   };

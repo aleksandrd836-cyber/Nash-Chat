@@ -303,11 +303,13 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
 
   if (isSameAuthor) {
     return (
-      <div className="group relative flex items-start gap-3 px-4 py-0.5 hover:bg-ds-hover/30 rounded transition-colors">
+      <div className={`group relative flex items-start gap-3 px-4 py-0.5 hover:bg-ds-hover/30 rounded transition-colors ${msg.isPending ? 'opacity-50 grayscale-[0.5]' : ''}`}>
         {/* Reaction on hover in gutter */}
-        <div className="w-[42px] flex-shrink-0 flex items-center justify-center">
-           {reactionBtn}
-        </div>
+        {!msg.isPending && (
+          <div className="w-[42px] flex-shrink-0 flex items-center justify-center">
+             {reactionBtn}
+          </div>
+        )}
         
         <div className="flex-1 min-w-0 pr-20">
           {msg.content && (
@@ -315,10 +317,16 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
               <p className="text-ds-text text-sm leading-relaxed break-all whitespace-pre-wrap">
                 <MessageContent content={msg.content} />
               </p>
-              {isMine && isRead !== undefined && (
-                <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
-                  {isRead ? '✓✓' : '✓'}
+              {msg.isPending ? (
+                <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
+                  ОТПРАВКА...
                 </span>
+              ) : (
+                isMine && isRead !== undefined && (
+                  <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
+                    {isRead ? '✓✓' : '✓'}
+                  </span>
+                )
               )}
             </div>
           )}
@@ -335,7 +343,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
   }
 
   return (
-    <div className="group relative flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in">
+    <div className={`group relative flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in ${msg.isPending ? 'opacity-50 grayscale-[0.5]' : ''}`}>
       <div className="w-[42px] h-[42px] flex-shrink-0">
         <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none rounded-full flex items-center justify-center border border-ds-divider/30" />
       </div>
@@ -354,19 +362,27 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
             </span>
           )}
           {/* Reaction button next to name on hover for main messages */}
-          <div className="h-0 flex items-center">
-             {reactionBtn}
-          </div>
+          {!msg.isPending && (
+            <div className="h-0 flex items-center">
+               {reactionBtn}
+            </div>
+          )}
         </div>
         {msg.content && (
           <div className="flex items-end gap-2 text-[15px] leading-relaxed">
             <p className="text-ds-text break-all whitespace-pre-wrap opacity-90">
               <MessageContent content={msg.content} />
             </p>
-            {isMine && isRead !== undefined && (
-              <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
-                {isRead ? '✓✓' : '✓'}
-              </span>
+            {msg.isPending ? (
+               <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
+                 ОТПРАВКА...
+               </span>
+            ) : (
+              isMine && isRead !== undefined && (
+                <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
+                  {isRead ? '✓✓' : '✓'}
+                </span>
+              )
             )}
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { notifications } from '../lib/notifications';
+import { compressImage } from '../lib/image';
 
 /**
  * Хук для личных сообщений между двумя пользователями.
@@ -8,6 +9,7 @@ import { notifications } from '../lib/notifications';
  */
 export function useDirectMessages(currentUserId, targetUserId) {
   const [messages, setMessages] = useState([]);
+  const [optimisticMessages, setOptimisticMessages] = useState([]);
   const [loading, setLoading]   = useState(false);
   const [sending, setSending]   = useState(false);
   const subRef                  = useRef(null);
@@ -76,11 +78,14 @@ export function useDirectMessages(currentUserId, targetUserId) {
 
   /** Загрузить файл в Supabase Storage, вернуть публичный URL (аналогично useMessages) */
   const uploadFile = useCallback(async (file) => {
-    const ext = file.name.split('.').pop();
+    // Применяем сжатие, если это изображение
+    const finalFile = await compressImage(file);
+    
+    const ext = finalFile.name.split('.').pop();
     const fileName = `${Date.now()}_dm_${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage
       .from('chat-images')
-      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+      .upload(fileName, finalFile, { cacheControl: '3600', upsert: false });
     if (error) throw error;
     const { data } = supabase.storage.from('chat-images').getPublicUrl(fileName);
     return data.publicUrl;
@@ -89,7 +94,26 @@ export function useDirectMessages(currentUserId, targetUserId) {
   const sendMessage = useCallback(async (content, senderUsername, senderColor, imageUrl = null, fileName = null) => {
     if (!content.trim() && !imageUrl) return;
     if (!currentUserId || !targetUserId) return;
+    
     setSending(true);
+
+    // Создаем "оптимистичное" сообщение
+    const tempId = `temp-dm-${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      sender_id: currentUserId,
+      receiver_id: targetUserId,
+      sender_username: senderUsername,
+      sender_color: senderColor ?? null,
+      content: content.trim(),
+      image_url: imageUrl,
+      file_name: fileName,
+      created_at: new Date().toISOString(),
+      is_read: false,
+      isPending: true
+    };
+    
+    setOptimisticMessages(prev => [...prev, optimisticMsg]);
 
     const { error } = await supabase.from('direct_messages').insert({
       sender_id:       currentUserId,
@@ -101,12 +125,14 @@ export function useDirectMessages(currentUserId, targetUserId) {
       file_name:       fileName ?? null,
     });
 
+    setSending(false);
+    // Удаляем из оптимистичных
+    setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
+
     if (error) {
       console.error('DM send error:', error);
       alert(`Ошибка отправки: ${error.message}`);
     }
-
-    setSending(false);
   }, [currentUserId, targetUserId]);
 
   const markMessagesAsRead = useCallback(async () => {
@@ -125,5 +151,10 @@ export function useDirectMessages(currentUserId, targetUserId) {
     }
   }, [currentUserId, targetUserId]);
 
-  return { messages, loading, sending, sendMessage, markMessagesAsRead, uploadFile };
+  // Объединяем реальные и оптимистичные
+  const allMessages = [...messages, ...optimisticMessages].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  return { messages: allMessages, loading, sending, sendMessage, markMessagesAsRead, uploadFile };
 }
