@@ -12,7 +12,7 @@ const MAX_FILE_SIZE_MB = 50;
  * Текстовый канал — история сообщений + поле ввода с прикреплением файлов
  */
 export function TextChannel({ channel, user, ownerId, username, userColor, downloadUrl }) {
-  const { messages, loading, sending, sendMessage, uploadFile } = useMessages(channel?.id, user?.id);
+  const { messages, loading, sending, sendMessage, editMessage, deleteMessage, uploadFile } = useMessages(channel?.id, user?.id);
   const [draft, setDraft]         = useState('');
   const [attachment, setAttachment] = useState(null);   // { file, previewUrl }
   const [uploading, setUploading]  = useState(false);
@@ -67,7 +67,11 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
-        if (item.type.startsWith('image/') || item.type.startsWith('video/')) {
+        if (item.type.startsWith('video/')) {
+          alert('Видео запрещены! Только фото и документы.');
+          continue;
+        }
+        if (item.type.startsWith('image/')) {
           const file = item.getAsFile();
           if (file) pickFile(file);
           break;
@@ -79,8 +83,12 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
   }, []);
 
   function pickFile(file) {
+    if (file.type.startsWith('video/')) {
+      alert('Видео запрещены! Только фото и документы.');
+      return;
+    }
     if (file.type === 'image/gif') {
-      alert('Гифки — это пережиток прошлого! VibeChat поддерживает только качественные статические изображения и видео.');
+      alert('Гифки — это пережиток прошлого! VibeChat поддерживает только качественные статические изображения.');
       return;
     }
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -210,6 +218,8 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
                 currentUser={user}
                 currentUserColor={userColor}
                 ownerId={ownerId}
+                onEdit={editMessage}
+                onDelete={deleteMessage}
               />
             ))}
           </div>

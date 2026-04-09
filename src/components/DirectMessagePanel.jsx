@@ -17,10 +17,14 @@ const MAX_FILE_SIZE_MB = 50;
  * Панель личных сообщений (ЛС) в стиле VIBE.
  */
 export function DirectMessagePanel({ currentUser, username, userColor, targetMember, onClose }) {
-  const { messages, loading, sending, sendMessage, markMessagesAsRead, uploadFile } = useDirectMessages(
+  const { messages, loading, sending, sendMessage, markMessagesAsRead, uploadFile, editMessage, deleteMessage } = useDirectMessages(
     currentUser?.id,
     targetMember?.id
   );
+
+  useEffect(() => {
+    console.log('DMPage: Message handlers status:', { editMessage: !!editMessage, deleteMessage: !!deleteMessage });
+  }, [editMessage, deleteMessage]);
 
   const [draft, setDraft]             = useState('');
   const [attachment, setAttachment]   = useState(null);
@@ -80,7 +84,11 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
-        if (item.type.startsWith('image/') || item.type.startsWith('video/')) {
+        if (item.type.startsWith('video/')) {
+          alert('Видео запрещены! Только фото и документы.');
+          continue;
+        }
+        if (item.type.startsWith('image/')) {
           const file = item.getAsFile();
           if (file) pickFile(file);
           break;
@@ -92,8 +100,12 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   }, []);
 
   function pickFile(file) {
+    if (file.type.startsWith('video/')) {
+      alert('Видео запрещены! Только фото и документы.');
+      return;
+    }
     if (file.type === 'image/gif') {
-      alert('Гифки — это пережиток прошлого! VibeChat поддерживает только качественные статические изображения и видео.');
+      alert('Гифки — это пережиток прошлого! VibeChat поддерживает только качественные статические изображения.');
       return;
     }
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -247,6 +259,11 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
                 prevMsg={messages[i - 1]} 
                 currentUser={currentUser}
                 currentUserColor={userColor}
+                onEdit={editMessage}
+                onDelete={(id) => {
+                  window.alert('Родитель (DMPage) получил запрос на удаление ID: ' + id);
+                  deleteMessage(id);
+                }}
               />
             ))}
           </div>

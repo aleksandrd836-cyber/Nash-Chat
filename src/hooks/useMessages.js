@@ -53,7 +53,8 @@ export function useMessages(channelId, currentUserId) {
           } else if (payload.eventType === 'UPDATE') {
             setMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
           } else if (payload.eventType === 'DELETE') {
-            setMessages((prev) => prev.filter(m => m.id !== payload.old.id));
+            const deletedId = payload.old.id;
+            setMessages((prev) => prev.filter(m => m.id !== deletedId));
           }
         }
       )
@@ -125,10 +126,41 @@ export function useMessages(channelId, currentUserId) {
     return { error };
   }, [channelId]);
 
+  /** Редактировать сообщение */
+  const editMessage = useCallback(async (id, newContent) => {
+    if (!newContent.trim()) return;
+    const { error } = await supabase
+      .from('messages')
+      .update({ 
+        content: newContent.trim(),
+        is_edited: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+    if (error) console.error('Ошибка редактирования:', error);
+    return { error };
+  }, []);
+
+  /** Удалить сообщение */
+  const deleteMessage = useCallback(async (id) => {
+    // Оптимистичное удаление
+    setMessages(prev => prev.filter(m => m.id !== id));
+
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Ошибка удаления:', error);
+    }
+    return { error };
+  }, []);
+
   // Объединяем реальные и оптимистичные сообщения
   const allMessages = [...messages, ...optimisticMessages].sort((a, b) => 
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  return { messages: allMessages, loading, sending, sendMessage, uploadFile };
+  return { messages: allMessages, loading, sending, sendMessage, editMessage, deleteMessage, uploadFile };
 }

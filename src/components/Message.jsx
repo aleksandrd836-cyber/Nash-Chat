@@ -309,11 +309,49 @@ function ReactionList({ reactions, userId, onToggle }) {
 }
 
 /**
+ * Компонент контекстного меню (ПКМ)
+ */
+function ContextMenu({ x, y, options, onClose }) {
+  useEffect(() => {
+    const handleClick = () => onClose();
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, [onClose]);
+
+  return (
+    <div 
+      className="fixed z-[1000] min-w-[160px] bg-ds-sidebar/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1.5 animate-in fade-in zoom-in duration-100"
+      style={{ left: x, top: y }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {options.map((opt, idx) => (
+        opt.separator ? (
+          <div key={idx} className="h-[1px] bg-white/5 my-1 mx-2" />
+        ) : (
+          <button
+            key={idx}
+            onClick={() => { opt.onClick(); onClose(); }}
+            className={`w-full px-3 py-2 text-left text-sm flex items-center gap-3 transition-colors ${opt.danger ? 'text-ds-red hover:bg-ds-red/10' : 'text-ds-text hover:bg-ds-accent/10 hover:text-ds-accent'}`}
+          >
+            {opt.icon && <span className="opacity-70">{opt.icon}</span>}
+            <span className="font-medium">{opt.label}</span>
+          </button>
+        )
+      ))}
+    </div>
+  );
+}
+
+/**
  * Компонент одного сообщения.
  */
-export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }) {
+export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, onEdit, onDelete }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(msg.content);
+  const [menuPos, setMenuPos] = useState(null);
   const pickerRef = useRef(null);
+  const editInputRef = useRef(null);
 
   const authorId = msg.user_id ?? msg.sender_id;
   const isDM = !!msg.sender_id;
@@ -382,10 +420,64 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showEmojiPicker]);
 
+  // Фокус при редактировании
+  useEffect(() => {
+    if (isEditing) {
+      editInputRef.current?.focus();
+      editInputRef.current?.setSelectionRange(editInputRef.current.value.length, editInputRef.current.value.length);
+    }
+  }, [isEditing]);
+
   const handleEmojiClick = (emojiObj) => {
     toggleReaction(currentUserId, emojiObj.emoji);
     setShowEmojiPicker(false);
   };
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    setMenuPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    setEditContent(msg.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editContent.trim() !== msg.content) {
+      await onEdit(msg.id, editContent);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditContent(msg.content);
+  };
+
+  const menuOptions = [
+    { label: 'Копировать текст', icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>, onClick: () => navigator.clipboard.writeText(msg.content) },
+    { separator: true },
+    ...(isMine ? [
+      { 
+        label: 'Редактировать', 
+        icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>, 
+        onClick: handleStartEdit 
+      },
+      { 
+        label: 'Удалить', 
+        danger: true, 
+        icon: <Trash2 size={14} />, 
+        onClick: () => {
+          if (confirm('Удалить это сообщение?')) {
+            onDelete(msg.id);
+          }
+        } 
+      },
+    ] : []),
+    { separator: true },
+    { label: 'Копировать ID', onClick: () => navigator.clipboard.writeText(msg.id) },
+  ];
 
   const reactionBtn = (
     <div className="relative">
@@ -409,9 +501,37 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
     </div>
   );
 
+  const EditUI = (
+    <div className="mt-1 w-full max-w-2xl bg-ds-sidebar border border-ds-accent/30 rounded-xl p-2 animate-in slide-in-from-top-1 duration-200">
+      <textarea
+        ref={editInputRef}
+        value={editContent}
+        onChange={(e) => setEditContent(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); }
+          if (e.key === 'Escape') handleCancelEdit();
+        }}
+        rows={Math.min(editContent.split('\n').length, 10)}
+        className="w-full bg-transparent text-ds-text text-sm resize-none focus:outline-none leading-relaxed p-1"
+      />
+      <div className="flex items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
+        <button onClick={handleSaveEdit} className="text-ds-accent hover:underline">Сохранить (Enter)</button>
+        <div className="w-1 h-1 rounded-full bg-ds-muted"></div>
+        <button onClick={handleCancelEdit} className="text-ds-muted hover:text-ds-text transition-colors">Отмена (Esc)</button>
+      </div>
+    </div>
+  );
+
+  const wrapperClass = `group relative flex items-start gap-3 px-4 transition-colors ${msg.isPending ? 'opacity-50 grayscale-[0.5]' : ''}`;
+
   if (isSameAuthor) {
     return (
-      <div className={`group relative flex items-start gap-3 px-4 py-0.5 hover:bg-ds-hover/30 rounded transition-colors ${msg.isPending ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+      <div 
+        className={`${wrapperClass} py-0.5 hover:bg-ds-hover/30 rounded`}
+        onContextMenu={handleContextMenu}
+      >
+        {menuPos && <ContextMenu {...menuPos} options={menuOptions} onClose={() => setMenuPos(null)} />}
+        
         {/* Reaction on hover in gutter */}
         {!msg.isPending && (
           <div className="w-[42px] flex-shrink-0 flex items-center justify-center">
@@ -420,30 +540,35 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         )}
         
         <div className="flex-1 min-w-0 pr-20">
-          {msg.content && (
-            <div className="flex items-end gap-2">
-              <div className="text-ds-text text-sm leading-relaxed break-all whitespace-pre-wrap">
-                <MessageContent content={msg.content} />
-              </div>
-              {msg.isPending ? (
-                <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
-                  ОТПРАВКА...
-                </span>
-              ) : (
-                isMine && isRead !== undefined && (
-                  <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
-                    {isRead ? '✓✓' : '✓'}
+          {isEditing ? EditUI : (
+            msg.content && (
+              <div className="flex items-end gap-2 text-[15px] leading-relaxed">
+                <div className="text-ds-text text-sm break-all whitespace-pre-wrap">
+                  <MessageContent content={msg.content} />
+                </div>
+                {msg.is_edited && (
+                  <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(изменено)</span>
+                )}
+                {msg.isPending ? (
+                  <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
+                    ОТПРАВКА...
                   </span>
-                )
-              )}
-            </div>
+                ) : (
+                  isMine && isRead !== undefined && (
+                    <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
+                      {isRead ? '✓✓' : '✓'}
+                    </span>
+                  )
+                )}
+              </div>
+            )
           )}
           {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} previewUrl={msg.resolved_image_url} />}
           <ReactionList reactions={reactions} userId={currentUserId} onToggle={toggleReaction} />
         </div>
 
         {/* Persistent Time & Expiry Badge */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
            {expiryLabel && (
              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-ds-bg/60 backdrop-blur-md border border-ds-accent/20 text-ds-accent animate-pulse" title={expiryLabel}>
                <Trash2 size={10} strokeWidth={3} />
@@ -457,7 +582,12 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
   }
 
   return (
-    <div className={`group relative flex items-start gap-3 px-4 py-1 mt-2 hover:bg-ds-hover/30 rounded transition-colors animate-fade-in ${msg.isPending ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+    <div 
+      className={`${wrapperClass} py-1 mt-2 hover:bg-ds-hover/30 rounded animate-fade-in`}
+      onContextMenu={handleContextMenu}
+    >
+      {menuPos && <ContextMenu {...menuPos} options={menuOptions} onClose={() => setMenuPos(null)} />}
+      
       <div className="w-[42px] h-[42px] flex-shrink-0">
         <img src={imageUrl} alt={realName} className="w-full h-full object-cover select-none rounded-full flex items-center justify-center border border-ds-divider/30" />
       </div>
@@ -482,30 +612,36 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
             </div>
           )}
         </div>
-        {msg.content && (
-          <div className="flex items-end gap-2 text-[15px] leading-relaxed">
-            <div className="text-ds-text break-all whitespace-pre-wrap opacity-90">
-              <MessageContent content={msg.content} />
+        
+        {isEditing ? EditUI : (
+          msg.content && (
+            <div className="flex items-end gap-2 text-[15px] leading-relaxed">
+              <div className="text-ds-text break-all whitespace-pre-wrap opacity-90">
+                <MessageContent content={msg.content} />
+              </div>
+              {msg.is_edited && (
+                <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(изменено)</span>
+              )}
+              {msg.isPending ? (
+                 <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
+                   ОТПРАВКА...
+                 </span>
+              ) : (
+                isMine && isRead !== undefined && (
+                  <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
+                    {isRead ? '✓✓' : '✓'}
+                  </span>
+                )
+              )}
             </div>
-            {msg.isPending ? (
-               <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
-                 ОТПРАВКА...
-               </span>
-            ) : (
-              isMine && isRead !== undefined && (
-                <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
-                  {isRead ? '✓✓' : '✓'}
-                </span>
-              )
-            )}
-          </div>
+          )
         )}
         {msg.image_url && <Attachment url={msg.image_url} fileName={msg.file_name} previewUrl={msg.resolved_image_url} />}
         <ReactionList reactions={reactions} userId={currentUserId} onToggle={toggleReaction} />
       </div>
 
       {/* Time on hover on far right */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 vibe-time-final flex items-center gap-2">
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 vibe-time-final flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
          {expiryLabel && (
            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-ds-bg/60 backdrop-blur-md border border-ds-accent/20 text-ds-accent animate-pulse" title={expiryLabel}>
              <Trash2 size={10} strokeWidth={3} />
