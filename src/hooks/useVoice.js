@@ -25,6 +25,12 @@ import {
   attachRemoteVideoTrack,
 } from './voice/mediaTracks';
 import {
+  attachExistingPeerStreams,
+  createIceCandidateHandler,
+  createIceConnectionStateHandler,
+  createNegotiationNeededHandler,
+} from './voice/peerLifecycle';
+import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
   removeVoiceSession,
@@ -214,44 +220,16 @@ export function useVoice() {
     if (peerConns.current[remoteUserId]) return peerConns.current[remoteUserId];
 
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    
-    // Добавляем микрофон
-    if (localStream.current) {
-      localStream.current.getTracks().forEach(track => pc.addTrack(track, localStream.current));
-    }
+    attachExistingPeerStreams(pc, localStream.current, screenStreamRef.current, remoteUserId);
 
-    // ВАЖНО: Если мы УЖЕ стримим экран — добавляем его новому пиру сразу
-    if (screenStreamRef.current) {
-      console.log(`[WebRTC] Adding existing screen stream for new peer ${remoteUserId}`);
-      screenStreamRef.current.getTracks().forEach(track => pc.addTrack(track, screenStreamRef.current));
-    }
-
-    pc.onnegotiationneeded = async () => {
-      try {
-        if (makingOfferRef.current[remoteUserId]) return;
-        makingOfferRef.current[remoteUserId] = true;
-        
-        const offer = await pc.createOffer();
-        // Если за это время стейт изменился (пришел чужой оффер), игнорируем свой оффер
-        if (pc.signalingState !== 'stable') return;
-
-        await pc.setLocalDescription(offer);
-        
-        const myId = currentUserRef.current?.id;
-        if (!myId) return;
-
-        const payload = { 
-          type: 'broadcast', event: 'offer', 
-          payload: { from: myId, to: remoteUserId, sdp: pc.localDescription } 
-        };
-        const chan = realtimeChannel.current || signalingChannel;
-        if (chan && chan.state === 'joined') chan.send(payload);
-      } catch (err) {
-        console.warn(`[WebRTC] Negotiation error with ${remoteUserId}:`, err);
-      } finally {
-        makingOfferRef.current[remoteUserId] = false;
-      }
-    };
+    pc.onnegotiationneeded = createNegotiationNeededHandler({
+      pc,
+      remoteUserId,
+      makingOfferRef,
+      currentUserRef,
+      realtimeChannelRef: realtimeChannel,
+      signalingChannel,
+    });
 
     pc.ontrack = (event) => {
       const track = event.track;
@@ -272,45 +250,24 @@ export function useVoice() {
       }
     };
 
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate && currentUserRef.current?.id) {
-        const payload = { type: 'broadcast', event: 'ice', payload: { from: currentUserRef.current.id, to: remoteUserId, candidate } };
-        const chan = realtimeChannel.current || signalingChannel;
-        if (chan && chan.state === 'joined') chan.send(payload);
-      }
-    };
+    pc.onicecandidate = createIceCandidateHandler({
+      remoteUserId,
+      currentUserRef,
+      realtimeChannelRef: realtimeChannel,
+      signalingChannel,
+    });
 
-    pc.oniceconnectionstatechange = () => {
-      const state = pc.iceConnectionState;
-      if (state === 'failed') {
-        closePeer(remoteUserId, true);
-      } else if (state === 'disconnected') {
-        // ИГНОРИРУЕМ ОШИБКИ, ЕСЛИ МЫ ВЫХОДИМ (БОРЬБА С ЛОЖНЫМИ АЛЕРТАМИ)
-        if (isLeavingRef.current) return;
-
-        console.log(`[WebRTC] Connection disconnected with ${remoteUserId}, attempting recovery...`);
-        try {
-          pc.restartIce();
-        } catch (e) {
-          console.warn('[WebRTC] restartIce error:', e);
-        }
-        
-        iceDisconnectTimers.current[remoteUserId] = setTimeout(() => {
-          if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
-            console.log(`[WebRTC] Watchdog trigger for ${remoteUserId}`);
-            closePeer(remoteUserId, true);
-            if (realtimeChannel.current) syncParticipants(realtimeChannel.current);
-          }
-        }, 8000);
-      } else if (state === 'connected' || state === 'completed') {
-        setVoiceError(null);
-        ignoreOfferRef.current[remoteUserId] = false;
-        if (iceDisconnectTimers.current[remoteUserId]) {
-          clearTimeout(iceDisconnectTimers.current[remoteUserId]);
-          delete iceDisconnectTimers.current[remoteUserId];
-        }
-      }
-    };
+    pc.oniceconnectionstatechange = createIceConnectionStateHandler({
+      pc,
+      remoteUserId,
+      isLeavingRef,
+      closePeer,
+      iceDisconnectTimersRef: iceDisconnectTimers,
+      realtimeChannelRef: realtimeChannel,
+      syncParticipants,
+      setVoiceError,
+      ignoreOfferRef,
+    });
 
     peerConns.current[remoteUserId] = pc;
     return pc;

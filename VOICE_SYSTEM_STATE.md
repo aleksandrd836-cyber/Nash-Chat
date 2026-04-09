@@ -62,3 +62,10 @@
 - src/hooks/voice/mediaTracks.js now owns remote screen stream attach/cleanup and remote audio analyser/gain wiring.
 - createPeerConnection(...).ontrack in src/hooks/useVoice.js was reduced to routing by 	rack.kind.
 - This reduces one more dense branch inside useVoice.js; next good target remains peer negotiation/reconnect state.
+
+## 2026-04-10 peer lifecycle helper extraction
+- src/hooks/voice/peerLifecycle.js now contains the negotiation-needed, ICE candidate, ICE state recovery, and initial-track attach helpers.
+- useVoice.js keeps the top-level createPeerConnection(...) API, but most peer callback bodies are no longer inline.
+- Refactor status by subsystem now:
+  - extracted: participants, screen-share helpers, remote media tracks, peer lifecycle callbacks
+  - still dense: signaling channel orchestration, join/leave flow, reconnect/session sync

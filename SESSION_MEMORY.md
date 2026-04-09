@@ -69,3 +69,18 @@ pm run build after the extraction; build stays green on 2.5.12.
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/mediaTracks.js`
   - `src/hooks/voice/screenShare.js`
+
+### 2026-04-10 peer lifecycle extraction
+- Added src/hooks/voice/peerLifecycle.js for existing-track attach, negotiation-needed handler, ICE candidate send handler, and ICE connection state recovery handler.
+- Simplified createPeerConnection(...) inside src/hooks/useVoice.js so it mostly wires callbacks together instead of owning every branch inline.
+- Verified with 
+pm run build; build is green and synced version moved to 2.5.13.
+- Remaining high-value slice: separate signaling/reconnect orchestration from the main hook.
+
+### Auto Log — 2026-04-10 00:25
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/peerLifecycle.js`

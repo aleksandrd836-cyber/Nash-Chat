@@ -29,13 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 00:20`
+- Время: `2026-04-10 00:25`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/mediaTracks.js`
-  - `src/hooks/voice/screenShare.js`
+  - `src/hooks/voice/peerLifecycle.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -53,3 +52,8 @@ pm run build).
 - useVoice.js still needs further decomposition, but two dense areas are already out: screen-share peer wiring and remote media attach logic.
 - Latest verification: 
 pm run build passes.
+
+## 2026-04-10 peer lifecycle handoff
+- Finished another useVoice.js split: peer lifecycle helper module added at src/hooks/voice/peerLifecycle.js.
+- Latest safe checkpoint: build passes after screen-share, remote media, and peer lifecycle extractions.
+- Best next refactor target is the join/reconnect/signaling orchestration around Realtime channels and background reconnect timers.
