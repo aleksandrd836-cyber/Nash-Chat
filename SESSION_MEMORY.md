@@ -99,3 +99,18 @@ pm run build; build stays green on 2.5.14.
   - `public/version.json`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/runtime.js`
+
+### 2026-04-10 signaling helper extraction
+- Added src/hooks/voice/signaling.js for voice-channel broadcast handlers: offer, answer, ICE, user-left, and request-stream.
+- Replaced the large inline signaling handler block inside src/hooks/useVoice.js with helper factories.
+- joinVoiceChannel(...) still owns the channel subscription status flow, but the per-event signaling logic is no longer embedded there.
+- Verified with 
+pm run build; build is green on 2.5.15.
+
+### Auto Log — 2026-04-10 00:35
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/signaling.js`

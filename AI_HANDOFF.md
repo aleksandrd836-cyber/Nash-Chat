@@ -29,12 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 00:32`
+- Время: `2026-04-10 00:35`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/runtime.js`
+  - `src/hooks/voice/signaling.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -62,3 +62,8 @@ pm run build passes.
 - Added src/hooks/voice/runtime.js and wired it into useVoice.js.
 - Voice refactor status now includes extracted modules for: participants, screen share, remote media tracks, peer lifecycle callbacks, and runtime timer management.
 - Next logical target is the actual join/reconnect signaling flow around Realtime channels.
+
+## 2026-04-10 signaling handoff
+- Latest refactor slice completed: signaling event handlers moved to src/hooks/voice/signaling.js.
+- Current useVoice.js still needs one more serious pass over channel status transitions and reconnect flow, but the file is materially less monolithic now.
+- Build passes after this extraction.

@@ -38,6 +38,13 @@ import {
   scheduleManagedTimeout,
 } from './voice/runtime';
 import {
+  createAnswerBroadcastHandler,
+  createIceBroadcastHandler,
+  createOfferBroadcastHandler,
+  createRequestStreamBroadcastHandler,
+  createUserLeftBroadcastHandler,
+} from './voice/signaling';
+import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
   removeVoiceSession,
@@ -743,86 +750,37 @@ export function useVoice() {
         ));
       });
 
-      channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
-        if (payload.to !== user.id) return;
-        console.log(`[WebRTC] Handle offer from ${payload.from}`);
-        
-        try {
-          const pc = peerConns.current[payload.from] || createPeerConnection(payload.from, channel);
-          const myId = user.id;
-          
-          // Механизм Perfect Negotiation (Polite peer logic)
-          const offerCollision = (payload.event === 'offer') && 
-                                 (makingOfferRef.current[payload.from] || pc.signalingState !== 'stable');
-          
-          // Мы вежливые (polite), если наш ID меньше ID собеседника (или любая другая стабильная логика)
-          const isPolite = myId < payload.from;
+      channel.on('broadcast', { event: 'offer' }, createOfferBroadcastHandler({
+        userId: user.id,
+        channel,
+        peerConnsRef: peerConns,
+        createPeerConnection,
+        makingOfferRef,
+        ignoreOfferRef,
+      }));
 
-          ignoreOfferRef.current[payload.from] = !isPolite && offerCollision;
-          if (ignoreOfferRef.current[payload.from]) {
-            console.warn(`[WebRTC] Collision: Ignoring offer from ${payload.from} (Impolite)`);
-            return;
-          }
+      channel.on('broadcast', { event: 'answer' }, createAnswerBroadcastHandler({
+        userId: user.id,
+        peerConnsRef: peerConns,
+      }));
 
-          if (offerCollision) {
-            console.log(`[WebRTC] Collision: Rolling back local for ${payload.from} (Polite)`);
-            await pc.setLocalDescription({ type: 'rollback' });
-          }
+      channel.on('broadcast', { event: 'ice' }, createIceBroadcastHandler({
+        userId: user.id,
+        peerConnsRef: peerConns,
+      }));
 
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          
-          if (channel.state === 'joined') {
-            channel.send({ 
-              type: 'broadcast', event: 'answer', 
-              payload: { from: user.id, to: payload.from, sdp: answer } 
-            });
-          }
-        } catch (err) {
-          console.error('[WebRTC] Error handling offer:', err);
-        }
-      });
+      // ?????????????? ???????? ?? ?????????????????? ???????????? (?????????????? ??????????????)
+      channel.on('broadcast', { event: 'user-left' }, createUserLeftBroadcastHandler({
+        mutateRealtimeParticipants,
+        removeSessionFromParticipantMap,
+        closePeer,
+      }));
 
-      channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
-        if (payload.to === user.id && peerConns.current[payload.from]) {
-          console.log(`[WebRTC] Handle answer from ${payload.from}`);
-          try {
-            const pc = peerConns.current[payload.from];
-            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          } catch (err) {
-            console.warn(`[Signaling] Answer handling failed for ${payload.from}: ${err.message}`);
-          }
-        }
-      });
-
-      channel.on('broadcast', { event: 'ice' }, ({ payload }) => {
-        if (payload.to === user.id && peerConns.current[payload.from]) {
-          peerConns.current[payload.from].addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(()=>{});
-        }
-      });
-
-      // СЛУШАЕМ УХОД В ЛОКАЛЬНОМ КАНАЛЕ (БЫСТРАЯ ОЧИСТКА)
-      channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, payload));
-        closePeer(payload.userId, true);
-      });
-
-      channel.on('broadcast', { event: 'request-stream' }, ({ payload }) => {
-        if (payload.to === user.id && screenStreamRef.current && peerConns.current[payload.from]) {
-          const pc = peerConns.current[payload.from];
-          const currentSenders = pc.getSenders();
-          
-          screenStreamRef.current.getTracks().forEach(track => {
-            // ПРОВЕРКА: Если трек уже был добавлен ранее, не добавляем его снова
-            const alreadyAdded = currentSenders.some(s => s.track === track);
-            if (!alreadyAdded) {
-               console.log(`[WebRTC] Adding screen track for requester ${payload.from}`);
-               pc.addTrack(track, screenStreamRef.current);
-            }
-          });
-        }
-      });
+      channel.on('broadcast', { event: 'request-stream' }, createRequestStreamBroadcastHandler({
+        userId: user.id,
+        screenStreamRef,
+        peerConnsRef: peerConns,
+      }));
 
       channel.subscribe(async (status) => {
         console.log(`[useVoice] Channel status: ${status} for instance:`, channel.topic);

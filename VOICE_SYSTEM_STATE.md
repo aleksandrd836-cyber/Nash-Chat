@@ -74,3 +74,8 @@
 - src/hooks/voice/runtime.js now owns managed timeout/interval cleanup helpers for the voice subsystem.
 - useVoice.js now uses the shared runtime helpers for reconnect timer cleanup, ghost-peer timer cleanup, heartbeat loop restart, and fatal reconnect cancellation.
 - The remaining dense slice is the Supabase signaling/join/reconnect orchestration itself rather than the raw timer plumbing.
+
+## 2026-04-10 signaling helper extraction
+- src/hooks/voice/signaling.js now owns the voice broadcast event handlers for offer/answer/ICE/user-left/request-stream.
+- useVoice.js still contains the higher-level join/subscription status orchestration, but the channel event payload handling is now factored out.
+- Remaining dense area is mainly the channel status / reconnect orchestration inside joinVoiceChannel(...) plus some global presence setup.
