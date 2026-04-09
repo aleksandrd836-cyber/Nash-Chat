@@ -64,20 +64,23 @@ export function useDirectMessages(currentUserId, targetUserId) {
             (msg.sender_id === currentUserId && msg.receiver_id === targetUserId) ||
             (msg.sender_id === targetUserId   && msg.receiver_id === currentUserId);
           
-          if (isRelevant) {
-            if (payload.eventType === 'INSERT') {
-                setMessages(prev => [...prev, normalizeMessage(msg)]);
-                if (msg.sender_id === targetUserId) {
-                  notifications.play('dm');
-                }
-              } else if (payload.eventType === 'UPDATE') {
-                setMessages(prev => prev.map(m => m.id === msg.id ? normalizeMessage(msg) : m));
-              }
-            }
-          } else if (payload.eventType === 'DELETE') {
+          if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id;
             setMessages(prev => prev.filter(m => m.id !== deletedId));
+            return;
           }
+
+          if (isRelevant) {
+            if (payload.eventType === 'INSERT') {
+              setMessages(prev => [...prev, normalizeMessage(msg)]);
+              if (msg.sender_id === targetUserId) {
+                notifications.play('dm');
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              setMessages(prev => prev.map(m => m.id === msg.id ? normalizeMessage(msg) : m));
+            }
+          }
+        }
       )
       .subscribe();
 
