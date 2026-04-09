@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 import { useMessageReactions } from '../hooks/useReactions';
 import EmojiPicker, { Emoji, EmojiStyle } from 'emoji-picker-react';
-import { Smile, Hourglass } from 'lucide-react';
+import { Smile, Trash2 } from 'lucide-react';
 
 /** Константа стиля эмодзи для всего приложения */
 const EMOJI_STYLE = EmojiStyle.APPLE;
@@ -339,9 +339,9 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         <div className="flex-1 min-w-0 pr-20">
           {msg.content && (
             <div className="flex items-end gap-2">
-              <p className="text-ds-text text-sm leading-relaxed break-all whitespace-pre-wrap">
+              <div className="text-ds-text text-sm leading-relaxed break-all whitespace-pre-wrap">
                 <MessageContent content={msg.content} />
-              </p>
+              </div>
               {msg.isPending ? (
                 <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
                   ОТПРАВКА...
@@ -359,11 +359,11 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
           <ReactionList reactions={reactions} userId={currentUserId} onToggle={toggleReaction} />
         </div>
 
-        {/* Time on hover on far right */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 pointer-events-none">
+        {/* Persistent Time & Expiry Badge */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
            {expiryLabel && (
              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-ds-bg/60 backdrop-blur-md border border-ds-accent/20 text-ds-accent animate-pulse" title={expiryLabel}>
-               <Hourglass size={10} strokeWidth={3} />
+               <Trash2 size={10} strokeWidth={3} />
                <span className="text-[9px] font-black uppercase tracking-tighter">14d</span>
              </div>
            )}
@@ -401,9 +401,9 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
         </div>
         {msg.content && (
           <div className="flex items-end gap-2 text-[15px] leading-relaxed">
-            <p className="text-ds-text break-all whitespace-pre-wrap opacity-90">
+            <div className="text-ds-text break-all whitespace-pre-wrap opacity-90">
               <MessageContent content={msg.content} />
-            </p>
+            </div>
             {msg.isPending ? (
                <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
                  ОТПРАВКА...
@@ -422,10 +422,10 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId }
       </div>
 
       {/* Time on hover on far right */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 pointer-events-none">
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 vibe-time-final flex items-center gap-2">
          {expiryLabel && (
            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-ds-bg/60 backdrop-blur-md border border-ds-accent/20 text-ds-accent animate-pulse" title={expiryLabel}>
-             <Hourglass size={10} strokeWidth={3} />
+             <Trash2 size={10} strokeWidth={3} />
              <span className="text-[9px] font-black uppercase tracking-tighter">14d</span>
            </div>
          )}
