@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { syncVersionMetadata } from './sync-version-metadata.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgPath = resolve(__dirname, '../package.json');
@@ -17,8 +18,10 @@ const [major, minor, patch] = pkg.version.split('.').map(Number);
 pkg.version = `${major}.${minor}.${patch + 1}`;
 
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+const metadata = syncVersionMetadata();
 
 console.log(`✅ Версия обновлена: ${major}.${minor}.${patch} → ${pkg.version}`);
+console.log(`✅ Обновлён version.json: ${metadata.version}`);
 
-// Добавляем обновлённый package.json в текущий коммит
-execSync('git add package.json', { stdio: 'inherit' });
+// Добавляем обновлённые метаданные версии в текущий коммит
+execSync('git add package.json public/version.json', { stdio: 'inherit' });
