@@ -82,6 +82,31 @@ export function useVoice() {
     });
   }, [getParticipantSessionKey]);
 
+  const isSameRealtimeTopic = useCallback((channel, topic) => {
+    const normalizeTopic = (value) => {
+      if (!value) return '';
+      return value.startsWith('realtime:') ? value.slice('realtime:'.length) : value;
+    };
+
+    return normalizeTopic(channel?.topic) === normalizeTopic(topic);
+  }, []);
+
+  const removeChannelsByTopic = useCallback(async (topic, keepChannel = null) => {
+    const existingChannels = typeof supabase.getChannels === 'function'
+      ? supabase.getChannels()
+      : [];
+
+    const staleChannels = existingChannels.filter((channel) => (
+      channel !== keepChannel && isSameRealtimeTopic(channel, topic)
+    ));
+
+    if (staleChannels.length === 0) return;
+
+    await Promise.all(staleChannels.map((channel) => (
+      supabase.removeChannel(channel).catch(() => {})
+    )));
+  }, [isSameRealtimeTopic]);
+
 
   // ── СИНХРОНИЗАЦИЯ УЧАСТНИКОВ В ЦЕНТРЕ (derived state) ──
   // Мы больше не управляем участниками канала отдельно, берем их из глобального списка
@@ -372,8 +397,10 @@ export function useVoice() {
     let cancelled = false;
     const initGlobalChannel = async () => {
       if (globalPresence.current) {
-        supabase.removeChannel(globalPresence.current).catch(() => {});
+        await supabase.removeChannel(globalPresence.current).catch(() => {});
+        globalPresence.current = null;
       }
+      await removeChannelsByTopic('global_voice_presence');
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
@@ -381,6 +408,7 @@ export function useVoice() {
       const channel = supabase.channel('global_voice_presence', {
         config: { presence: { key: user.id } }
       });
+      globalPresence.current = channel;
 
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
         setAllParticipants(prev => {
@@ -557,7 +585,6 @@ export function useVoice() {
           }
         }
       });
-      globalPresence.current = channel;
       startHeartbeat();
     };
 
@@ -579,7 +606,7 @@ export function useVoice() {
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
       globalPresence.current = null;
     };
-  }, [cleanupAll, removeParticipantSession]);
+  }, [cleanupAll, removeChannelsByTopic, removeParticipantSession]);
 
   const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
     const nextChannelId = Object.prototype.hasOwnProperty.call(updates, 'channelId')
@@ -835,9 +862,11 @@ export function useVoice() {
         last_seen: Date.now()
       };
 
+      await removeChannelsByTopic(`voice:${channelId}`);
       const channel = supabase.channel(`voice:${channelId}`, { config: { presence: { key: user.id } } });
-    channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
-    channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
+      realtimeChannel.current = channel;
+      channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
+      channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
     
     // ЛОКАЛЬНЫЙ КАНАЛ больше не трогает стейты участников, чтобы не было конфликтов с глобальным.
     // Единственное исключение — индикация голоса, но мы ее тоже синхронизируем через все стейты
@@ -999,7 +1028,6 @@ export function useVoice() {
           }
         }
       });
-      realtimeChannel.current = channel;
     } catch (err) { 
       console.error('[useVoice] Fatal join error:', err);
       if (reconnectAttemptsRef.current === 0 || reconnectAttemptsRef.current > 5) {
@@ -1012,7 +1040,7 @@ export function useVoice() {
         reconnectTimerRef.current = null;
       }
     }
-  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, removeParticipantSession, syncParticipants, updatePresenceStatus]);
+  }, [activeChannelId, cleanupAll, closePeer, createPeerConnection, removeChannelsByTopic, removeParticipantSession, syncParticipants, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
