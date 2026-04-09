@@ -84,6 +84,7 @@ function ScreenPlayer({ participant, stream, onClose }) {
 export function VoiceChannel({ channel, user, username, userColor, voice, downloadUrl, ownerId }) {
   const {
     activeChannelId,
+    connectingChannelId,
     participants,
     allParticipants,
     isMuted,
@@ -104,7 +105,10 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     serverStatus,
   } = voice;
 
-  const isInThisChannel = activeChannelId === channel?.id;
+  const channelParticipants = allParticipants[channel?.id] || [];
+  const hasSelfInThisChannel = channelParticipants.some((participant) => participant.userId === user?.id);
+  const isInThisChannel = activeChannelId === channel?.id || hasSelfInThisChannel;
+  const isJoiningThisChannel = !isInThisChannel && isConnecting && connectingChannelId === channel?.id;
 
   // ── Контекстное меню ──
   const [ctxMenu, setCtxMenu] = useState(null); // { participant, x, y }
@@ -332,11 +336,11 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
             <button
                id="join-voice-btn"
                onClick={() => joinVoiceChannel(channel.id, user, username, userColor)}
-               disabled={isConnecting}
+               disabled={isJoiningThisChannel}
                className="w-full py-5 rounded-[2rem] bg-ds-accent text-black font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed vibe-glow-blue relative overflow-hidden group"
              >
                <div className="absolute inset-0 vibe-moving-glow opacity-40 group-hover:opacity-60 transition-opacity" />
-               {isConnecting ? (
+               {isJoiningThisChannel ? (
                  <>
                    <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin z-10" />
                    ПОДКЛЮЧЕНИЕ...

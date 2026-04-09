@@ -1,6 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { notifications } from '../lib/notifications';
+import { GHOST_PEER_GRACE_MS, ICE_SERVERS, RECONNECT_DELAY_MS, VOICE_HEARTBEAT_MS } from './voice/constants';
+import {
+  getParticipantSessionKey,
+  isSameRealtimeTopic,
+  removeParticipantSession,
+  resolveStableVoiceChannelId,
+} from './voice/utils';
 import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
@@ -12,16 +19,6 @@ import {
  * Хук голосового чата (V7 - Ультра-стабильный)
  * Исправляет ошибки signalingState и добавляет мониторинг сети.
  */
-
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun.cloudflare.com:3478' },
-  { urls: 'stun:iphone-stun.strato-iphone.de:3478' },
-  { urls: 'stun:stun.nextcloud.com:443' },
-  { urls: 'stun:stun.bitmask.net:443' },
-];
 
 export function useVoice() {
   const [activeChannelId, setActiveChannelId]  = useState(null);
@@ -35,6 +32,7 @@ export function useVoice() {
   const [remoteScreens, setRemoteScreens]      = useState({});
   const [voiceError, setVoiceError]            = useState(null);
   const [serverStatus, setServerStatus]        = useState('online'); // 'online' | 'offline'
+  const [connectingChannelId, setConnectingChannelId] = useState(null);
 
   const isDeafenedRef   = useRef(false);
   const isMutedRef      = useRef(false);
@@ -74,33 +72,6 @@ export function useVoice() {
   const lastStableChannelIdRef = useRef(null);
   const serverVoiceStateRef = useRef(false);
 
-  const getParticipantSessionKey = useCallback((participant) => (
-    participant?.sessionId ? `${participant.userId}:${participant.sessionId}` : participant?.userId
-  ), []);
-
-  const removeParticipantSession = useCallback((items, payload = {}) => {
-    const exactSessionKey = payload.userId && payload.sessionId
-      ? `${payload.userId}:${payload.sessionId}`
-      : null;
-
-    return items.filter((participant) => {
-      const participantKey = getParticipantSessionKey(participant);
-      if (exactSessionKey) {
-        return participantKey !== exactSessionKey;
-      }
-      return participant.userId !== payload.userId;
-    });
-  }, [getParticipantSessionKey]);
-
-  const isSameRealtimeTopic = useCallback((channel, topic) => {
-    const normalizeTopic = (value) => {
-      if (!value) return '';
-      return value.startsWith('realtime:') ? value.slice('realtime:'.length) : value;
-    };
-
-    return normalizeTopic(channel?.topic) === normalizeTopic(topic);
-  }, []);
-
   const removeChannelsByTopic = useCallback(async (topic, keepChannel = null) => {
     const existingChannels = typeof supabase.getChannels === 'function'
       ? supabase.getChannels()
@@ -115,7 +86,7 @@ export function useVoice() {
     await Promise.all(staleChannels.map((channel) => (
       supabase.removeChannel(channel).catch(() => {})
     )));
-  }, [isSameRealtimeTopic]);
+  }, []);
 
   const refreshVoiceSessions = useCallback(async () => {
     try {
@@ -386,6 +357,7 @@ export function useVoice() {
     setActiveChannelId(null); 
     activeChannelIdRef.current = null;
     lastStableChannelIdRef.current = null;
+    setConnectingChannelId(null);
     setIsScreenSharing(false); 
     setRemoteScreens({}); 
     setVoiceError(null); 
@@ -530,7 +502,7 @@ export function useVoice() {
             });
             return removedCount > 0 ? next : prev;
           });
-        }, 10000); // 10 секунд — золотой стандарт liveness
+        }, VOICE_HEARTBEAT_MS); // 10 секунд — золотой стандарт liveness
       };
 
       const updateAllParticipants = () => {
@@ -647,13 +619,13 @@ export function useVoice() {
           return;
         }
         if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-          if (!cancelled && !isLeavingRef.current) {
+          if (!cancelled && !isLeavingRef.current && !serverVoiceStateRef.current) {
             console.log('[useVoice] Global channel actually lost, recovering in 4s...');
             setTimeout(() => { 
-              if (!cancelled && !isLeavingRef.current && globalPresence.current === channel) {
+              if (!cancelled && !isLeavingRef.current && !serverVoiceStateRef.current && globalPresence.current === channel) {
                 initGlobalChannel(); 
               }
-            }, 4000);
+            }, RECONNECT_DELAY_MS);
           }
         }
       });
@@ -719,7 +691,7 @@ export function useVoice() {
       }
       
       const chId = payload.channelId;
-      if (globalPresence.current && globalPresence.current.state === 'joined' && chId) {
+      if (!serverVoiceStateRef.current && globalPresence.current && globalPresence.current.state === 'joined' && chId) {
         await globalPresence.current.track({ ...payload, channelId: chId }).catch(() => {});
       }
     };
@@ -754,7 +726,7 @@ export function useVoice() {
         ghostPeersRef.current[uid] = setTimeout(() => { 
           closePeer(uid, true); 
           delete ghostPeersRef.current[uid]; 
-        }, 5000); 
+        }, GHOST_PEER_GRACE_MS); 
       } else if (seenUids.has(uid) && ghostPeersRef.current[uid]) {
         clearTimeout(ghostPeersRef.current[uid]); 
         delete ghostPeersRef.current[uid];
@@ -764,7 +736,12 @@ export function useVoice() {
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color, isSilent = false) => {
     if (!channelId || !user) return;
-    const currentStableChannelId = lastStableChannelIdRef.current || activeChannelIdRef.current || presencePayload.current.channelId || null;
+    const currentStableChannelId = resolveStableVoiceChannelId(
+      lastStableChannelIdRef.current,
+      activeChannelIdRef.current,
+      presencePayload.current.channelId
+    );
+    setConnectingChannelId(channelId);
     
     // Если мы уже подключаемся к ЭТОМУ ЖЕ каналу — игнорируем повторный вызов
     if (isConnecting && activeChannelIdRef.current === channelId) {
@@ -1053,6 +1030,7 @@ export function useVoice() {
                supabase.removeChannel(channel).catch(() => {});
              }
              setIsConnecting(false);
+             setConnectingChannelId(null);
              return;
           }
 
@@ -1085,6 +1063,7 @@ export function useVoice() {
           setActiveChannelId(channelId); 
           activeChannelIdRef.current = channelId;
           setIsConnecting(false);
+          setConnectingChannelId(null);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           // ЗАЩИТА: Игнорируем статусы от старых инстансов канала
           if (channel !== realtimeChannel.current || isLeavingRef.current || isSwitchingRef.current) {
@@ -1100,15 +1079,20 @@ export function useVoice() {
             setServerStatus('offline');
             setVoiceError('[Server] Соединение полностью потеряно');
             setIsConnecting(false);
+            setConnectingChannelId(null);
           } else {
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
             reconnectTimerRef.current = setTimeout(() => {
-              const reconnectChannelId = lastStableChannelIdRef.current || activeChannelIdRef.current || presencePayload.current.channelId;
+              const reconnectChannelId = resolveStableVoiceChannelId(
+                lastStableChannelIdRef.current,
+                activeChannelIdRef.current,
+                presencePayload.current.channelId
+              );
               if (reconnectChannelId && !isLeavingRef.current && realtimeChannel.current === channel) {
                 console.log(`[useVoice] Attempting background reconnect...`);
                 joinVoiceChannel(reconnectChannelId, currentUserRef.current, currentUserRef.current.username, presencePayload.current.color, true);
               }
-            }, 4000);
+            }, RECONNECT_DELAY_MS);
           }
         }
       });
@@ -1118,6 +1102,7 @@ export function useVoice() {
         setVoiceError(err.message); 
       }
       setIsConnecting(false); 
+      setConnectingChannelId(null);
       // При фатальной ошибке зануляем реконнект, чтобы не спамить
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
@@ -1344,7 +1329,7 @@ export function useVoice() {
   }, [toggleMute, toggleDeafen]);
 
   return {
-    activeChannelId, participants, allParticipants, ping, voiceError, serverStatus,
+    activeChannelId, connectingChannelId, participants, allParticipants, ping, voiceError, serverStatus,
     isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens,
     joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, setParticipantVolume,
     startScreenShare, stopScreenShare, requestScreenView: (id) => {
@@ -1353,6 +1338,7 @@ export function useVoice() {
     clearVoiceError: () => setVoiceError(null)
   };
 }
+
 
 
 
