@@ -27,7 +27,7 @@ export function Hub({
   downloadUrl
 }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 bg-transparent relative overflow-hidden animate-fade-in group">
+    <div className="flex-1 flex flex-col items-center justify-center px-8 pt-10 pb-20 bg-transparent relative overflow-hidden animate-fade-in group">
       {/* Фрагменты атмосферы */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-ds-accent/5 rounded-full blur-[120px] animate-vibe-pulse pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px] animate-aurora-shift pointer-events-none" />
@@ -35,7 +35,7 @@ export function Hub({
 
       {isDMHubOpen ? (
         // ── Раздел Личных Сообщений ── 
-        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center animate-slide-up flex-1 min-h-0 pt-4">
+        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center animate-slide-up flex-1 min-h-0 pt-8 pb-6">
            <div className="flex items-center justify-between w-full mb-8 px-6 flex-shrink-0">
               <button 
                 onClick={() => setIsDMHubOpen(false)}
@@ -156,7 +156,7 @@ export function Hub({
 
       {/* Футер-кнопка */}
       {!isElectron && (
-        <div className="mt-10 mb-6 animate-fade-in delay-500 flex-shrink-0">
+        <div className="mt-8 animate-fade-in delay-500 flex-shrink-0">
           <a
             href={downloadUrl}
             className="group relative px-10 py-5 font-black uppercase tracking-widest text-[11px] transition-all hover:scale-[1.05] active:scale-95 shadow-2xl animate-vibe-btn overflow-hidden block vibe-primary-button"

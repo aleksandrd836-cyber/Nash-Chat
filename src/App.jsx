@@ -320,7 +320,7 @@ function App() {
               onClose={handleCloseDM}
             />
           ) : !selectedChannel ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center p-12 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
+            <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center px-12 pt-10 pb-24 bg-ds-servers/40 backdrop-blur-[40px] relative animate-fade-in overflow-hidden">
               <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative overflow-hidden group shadow-2xl shadow-ds-accent/5">
                  <div className="absolute inset-0 vibe-moving-glow opacity-10" />
                  {selectedServer.icon_url && !centerImageError ? (
@@ -368,7 +368,7 @@ function App() {
           {/* Floating Action Button (FAB) */}
           <button
              onClick={handleOpenDMHub}
-             className="absolute bottom-40 right-10 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
+             className="absolute bottom-8 right-8 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
              title="Личные сообщения"
           >
              <div className="absolute inset-0 vibe-moving-glow opacity-20 rounded-full" />

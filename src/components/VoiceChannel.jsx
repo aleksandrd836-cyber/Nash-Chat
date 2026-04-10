@@ -273,7 +273,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-start p-8 gap-10 overflow-y-auto no-scrollbar relative">
+      <div className="flex-1 flex flex-col items-center justify-center px-8 pt-10 pb-24 gap-10 overflow-y-auto no-scrollbar relative">
         
         {/* Error Alert */}
         {voiceError && (

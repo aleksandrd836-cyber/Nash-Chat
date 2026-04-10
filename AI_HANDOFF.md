@@ -29,18 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 02:39`
+- Время: `2026-04-11 02:48`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/App.jsx`
   - `src/components/Hub.jsx`
-  - `src/components/ProfileFooter.jsx`
-  - `src/components/ServerSidebar.jsx`
-  - `src/components/Sidebar.jsx`
-  - `src/components/UserPanel.jsx`
-  - `src/index.css`
-  - `tailwind.config.js`
+  - `src/components/VoiceChannel.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -150,3 +145,13 @@ pm run build passes.
 - First adoption pass is already applied to the global shell and navigation-heavy components (`App`, `ServerSidebar`, `Sidebar`, `ProfileFooter`, `UserPanel`, `Hub`).
 - This is intentionally a foundation pass, not a full redesign yet. Next logical design step is to restyle the hub/home screen on top of these shared tokens instead of inventing one-off styles.
 - Build status after the foundation pass: `npm run build` succeeds on `2.5.28`.
+
+## 2026-04-11 optical centering handoff
+- Follow-up fix after the visual foundation pass: several centered scenes felt pushed upward.
+- This was addressed as a global composition issue rather than reverting the new design tokens.
+- Main adjustments:
+  - lowered the floating DM action button in `src/App.jsx`
+  - added better bottom compensation to the empty server state in `src/App.jsx`
+  - rebalanced hub spacing in `src/components/Hub.jsx`
+  - re-centered the voice stage in `src/components/VoiceChannel.jsx`
+- Build status after the centering correction: `npm run build` succeeds on `2.5.29`.

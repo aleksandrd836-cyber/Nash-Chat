@@ -347,3 +347,21 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/UserPanel.jsx`
   - `src/index.css`
   - `tailwind.config.js`
+
+### 2026-04-11 optical centering correction
+- After the visual-system foundation pass, multiple center-stage screens looked visually pulled upward.
+- Root cause was not one bug, but a composition imbalance: the floating DM button sat too high (`bottom-40`) and the main center-stage layouts did not reserve enough bottom breathing room after the new shell styling.
+- Applied an optical-centering correction in:
+  - `src/App.jsx` (empty server state + lowered FAB)
+  - `src/components/Hub.jsx` (more balanced top/bottom spacing)
+  - `src/components/VoiceChannel.jsx` (center-stage voice layout shifted into a more balanced vertical position)
+- Verification: `npm run build` passed on version `2.5.29`.
+
+### Auto Log — 2026-04-11 02:48
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/App.jsx`
+  - `src/components/Hub.jsx`
+  - `src/components/VoiceChannel.jsx`
