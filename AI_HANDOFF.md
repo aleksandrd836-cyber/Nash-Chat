@@ -29,13 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 02:48`
+- Время: `2026-04-11 02:56`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/App.jsx`
-  - `src/components/Hub.jsx`
-  - `src/components/VoiceChannel.jsx`
+  - `src/index.css`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -155,3 +154,9 @@ pm run build passes.
   - rebalanced hub spacing in `src/components/Hub.jsx`
   - re-centered the voice stage in `src/components/VoiceChannel.jsx`
 - Build status after the centering correction: `npm run build` succeeds on `2.5.29`.
+
+## 2026-04-11 shell height bug handoff
+- Previous diagnosis was too narrow: the main issue was a bottom empty strip caused by shell sizing, not only visual centering.
+- Fixed by changing the top-level app shell in `src/App.jsx` from `fixed inset-0` to explicit viewport sizing and by reinforcing root min-height rules in `src/index.css`.
+- If the blank strip still appears after this version, the next debugging step should inspect Electron window sizing or any external wrapper constraints, not the inner screen layouts.
+- Build status after the shell-height correction: `npm run build` succeeds on `2.5.30`.

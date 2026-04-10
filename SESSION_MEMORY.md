@@ -365,3 +365,18 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/App.jsx`
   - `src/components/Hub.jsx`
   - `src/components/VoiceChannel.jsx`
+
+### 2026-04-11 shell height correction
+- Follow-up to the false optical-centering diagnosis: the real issue was an empty strip below the app shell, not a pure layout shift.
+- Root fix: removed reliance on the top-level `fixed inset-0` shell and switched the main app container to explicit viewport sizing in `src/App.jsx` (`w-screen h-screen min-h-[100svh]`).
+- Reinforced root sizing in `src/index.css` by giving `html`, `body`, and `#root` explicit `min-height: 100vh` / `100svh` and `width: 100%`.
+- This should eliminate the detached empty bottom area in both browser and Electron windows.
+- Verification: `npm run build` passed on version `2.5.30`.
+
+### Auto Log — 2026-04-11 02:56
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/App.jsx`
+  - `src/index.css`
