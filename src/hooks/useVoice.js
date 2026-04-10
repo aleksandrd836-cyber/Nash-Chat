@@ -51,6 +51,9 @@ import {
   createGlobalPresenceLeaveHandler,
   createGlobalPresenceStatusHandler,
 } from './voice/globalPresence';
+import { syncLocalVoiceParticipants } from './voice/sessionSync';
+import { cleanupVoiceSessionState } from './voice/cleanup';
+import { setupLocalVoiceChannel } from './voice/localChannelBootstrap';
 import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
@@ -295,80 +298,47 @@ export function useVoice() {
   }, [closePeer]);
 
   const cleanupAll = useCallback(async () => {
-    console.log('[useVoice] cleanupAll started (EXIT button clicked)');
-    
-    // СТАВИМ МЕТКУ ПЕРВОЙ ЖЕ СТРОЧКОЙ
-    isLeavingRef.current = true;
-    const myId = currentUserRef.current?.id;
-    
-    // Силовое зануление СПИСКА УЧАСТНИКОВ В ЦЕНТРЕ
-    setParticipants([]);
-    
-    // В САЙДБАРЕ УДАЛЯЕМ ТОЛЬКО СЕБЯ, ЧТОБЫ НЕ БЫЛО ПУСТОТЫ
-    mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, {
-      userId: currentUserRef.current?.id,
-      sessionId: sessionIdRef.current,
-    }));
-
-    setActiveChannelId(null); 
-    activeChannelIdRef.current = null;
-    lastStableChannelIdRef.current = null;
-    setConnectingChannelId(null);
-    setIsScreenSharing(false); 
-    setRemoteScreens({}); 
-    setVoiceError(null); 
-    await removeVoiceSession(sessionIdRef.current).catch(() => {});
-    await refreshVoiceSessions();
-
-    clearManagedTimeout(reconnectTimerRef, '[useVoice] Clearing background reconnect timer');
-    clearManagedTimeout(presenceDebounceRef);
-    clearManagedInterval(fakeVADIntervalRef);
-    clearManagedTimeoutMap(ghostPeersRef);
-    
-    console.log('[useVoice] Closing peer connections...');
-    Object.keys(peerConns.current).forEach(id => closePeer(id, true));
-
-    localStream.current?.getTracks().forEach(t => t.stop()); localStream.current = null;
-    originalMicStreamRef.current?.getTracks().forEach(t => t.stop()); originalMicStreamRef.current = null;
-    
-    if (audioContextRef.current) { 
-      audioContextRef.current.close().catch(() => {}); 
-      audioContextRef.current = null; 
-    }
-    
-    const currentRealtimeChannel = realtimeChannel.current;
-    if (currentRealtimeChannel) {
-      realtimeChannel.current = null; // Зануляем ДО удаления
-      console.log('[useVoice] Removing Realtime channel...');
-      await supabase.removeChannel(currentRealtimeChannel).catch(() => {});
-    }
-
-    if (globalPresence.current) {
-      console.log('[useVoice] Updating global presence (EXIT)...');
-      // СИЛОВОЕ УДАЛЕНИЕ: Кричим во ВСЕ доступные каналы (если они подключены)
-      const broadcastPayload = { type: 'broadcast', event: 'user-left', payload: { userId: myId, sessionId: sessionIdRef.current } };
-      
-      if (globalPresence.current?.state === 'joined') {
-        globalPresence.current.send(broadcastPayload).catch(() => {});
-      }
-      if (currentRealtimeChannel?.state === 'joined') {
-        currentRealtimeChannel.send(broadcastPayload).catch(() => {});
-      }
-
-      await globalPresence.current.track({
-        ...presencePayload.current,
-        channelId: null,
-        joined_at: presencePayload.current.joined_at || Date.now()
-      }).catch(() => {});
-      
-      await globalPresence.current.untrack().catch(() => {});
-    }
-    
-    mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, {
-      userId: currentUserRef.current?.id,
-      sessionId: sessionIdRef.current,
-    }));
-  }, [closePeer, mutateRealtimeParticipants, removeSessionFromParticipantMap]);
+    await cleanupVoiceSessionState({
+      currentUserRef,
+      sessionIdRef,
+      isLeavingRef,
+      mutateRealtimeParticipants,
+      removeSessionFromParticipantMap,
+      setParticipants,
+      setActiveChannelId,
+      activeChannelIdRef,
+      lastStableChannelIdRef,
+      setConnectingChannelId,
+      setIsScreenSharing,
+      setRemoteScreens,
+      setVoiceError,
+      setIsConnecting,
+      removeVoiceSession,
+      refreshVoiceSessions,
+      reconnectTimerRef,
+      presenceDebounceRef,
+      fakeVADIntervalRef,
+      heartbeatIntervalRef,
+      ghostPeersRef,
+      clearManagedTimeout,
+      clearManagedInterval,
+      clearManagedTimeoutMap,
+      peerConnsRef: peerConns,
+      closePeer,
+      localStreamRef: localStream,
+      originalMicStreamRef,
+      screenStreamRef,
+      audioContextRef,
+      rnnoiseNodeRef,
+      gainNodesRef,
+      remoteAnalysersRef,
+      audioElementsRef: audioElements,
+      realtimeChannelRef: realtimeChannel,
+      globalPresenceRef: globalPresence,
+      presencePayloadRef: presencePayload,
+      supabaseClient: supabase,
+    });
+  }, [closePeer, mutateRealtimeParticipants, refreshVoiceSessions, removeSessionFromParticipantMap]);
 
   // Глобальный канал (инициализация после всех функций)
   useEffect(() => {
@@ -518,33 +488,15 @@ export function useVoice() {
   }, []);
 
   const syncParticipants = useCallback((channel) => {
-    if (channel.state !== 'joined' || isLeavingRef.current) return;
-
-    const state = channel.presenceState();
-    const myId = currentUserRef.current?.id;
-    const seenUids = new Set();
-    
-    Object.values(state).flat().forEach(p => {
-      if (!p.userId || (isLeavingRef.current && p.userId === myId)) return;
-      seenUids.add(p.userId);
-
-      // Локальный канал ТЕПЕРЬ отвечает ТОЛЬКО за создание пиров
-      if (p.userId !== myId && !peerConns.current[p.userId] && !ghostPeersRef.current[p.userId]) {
-        createPeerConnection(p.userId, channel);
-      }
-    });
-
-    // Очистка призраков: сокращаем интервал до 5 секунд для отзывчивости
-    Object.keys(peerConns.current).forEach(uid => {
-      if (!seenUids.has(uid) && !ghostPeersRef.current[uid]) {
-        ghostPeersRef.current[uid] = setTimeout(() => { 
-          closePeer(uid, true); 
-          delete ghostPeersRef.current[uid]; 
-        }, GHOST_PEER_GRACE_MS); 
-      } else if (seenUids.has(uid) && ghostPeersRef.current[uid]) {
-        clearTimeout(ghostPeersRef.current[uid]); 
-        delete ghostPeersRef.current[uid];
-      }
+    syncLocalVoiceParticipants({
+      channel,
+      isLeavingRef,
+      currentUserRef,
+      peerConnsRef: peerConns,
+      ghostPeersRef,
+      createPeerConnection,
+      closePeer,
+      GHOST_PEER_GRACE_MS,
     });
   }, [createPeerConnection, closePeer]);
 
@@ -631,57 +583,28 @@ export function useVoice() {
       };
 
       await removeChannelsByTopic(`voice:${channelId}`);
-      const channel = supabase.channel(`voice:${channelId}`, { config: { presence: { key: user.id } } });
-      realtimeChannel.current = channel;
-      channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
-      channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
-      // ?????????????????? ?????????? ???????????? ???? ?????????????? ???????????? ????????????????????, ?????????? ???? ???????? ???????????????????? ?? ????????????????????.
-      // ???????????????????????? ???????????????????? ??? ?????????????????? ????????????, ???? ???? ???? ???????? ???????????????????????????? ?????????? ?????? ????????????
-      channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-        mutateRealtimeParticipants((prev) => (
-          updateParticipantSpeakingMap(prev, payload.userId, payload.isSpeaking)
-        ));
-      });
-
-      channel.on('broadcast', { event: 'offer' }, createOfferBroadcastHandler({
-        userId: user.id,
-        channel,
-        peerConnsRef: peerConns,
-        createPeerConnection,
-        makingOfferRef,
-        ignoreOfferRef,
-      }));
-
-      channel.on('broadcast', { event: 'answer' }, createAnswerBroadcastHandler({
-        userId: user.id,
-        peerConnsRef: peerConns,
-      }));
-
-      channel.on('broadcast', { event: 'ice' }, createIceBroadcastHandler({
-        userId: user.id,
-        peerConnsRef: peerConns,
-      }));
-
-      // ?????????????? ???????? ?? ?????????????????? ???????????? (?????????????? ??????????????)
-      channel.on('broadcast', { event: 'user-left' }, createUserLeftBroadcastHandler({
-        mutateRealtimeParticipants,
-        removeSessionFromParticipantMap,
-        closePeer,
-      }));
-
-      channel.on('broadcast', { event: 'request-stream' }, createRequestStreamBroadcastHandler({
-        userId: user.id,
-        screenStreamRef,
-        peerConnsRef: peerConns,
-      }));
-
-
-      channel.subscribe(createLocalVoiceChannelStatusHandler({
-        channel,
+      setupLocalVoiceChannel({
+        supabaseClient: supabase,
         channelId,
-        isSilent,
         user,
         realtimeChannelRef: realtimeChannel,
+        syncParticipants,
+        mutateRealtimeParticipants,
+        updateParticipantSpeakingMap,
+        createOfferBroadcastHandler,
+        createAnswerBroadcastHandler,
+        createIceBroadcastHandler,
+        createUserLeftBroadcastHandler,
+        createRequestStreamBroadcastHandler,
+        createLocalVoiceChannelStatusHandler,
+        createPeerConnection,
+        removeSessionFromParticipantMap,
+        closePeer,
+        peerConnsRef: peerConns,
+        makingOfferRef,
+        ignoreOfferRef,
+        screenStreamRef,
+        isSilent,
         isLeavingRef,
         isSwitchingRef,
         activeChannelIdRef,
@@ -699,15 +622,13 @@ export function useVoice() {
         updatePresenceStatus,
         upsertVoiceSession,
         refreshVoiceSessions,
-        mutateRealtimeParticipants,
         appendParticipantToChannel,
         scheduleManagedTimeout,
         resolveStableVoiceChannelId,
         joinVoiceChannel,
         notifications,
         RECONNECT_DELAY_MS,
-        removeSupabaseChannel: supabase.removeChannel.bind(supabase),
-      }));
+      });
     } catch (err) { 
       console.error('[useVoice] Fatal join error:', err);
       if (reconnectAttemptsRef.current === 0 || reconnectAttemptsRef.current > 5) {
@@ -883,6 +804,7 @@ export function useVoice() {
     clearVoiceError: () => setVoiceError(null)
   };
 }
+
 
 
 
