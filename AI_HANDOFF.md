@@ -29,12 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 15:01`
+- Время: `2026-04-10 15:09`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/components/Sidebar.jsx`
-  - `src/components/VoiceChannel.jsx`
+  - `src/components/Message.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -111,3 +110,8 @@ pm run build passes.
 - `Sidebar.jsx` now memoizes flattened voice participants, split channel lists, and context-menu derived values.
 - This was intentionally kept logic-safe: no signaling or session behavior changed, only render-time derivations and listener setup were tightened.
 - Good next step after this checkpoint: verify whether `ChannelItem` / `VoiceParticipant` still rerender too often from inline handlers, but only if real UI jank remains.
+
+## 2026-04-10 DM runtime handoff
+- Fixed `ReferenceError: isPlatformCreator is not defined` in `src/components/Message.jsx`.
+- The crash reproduced when opening direct messages because the Message component hit the missing helper during author badge rendering.
+- The fix is intentionally minimal and logic-safe: restore the helper at module scope using the same creator IDs used elsewhere in voice UI.

@@ -242,3 +242,17 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `public/version.json`
   - `src/components/Sidebar.jsx`
   - `src/components/VoiceChannel.jsx`
+
+### 2026-04-10 direct messages runtime fix
+- Fixed a DM crash caused by a missing helper in `src/components/Message.jsx`.
+- Root cause: the component still called `isPlatformCreator(authorId)` after previous message/emoji refactors, but the helper definition was no longer present.
+- Restored the platform-creator check via a shared `Set` + helper function at module scope.
+- File touched:
+  - `src/components/Message.jsx`
+
+### Auto Log — 2026-04-10 15:09
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/Message.jsx`

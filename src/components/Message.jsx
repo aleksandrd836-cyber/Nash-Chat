@@ -5,6 +5,13 @@ import { LazyEmojiPicker } from './LazyEmojiPicker';
 import { Smile, Trash2 } from 'lucide-react';
 import { createPrivateDmSignedUrl, decodePrivateDmAttachment, isPrivateDmAttachment } from '../lib/dmAttachments';
 
+const PLATFORM_CREATOR_IDS = new Set([
+  '43751682-690e-4934-a9f2-7300a816b92d',
+  '1380ae20-201a-4c77-aed3-93b3cb96f8d5'
+]);
+
+const isPlatformCreator = (userId) => PLATFORM_CREATOR_IDS.has(userId);
+
 const EmojiGlyph = ({ emoji, size = 20, className = '' }) => (
   <span
     className={className}
