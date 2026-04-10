@@ -29,7 +29,7 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 15:09`
+- Время: `2026-04-10 15:29`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
@@ -115,3 +115,13 @@ pm run build passes.
 - Fixed `ReferenceError: isPlatformCreator is not defined` in `src/components/Message.jsx`.
 - The crash reproduced when opening direct messages because the Message component hit the missing helper during author badge rendering.
 - The fix is intentionally minimal and logic-safe: restore the helper at module scope using the same creator IDs used elsewhere in voice UI.
+
+## 2026-04-10 DM emoji regex handoff
+- Fixed `ReferenceError: EMOJI_REGEX is not defined` in `src/components/Message.jsx`.
+- This was the follow-up runtime bug after the previous creator-badge fix: the message renderer still depended on a removed emoji regex constant.
+- The fix restores the regex at module scope so DM/text message rendering can safely split and render emoji inline again.
+
+## 2026-04-10 Message hardening handoff
+- After the DM `isPlatformCreator` and `EMOJI_REGEX` fixes, a final focused hardening pass was applied to `src/components/Message.jsx`.
+- Main goal: remove obvious remaining runtime fragility in copy/edit/theme-dependent code paths without changing the overall message UX.
+- The file is now in a safer state for DM and text-channel rendering, but future work should prefer adding tests rather than more blind refactors.

@@ -11,6 +11,42 @@ const PLATFORM_CREATOR_IDS = new Set([
 ]);
 
 const isPlatformCreator = (userId) => PLATFORM_CREATOR_IDS.has(userId);
+const EMOJI_REGEX = /(\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*)/gu;
+const normalizeMessageText = (value) => (typeof value === 'string' ? value : String(value ?? ''));
+
+function getEmojiPickerTheme() {
+  if (typeof document === 'undefined') return 'dark';
+  return document.documentElement.classList.contains('light-theme') ? 'light' : 'dark';
+}
+
+async function copyTextToClipboard(value) {
+  const text = normalizeMessageText(value);
+
+  try {
+    if (globalThis.navigator?.clipboard?.writeText) {
+      await globalThis.navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch (error) {
+    console.warn('[Message] Clipboard API failed, using fallback copy.', error);
+  }
+
+  if (typeof document === 'undefined') return;
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    document.execCommand('copy');
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
 
 const EmojiGlyph = ({ emoji, size = 20, className = '' }) => (
   <span
@@ -23,16 +59,17 @@ const EmojiGlyph = ({ emoji, size = 20, className = '' }) => (
 
 /** Р РµРЅРґРµСЂРёС‚ С‚РµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ, Р·Р°РјРµРЅСЏСЏ СЌРјРѕРґР·Рё РЅР° РєРѕРјРїРѕРЅРµРЅС‚С‹ Apple Emoji */
 const MessageContent = ({ content, isJumbo = false }) => {
-  if (!content) return null;
+  const safeContent = normalizeMessageText(content);
+  if (!safeContent) return null;
 
   // РџСЂРѕРІРµСЂСЏРµРј, СЃРѕСЃС‚РѕРёС‚ Р»Рё РІСЃС‘ СЃРѕРѕР±С‰РµРЅРёРµ С‚РѕР»СЊРєРѕ РёР· СЌРјРѕРґР·Рё (РґРѕ 27 С€С‚)
   const emojisOnlyRegex = /^(\s*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2194}-\u{2199}\u{21A9}-\u{21AA}\u{3297}\u{3299}\u{303D}\u{2139}\u{24C2}\u{1F191}-\u{1F19A}\u{E0020}-\u{E007F}\u{203C}\u{2049}\u{00A9}\u{00AE}\u{2122}\u{231A}\u{231B}\u{2328}\u{23CF}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267F}\u{2692}-\u{2694}\u{2696}\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26C8}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}\u{2712}\u{2714}\u{2716}\u{271D}\u{2721}\u{2728}\u{2733}\u{2734}\u{2744}\u{2747}\u{274C}\u{274E}\u{2753}-\u{2755}\u{2757}\u{2763}\u{2764}\u{2795}-\u{2797}\u{27A1}\u{27B0}\u{27BF}\u{2934}\u{2935}\u{2B05}-\u{2B07}\u{2B1B}\u{2B1C}\u{2B50}\u{2B55}\u{3030}\u{303D}\u{3297}\u{3299}]+\s*)+$/u;
-  const isAllEmoji = emojisOnlyRegex.test(content.trim());
+  const isAllEmoji = emojisOnlyRegex.test(safeContent.trim());
   const emojiSize = isAllEmoji ? 40 : 20;
 
   // Р•СЃР»Рё СЌС‚Рѕ С‚РѕР»СЊРєРѕ СЌРјРѕРґР·Рё, РґРµР»Р°РµРј РёС… РєСЂСѓРїРЅС‹РјРё Рё РґРѕР±Р°РІР»СЏРµРј РѕС‚СЃС‚СѓРїС‹
   if (isAllEmoji) {
-    const emojis = content.match(EMOJI_REGEX) || [];
+    const emojis = safeContent.match(EMOJI_REGEX) || [];
     return (
       <div className="flex flex-wrap gap-2 py-1 select-none">
         {emojis.map((emoji, idx) => (
@@ -45,7 +82,7 @@ const MessageContent = ({ content, isJumbo = false }) => {
   }
 
   // Р”Р»СЏ СЃРјРµС€Р°РЅРЅРѕРіРѕ С‚РµРєСЃС‚Р° СЂР°Р·Р±РёРІР°РµРј СЃС‚СЂРѕРєСѓ Рё Р·Р°РјРµРЅСЏРµРј СЌРјРѕРґР·Рё РёРЅР»Р°Р№РЅРѕРІРѕ
-  const parts = content.split(EMOJI_REGEX);
+  const parts = safeContent.split(EMOJI_REGEX);
   return (
     <span className="leading-relaxed">
       {parts.map((part, idx) => {
@@ -350,7 +387,7 @@ function ContextMenu({ x, y, options, onClose }) {
 export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, onEdit, onDelete }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(msg.content);
+  const [editContent, setEditContent] = useState(() => normalizeMessageText(msg.content));
   const [menuPos, setMenuPos] = useState(null);
   const pickerRef = useRef(null);
   const editInputRef = useRef(null);
@@ -382,8 +419,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
   const currentUserId = currentUser?.id;
   const currentUserName = currentUser?.user_metadata?.username ?? currentUser?.email?.split('@')[0];
   const isMine = (currentUserId === authorId) || (currentUserName && currentUserName === realName);
-  const isAdmin = authorId === ownerId;
-  const displayColor = isAdmin ? '#ff4444' : 'var(--ds-text)';
+  const displayColor = isServerAdmin ? '#ff4444' : (colorStr || currentUserColor || color || 'var(--ds-text)');
   const isRead = msg.is_read;
   
   // Р Р°СЃС‡РµС‚ РІСЂРµРјРµРЅРё РґРѕ СѓРґР°Р»РµРЅРёСЏ (14 РґРЅРµР№)
@@ -442,11 +478,12 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
 
   const handleStartEdit = () => {
     setIsEditing(true);
-    setEditContent(msg.content);
+    setEditContent(normalizeMessageText(msg.content));
   };
 
   const handleSaveEdit = async () => {
-    if (editContent.trim() !== msg.content) {
+    const originalContent = normalizeMessageText(msg.content);
+    if (editContent.trim() !== originalContent) {
       await onEdit(msg.id, editContent);
     }
     setIsEditing(false);
@@ -454,11 +491,11 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    setEditContent(msg.content);
+    setEditContent(normalizeMessageText(msg.content));
   };
 
   const menuOptions = [
-    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ С‚РµРєСЃС‚', icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>, onClick: () => navigator.clipboard.writeText(msg.content) },
+    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ С‚РµРєСЃС‚', icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>, onClick: () => copyTextToClipboard(msg.content) },
     { separator: true },
     ...(isMine ? [
       { 
@@ -478,7 +515,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
       },
     ] : []),
     { separator: true },
-    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ ID', onClick: () => navigator.clipboard.writeText(msg.id) },
+    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ ID', onClick: () => copyTextToClipboard(msg.id) },
   ];
 
   const reactionBtn = (
@@ -494,7 +531,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
         <div ref={pickerRef} className="absolute z-[100] bottom-full left-0 mb-2 shadow-2xl transition-all">
           <LazyEmojiPicker 
              onEmojiClick={handleEmojiClick} 
-             theme={document.documentElement.classList.contains('light-theme') ? 'light' : 'dark'} 
+             theme={getEmojiPickerTheme()} 
           />
         </div>
       )}

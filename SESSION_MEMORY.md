@@ -256,3 +256,26 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `src/components/Message.jsx`
+
+### 2026-04-10 direct messages emoji regex fix
+- Fixed a second DM runtime crash in `src/components/Message.jsx`.
+- Root cause: `MessageContent` still used `EMOJI_REGEX` for emoji splitting and inline rendering after the emoji refactor, but the regex constant itself was missing.
+- Restored a module-level emoji regex that supports pictographic emoji, regional-indicator flags, and keycap emoji.
+- File touched:
+  - `src/components/Message.jsx`
+
+### 2026-04-10 Message component hardening pass
+- Performed a focused runtime hardening pass on `src/components/Message.jsx` after multiple DM-related regressions.
+- Added `normalizeMessageText(...)` so message editing/copy/render paths do not depend on `msg.content` always being a valid string.
+- Added guarded helpers for emoji picker theme detection and clipboard copying to avoid direct fragile browser-global assumptions.
+- Reused profile/server color data more safely in display color calculation.
+- This pass was intentionally limited to realistic runtime-safety fixes rather than visual refactoring.
+- File touched:
+  - `src/components/Message.jsx`
+
+### Auto Log — 2026-04-10 15:29
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/Message.jsx`
