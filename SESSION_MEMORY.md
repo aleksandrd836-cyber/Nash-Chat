@@ -200,3 +200,18 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/LazyEmojiPicker.jsx`
   - `src/components/Message.jsx`
   - `src/components/TextChannel.jsx`
+
+### 2026-04-10 lazy route Suspense fix
+- Fixed a production login crash after bundle splitting.
+- Root cause: lazy-loaded route panels in `src/App.jsx` (`Hub`, `DirectMessagePanel`, `TextChannel`, `VoiceChannel`, `MembersPanel`) were rendered without a surrounding `Suspense` boundary in the main app layout.
+- Added `Suspense` around the central panel area with `PanelLoadingFallback` and around `MembersPanel` with `LoadingFallback`.
+- Also wrapped navigation/modal-opening state transitions in `startTransition` to make lazy UI switches safer under React 18.
+- Files touched in this fix:
+  - `src/App.jsx`
+
+### Auto Log — 2026-04-10 14:50
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/App.jsx`

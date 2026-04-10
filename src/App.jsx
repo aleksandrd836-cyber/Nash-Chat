@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, startTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from './hooks/useAuth';
 import { useVoice } from './hooks/useVoice';
@@ -111,20 +111,62 @@ function App() {
   const displayColor    = localColor || null;
 
   function handleSelectChannel(channel) {
-    setSelectedChannel(channel);
+    startTransition(() => {
+      setSelectedChannel(channel);
+    });
   }
 
   function handleOpenDM(member) {
-    setActiveDM(member);
+    startTransition(() => {
+      setActiveDM(member);
+    });
     unreadDMs.markAsRead(member.id);
   }
 
-  function handleCloseDM() { setActiveDM(null); }
+  function handleCloseDM() {
+    startTransition(() => {
+      setActiveDM(null);
+    });
+  }
 
   // При смене сервера — сбрасываем канал и DM
   function handleSelectServer(server) {
-    setSelectedServer(server);
+    startTransition(() => {
+      setSelectedServer(server);
+    });
     setCenterImageError(false); // Сброс ошибки при смене сервера
+  }
+
+  function handleOpenSettings() {
+    startTransition(() => {
+      setSettingsOpen(true);
+    });
+  }
+
+  function handleOpenServerEntry() {
+    startTransition(() => {
+      setServerEntryOpen(true);
+    });
+  }
+
+  function handleOpenServerSettings() {
+    startTransition(() => {
+      setServerSettingsOpen(true);
+    });
+  }
+
+  function handleOpenHome() {
+    startTransition(() => {
+      setSelectedServer(null);
+      setActiveDM(null);
+    });
+  }
+
+  function handleOpenDMHub() {
+    startTransition(() => {
+      setSelectedServer(null);
+      setIsDMHubOpen(true);
+    });
   }
 
   const { members } = useMembers(auth.user, selectedServer?.id);
@@ -183,8 +225,8 @@ function App() {
           currentUserId={auth.user.id}
           selectedServerId={selectedServer?.id}
           onSelectServer={handleSelectServer}
-          onCreateServer={() => setServerEntryOpen(true)}
-          onHomeClick={() => { setSelectedServer(null); setActiveDM(null); }}
+          onCreateServer={handleOpenServerEntry}
+          onHomeClick={handleOpenHome}
           refreshTrigger={serverRefresh}
         />
 
@@ -197,7 +239,7 @@ function App() {
             onSelectChannel={handleSelectChannel}
             onSignOut={auth.signOut}
             voice={voice}
-            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenSettings={handleOpenSettings}
             updateStatus={updates.updateStatus}
             updateInfo={updates.updateInfo}
             updateProgress={updates.updateProgress}
@@ -210,7 +252,7 @@ function App() {
             selectedServer={selectedServer}
             ownerId={selectedServer?.owner_id}
             isOwner={selectedServer.owner_id === auth.user.id}
-            onOpenServerSettings={() => setServerSettingsOpen(true)}
+            onOpenServerSettings={handleOpenServerSettings}
           />
         ) : (
           <div className="w-72 flex-shrink-0 bg-ds-sidebar/92 backdrop-blur-[40px] flex flex-col shadow-2xl z-10 transition-all duration-300 relative select-none">
@@ -225,19 +267,19 @@ function App() {
                  <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.15em] mt-2 leading-relaxed">Создай свой сервер или вступи по коду от друга</p>
               </div>
               <button
-                onClick={() => setServerEntryOpen(true)}
+                onClick={handleOpenServerEntry}
                 className="w-full py-4 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue"
               >
                 СОЗДАТЬ / ВОЙТИ
               </button>
             </div>
 
-            <ProfileFooter
+              <ProfileFooter
               username={displayUsername}
               userColor={displayColor}
               onSignOut={auth.signOut}
               voice={voice}
-              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenSettings={handleOpenSettings}
               updateStatus={updates.updateStatus}
               updateInfo={updates.updateInfo}
               updateProgress={updates.updateProgress}
@@ -254,6 +296,7 @@ function App() {
         )}
 
         <main className="flex-1 flex min-w-0 overflow-hidden relative">
+          <Suspense fallback={<PanelLoadingFallback />}>
           {!selectedServer && !activeDM ? (
             <Hub
               isDMHubOpen={isDMHubOpen}
@@ -320,10 +363,11 @@ function App() {
               downloadUrl={updates.downloadUrl}
             />
           )}
+          </Suspense>
 
           {/* Floating Action Button (FAB) */}
           <button
-             onClick={() => { setSelectedServer(null); setIsDMHubOpen(true); }}
+             onClick={handleOpenDMHub}
              className="absolute bottom-40 right-10 w-16 h-16 rounded-full bg-ds-bg/60 backdrop-blur-3xl flex items-center justify-center text-ds-accent vibe-fab z-50 group hover:rotate-[360deg] duration-700 transition-all border border-ds-accent/30 shadow-[0_0_20px_rgba(var(--ds-accent-rgb),0.3)]"
              title="Личные сообщения"
           >
@@ -338,14 +382,16 @@ function App() {
         </main>
 
         {selectedServer && (
-          <MembersPanel
-            members={members}
-            loading={false}
-            currentUserId={auth.user?.id}
-            ownerId={selectedServer?.owner_id}
-            onOpenDM={handleOpenDM}
-            unreadCounts={unreadDMs.unreadCounts}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <MembersPanel
+              members={members}
+              loading={false}
+              currentUserId={auth.user?.id}
+              ownerId={selectedServer?.owner_id}
+              onOpenDM={handleOpenDM}
+              unreadCounts={unreadDMs.unreadCounts}
+            />
+          </Suspense>
         )}
 
         {/* ── Модалки (с ленивой загрузкой) ── */}
@@ -408,8 +454,10 @@ function App() {
                   currentUserId={auth.user.id}
                   onClose={() => setServerSettingsOpen(false)}
                   onServerDeleted={() => {
-                    setSelectedServer(null);
-                    setSelectedChannel(null);
+                    startTransition(() => {
+                      setSelectedServer(null);
+                      setSelectedChannel(null);
+                    });
                   }}
                 />
               </motion.div>

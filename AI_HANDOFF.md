@@ -29,14 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 14:25`
+- Время: `2026-04-10 14:50`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/components/DirectMessagePanel.jsx`
-  - `src/components/LazyEmojiPicker.jsx`
-  - `src/components/Message.jsx`
-  - `src/components/TextChannel.jsx`
+  - `src/App.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -100,3 +97,9 @@ pm run build passes.
 - Message rendering and reaction badges now use lightweight native emoji glyph spans instead of the picker package.
 - Build passes; emoji vendor remains a separate chunk and should load only when the picker is opened.
 
+
+## 2026-04-10 lazy route crash handoff
+- Fixed the post-login production crash introduced by route-level lazy loading.
+- `src/App.jsx` now restores proper `Suspense` boundaries for lazy main panels and `MembersPanel`.
+- Added `startTransition` around navigation and lazy modal open actions to reduce React 18 synchronous-suspense risk.
+- Next step after this fix: verify app startup, channel switching, DM open/close, and settings/server modal open in both browser and exe builds.
