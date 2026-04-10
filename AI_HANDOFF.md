@@ -29,8 +29,10 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 15:38`
+- Время: `2026-04-10 15:59`
 - Последние staged-файлы перед коммитом:
+  - `ephemeral_messages.sql`
+  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
   - `src/components/Message.jsx`
@@ -129,3 +131,9 @@ pm run build passes.
 ## 2026-04-10 message read-status handoff
 - Fixed broken read-status display in messages by replacing text glyphs with icon components.
 - This is a robustness fix, not a logic change: message read state still uses the same `is_read` flag.
+
+## 2026-04-10 expiry UI and auto-cleanup handoff
+- Fixed two message UI issues: corrupted 14-day deletion tooltip text and oversized emoji-only message rendering.
+- Important infra finding: auto-delete was implemented, but not fully wired into fresh database setup because `full-setup.sql` lacked the cron section from `ephemeral_messages.sql`.
+- `ephemeral_messages.sql` is now idempotent, and `full-setup.sql` now provisions the same hourly cleanup jobs for `messages` and `direct_messages`.
+- Live cron execution on the current production database still cannot be proven from anon-key access alone, but the repository setup is now internally consistent.

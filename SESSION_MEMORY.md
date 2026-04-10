@@ -292,3 +292,23 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `src/components/Message.jsx`
+
+### 2026-04-10 message expiry and cleanup hardening
+- Fixed corrupted expiry tooltip text in `src/components/Message.jsx` by restoring clean Russian strings for the 14-day auto-delete label.
+- Reduced jumbo emoji size and removed extra scaling in emoji-only messages to prevent vertical overlap between neighboring messages.
+- Verified the repository-level auto-delete design and found a real setup gap: cleanup cron jobs existed in `ephemeral_messages.sql`, but were not embedded into `full-setup.sql`.
+- Fixed that gap by making `ephemeral_messages.sql` idempotent and by adding the same hourly cleanup cron setup into `full-setup.sql`.
+- This means fresh database setups now include the 14-day cleanup automatically instead of depending on a separate manual SQL step.
+- Files touched:
+  - `src/components/Message.jsx`
+  - `ephemeral_messages.sql`
+  - `full-setup.sql`
+
+### Auto Log — 2026-04-10 15:59
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `ephemeral_messages.sql`
+  - `full-setup.sql`
+  - `package.json`
+  - `public/version.json`
+  - `src/components/Message.jsx`
