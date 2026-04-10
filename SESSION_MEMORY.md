@@ -312,3 +312,38 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `src/components/Message.jsx`
+
+### Auto Log — 2026-04-11 02:22
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+
+### 2026-04-11 visual system foundation pass
+- Started step 1 of the UI redesign plan: define a shared visual system before redesigning individual screens.
+- Tightened core design tokens in `src/index.css`: deeper dark surfaces, stronger light-theme contrast, shared radii, border strength, panel shadows, shell gradients, and accent glow levels.
+- Added reusable shell utilities: `vibe-shell`, `vibe-rail`, `vibe-panel`, `vibe-panel-strong`, `vibe-icon-tile`, `vibe-primary-button`, `vibe-label-eyebrow`, `vibe-divider-soft`, and `vibe-nav-orb`.
+- Applied the new system to the app shell and core navigation surfaces so the product already looks more unified without doing a full screen redesign yet.
+- Updated key shell components to consume the shared style language:
+  - `src/App.jsx`
+  - `src/components/ServerSidebar.jsx`
+  - `src/components/Sidebar.jsx`
+  - `src/components/ProfileFooter.jsx`
+  - `src/components/UserPanel.jsx`
+  - `src/components/Hub.jsx`
+- Also fixed a long-standing Tailwind mismatch by mapping `ds-accent` to the CSS variable and adding `ds-border` in `tailwind.config.js`.
+- Verification: `npm run build` passed on version `2.5.28`.
+
+### Auto Log — 2026-04-11 02:39
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/App.jsx`
+  - `src/components/Hub.jsx`
+  - `src/components/ProfileFooter.jsx`
+  - `src/components/ServerSidebar.jsx`
+  - `src/components/Sidebar.jsx`
+  - `src/components/UserPanel.jsx`
+  - `src/index.css`
+  - `tailwind.config.js`

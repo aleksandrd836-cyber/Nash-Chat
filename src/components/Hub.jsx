@@ -39,7 +39,7 @@ export function Hub({
            <div className="flex items-center justify-between w-full mb-8 px-6 flex-shrink-0">
               <button 
                 onClick={() => setIsDMHubOpen(false)}
-                className="group flex items-center gap-3 text-ds-muted hover:text-ds-text transition-all bg-white/5 px-4 py-2 rounded-2xl border border-white/5"
+                className="group flex items-center gap-3 text-ds-muted hover:text-ds-text transition-all px-4 py-2 rounded-2xl border border-white/5 vibe-panel"
               >
                 <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Назад в Хаб</span>
@@ -65,7 +65,7 @@ export function Hub({
                      <button 
                        key={conv.id}
                        onClick={() => { setActiveDM(conv); setIsDMHubOpen(false); }}
-                       className="w-full group/item relative bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 rounded-3xl p-5 flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-2xl flex-shrink-0"
+                       className="w-full group/item relative border border-white/5 rounded-3xl p-5 flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-2xl flex-shrink-0 vibe-panel"
                      >
                        <div className="relative flex-shrink-0">
                          <img src={imageUrl} alt={conv.username} className="w-14 h-14 rounded-2xl object-cover border border-white/10 group-hover/item:scale-110 transition-transform duration-500" />
@@ -91,7 +91,7 @@ export function Hub({
         // ── Главные карточки Хаба ──
         <>
           <div className="relative z-10 text-center mb-12 transform group-hover:scale-[1.02] transition-transform duration-700">
-            <div className="w-28 h-28 rounded-[2.5rem] bg-ds-bg/40 flex items-center justify-center border-2 border-ds-accent/10 relative mx-auto mb-8 shadow-2xl group/star">
+            <div className="w-28 h-28 flex items-center justify-center relative mx-auto mb-8 shadow-2xl group/star vibe-icon-tile rounded-[2.5rem]">
                <div className="absolute inset-0 vibe-moving-glow opacity-20" />
                <img 
                  src={getUserAvatar(displayUsername).imageUrl} 
@@ -110,10 +110,10 @@ export function Hub({
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4 animate-slide-up">
             <button 
               onClick={() => setServerEntryOpen(true)}
-              className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+              className="group/card relative rounded-[2rem] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] vibe-panel"
             >
               <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-accent/5 to-transparent rounded-[2rem]" />
-              <div className="w-16 h-16 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20 group-hover/card:scale-110 transition-transform">
+              <div className="w-16 h-16 flex items-center justify-center text-ds-accent vibe-icon-tile group-hover/card:scale-110 transition-transform">
                 <PlusCircle size={32} />
               </div>
               <div className="text-center">
@@ -122,7 +122,7 @@ export function Hub({
               </div>
             </button>
 
-            <div className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+            <div className="group/card relative rounded-[2rem] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] vibe-panel">
               <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-purple-500/5 to-transparent rounded-[2rem]" />
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20 group-hover/card:scale-110 transition-transform">
                 <Zap size={32} />
@@ -139,10 +139,10 @@ export function Hub({
 
             <button 
               onClick={() => setIsDMHubOpen(true)}
-              className="group/card relative rounded-[2rem] bg-white/[0.03] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:bg-white/[0.08] hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+            className="group/card relative rounded-[2rem] border border-white/5 p-8 flex flex-col items-center gap-6 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] vibe-panel"
             >
               <div className="absolute inset-0 transition-opacity opacity-0 group-hover/card:opacity-100 pointer-events-none bg-gradient-to-t from-ds-accent/5 to-transparent rounded-[2rem]" />
-              <div className="w-16 h-16 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20 group-hover/card:scale-110 transition-transform">
+              <div className="w-16 h-16 flex items-center justify-center text-ds-accent vibe-icon-tile group-hover/card:scale-110 transition-transform">
                 <MessageSquare size={32} />
               </div>
               <div className="text-center">
@@ -159,7 +159,7 @@ export function Hub({
         <div className="mt-10 mb-6 animate-fade-in delay-500 flex-shrink-0">
           <a
             href={downloadUrl}
-            className="group relative px-10 py-5 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.05] active:scale-95 shadow-2xl animate-vibe-btn overflow-hidden block"
+            className="group relative px-10 py-5 font-black uppercase tracking-widest text-[11px] transition-all hover:scale-[1.05] active:scale-95 shadow-2xl animate-vibe-btn overflow-hidden block vibe-primary-button"
           >
             <div className="absolute inset-0 vibe-moving-glow opacity-30 group-hover:opacity-100 transition-opacity" />
             <span className="relative z-10 flex items-center gap-3">

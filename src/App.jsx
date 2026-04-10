@@ -34,7 +34,7 @@ const LoadingFallback = () => (
 );
 
 const PanelLoadingFallback = () => (
-  <div className="flex-1 flex items-center justify-center bg-ds-servers/40 backdrop-blur-[40px]">
+  <div className="flex-1 flex items-center justify-center vibe-panel">
     <div className="flex flex-col items-center gap-4 opacity-70">
       <div className="w-10 h-10 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
       <span className="text-[10px] text-ds-muted font-black uppercase tracking-[0.3em]">Загрузка</span>
@@ -211,7 +211,7 @@ function App() {
   }
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-ds-bg select-none">
+    <div className="fixed inset-0 flex overflow-hidden bg-ds-bg select-none vibe-shell">
       {/* Global Vibe Atmosphere */}
       <div className="vibe-background-nebula">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-ds-accent/20 rounded-full animate-vibe-pulse mix-blend-screen" />
@@ -255,11 +255,11 @@ function App() {
             onOpenServerSettings={handleOpenServerSettings}
           />
         ) : (
-          <div className="w-72 flex-shrink-0 bg-ds-sidebar/92 backdrop-blur-[40px] flex flex-col shadow-2xl z-10 transition-all duration-300 relative select-none">
+          <div className="w-72 flex-shrink-0 flex flex-col z-10 transition-all duration-300 relative select-none vibe-rail vibe-rail--sidebar">
             <div className="absolute top-0 left-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
             <div className="absolute top-0 right-0 bottom-0 vibe-vertical-divider opacity-30 z-50 pointer-events-none" />
             <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center animate-fade-in">
-              <div className="w-20 h-20 rounded-3xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue border border-ds-accent/20">
+              <div className="w-20 h-20 flex items-center justify-center text-ds-accent vibe-icon-tile">
                  <Globe size={40} strokeWidth={2} />
               </div>
               <div>
@@ -268,7 +268,7 @@ function App() {
               </div>
               <button
                 onClick={handleOpenServerEntry}
-                className="w-full py-4 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue"
+                className="w-full py-4 font-black uppercase tracking-widest text-[11px] transition-all hover:scale-[1.02] active:scale-95 vibe-primary-button"
               >
                 СОЗДАТЬ / ВОЙТИ
               </button>

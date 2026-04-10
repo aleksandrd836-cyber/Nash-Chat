@@ -46,7 +46,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
   }, [currentUserId, fetchServers, refreshTrigger]); // refreshTrigger заставляет перезапросить список
 
   return (
-    <div className="w-[72px] flex-shrink-0 bg-ds-servers/92 backdrop-blur-[40px] flex flex-col items-center py-3 gap-3 overflow-y-auto no-scrollbar select-none">
+    <div className="w-[72px] flex-shrink-0 flex flex-col items-center py-3 gap-3 overflow-y-auto no-scrollbar select-none vibe-rail vibe-rail--servers">
       
       {/* Vibe Logo Button / Home */}
       <div className="relative group flex items-center mb-1">
@@ -58,9 +58,9 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
         <button
           onClick={onHomeClick}
           title="Vibe — Главная"
-          className={`w-12 h-12 transition-all duration-300 flex items-center justify-center shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2
+          className={`w-12 h-12 transition-all duration-300 flex items-center justify-center shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2 vibe-nav-orb
             ${!selectedServerId 
-              ? 'rounded-[14px] bg-ds-sidebar text-ds-accent vibe-glow-blue border-ds-accent' 
+              ? 'rounded-[14px] bg-ds-sidebar text-ds-accent vibe-glow-blue vibe-nav-orb--active border-ds-accent' 
               : 'rounded-[24px] hover:rounded-[14px] bg-ds-servers/40 backdrop-blur-md text-ds-accent/80 hover:text-ds-accent border-white/5 hover:border-ds-accent/40'
             }`}
         >
@@ -75,7 +75,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
       </div>
 
       {/* Разделитель */}
-      <div className="w-8 h-[2px] bg-ds-divider/40 rounded-lg mx-auto mb-1 flex-shrink-0" />
+      <div className="w-8 vibe-divider-soft rounded-lg mx-auto mb-1 flex-shrink-0" />
 
       {/* Список серверов */}
       {servers.map(server => {
@@ -95,9 +95,9 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
             <button
               onClick={() => onSelectServer(server)}
               title={server.name}
-              className={`w-12 h-12 transition-all duration-500 flex items-center justify-center font-black text-[13px] tracking-tighter shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2 server-sidebar-btn
+              className={`w-12 h-12 transition-all duration-500 flex items-center justify-center font-black text-[13px] tracking-tighter shadow-2xl ml-3 flex-shrink-0 relative overflow-hidden group/btn border-2 server-sidebar-btn vibe-nav-orb
                 ${isSelected 
-                  ? 'rounded-[14px] bg-ds-sidebar text-ds-text vibe-glow-blue border-ds-accent' 
+                  ? 'rounded-[14px] bg-ds-sidebar text-ds-text vibe-glow-blue vibe-nav-orb--active border-ds-accent' 
                   : 'rounded-[18px] hover:rounded-[12px] bg-ds-servers/60 backdrop-blur-md text-ds-muted hover:text-ds-text hover:scale-110'
                 }`}
               style={!isSelected ? { borderColor: `${iconColor}44` } : {}}
@@ -135,7 +135,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
       })}
 
       {/* Разделитель */}
-      <div className="w-8 h-[2px] bg-ds-divider/40 rounded-lg mx-auto my-1 flex-shrink-0" />
+      <div className="w-8 vibe-divider-soft rounded-lg mx-auto my-1 flex-shrink-0" />
 
       {/* Кнопка "+" — создать или войти */}
       <div className="relative group flex items-center flex-shrink-0">
@@ -143,7 +143,7 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
         <button
           onClick={onCreateServer}
           title="Создать или войти на сервер"
-          className="w-12 h-12 rounded-[24px] hover:rounded-[14px] transition-all duration-300 bg-ds-sidebar hover:bg-ds-accent text-ds-accent hover:text-black border border-white/5 flex items-center justify-center shadow-lg ml-3 group"
+          className="w-12 h-12 rounded-[24px] hover:rounded-[14px] transition-all duration-300 bg-ds-sidebar hover:bg-ds-accent text-ds-accent hover:text-black border border-white/5 flex items-center justify-center shadow-lg ml-3 group vibe-nav-orb"
         >
           <svg className="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

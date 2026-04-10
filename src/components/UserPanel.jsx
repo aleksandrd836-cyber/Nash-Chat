@@ -18,7 +18,7 @@ export const UserPanel = React.memo(({ onSignOut, voice, ownerId, currentUserId,
   const { imageUrl } = getUserAvatar(username);
 
   return (
-    <div className="h-auto py-3 bg-ds-bg/40 flex-shrink-0 flex flex-col px-3 gap-3 border-t border-white/5 overflow-hidden relative">
+    <div className="h-auto py-3 bg-transparent flex-shrink-0 flex flex-col px-3 gap-3 border-t border-white/5 overflow-hidden relative">
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-ds-accent/20 to-transparent opacity-30" />
       
       {/* Top Row: Identity */}
@@ -57,7 +57,7 @@ export const UserPanel = React.memo(({ onSignOut, voice, ownerId, currentUserId,
       </div>
 
       {/* Bottom Row: Controls */}
-      <div className="flex items-center gap-1 bg-ds-bg/40 p-0.5 rounded-lg border border-white/5 shadow-2xl">
+      <div className="flex items-center gap-1 p-0.5 rounded-xl border border-white/5 shadow-2xl bg-black/10 backdrop-blur-md">
         <div className="flex flex-1 items-center gap-0.5">
           {activeChannelId && (
             <>

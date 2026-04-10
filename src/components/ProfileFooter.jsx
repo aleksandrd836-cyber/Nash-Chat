@@ -12,7 +12,7 @@ export const ProfileFooter = memo(({
   ownerId, currentUserId, username, userColor
 }) => {
   return (
-    <div className="flex flex-col flex-shrink-0 bg-ds-sidebar border-t border-white/5 relative z-10 transition-all duration-300">
+    <div className="flex flex-col flex-shrink-0 relative z-10 transition-all duration-300 vibe-panel-strong border-t border-white/5">
       <UserPanel 
         onSignOut={onSignOut} 
         voice={voice} 

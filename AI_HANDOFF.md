@@ -29,13 +29,18 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 15:59`
+- Время: `2026-04-11 02:39`
 - Последние staged-файлы перед коммитом:
-  - `ephemeral_messages.sql`
-  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `src/components/Message.jsx`
+  - `src/App.jsx`
+  - `src/components/Hub.jsx`
+  - `src/components/ProfileFooter.jsx`
+  - `src/components/ServerSidebar.jsx`
+  - `src/components/Sidebar.jsx`
+  - `src/components/UserPanel.jsx`
+  - `src/index.css`
+  - `tailwind.config.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -137,3 +142,11 @@ pm run build passes.
 - Important infra finding: auto-delete was implemented, but not fully wired into fresh database setup because `full-setup.sql` lacked the cron section from `ephemeral_messages.sql`.
 - `ephemeral_messages.sql` is now idempotent, and `full-setup.sql` now provisions the same hourly cleanup jobs for `messages` and `direct_messages`.
 - Live cron execution on the current production database still cannot be proven from anon-key access alone, but the repository setup is now internally consistent.
+
+## 2026-04-11 visual system handoff
+- Began the design work in the correct order: first unify the visual system, then redesign individual screens.
+- `src/index.css` now contains the new shared shell language: calmer layered backgrounds, stronger semantic surface tokens, reusable panel/rail/button/icon-tile helpers, and better light-theme depth.
+- `tailwind.config.js` now correctly maps `ds-accent` to the live CSS variable and adds a `ds-border` alias for divider/border usage.
+- First adoption pass is already applied to the global shell and navigation-heavy components (`App`, `ServerSidebar`, `Sidebar`, `ProfileFooter`, `UserPanel`, `Hub`).
+- This is intentionally a foundation pass, not a full redesign yet. Next logical design step is to restyle the hub/home screen on top of these shared tokens instead of inventing one-off styles.
+- Build status after the foundation pass: `npm run build` succeeds on `2.5.28`.

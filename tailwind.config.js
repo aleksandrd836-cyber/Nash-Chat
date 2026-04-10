@@ -9,8 +9,8 @@ export default {
         'ds-servers':   'rgb(var(--ds-servers) / <alpha-value>)',
         'ds-input':     'rgb(var(--ds-input) / <alpha-value>)',
         'ds-accent-rgb': 'var(--ds-accent-rgb)',
-        'ds-accent':    '#00f0ff',
-        'ds-accent-glow':'rgba(0, 240, 255, 0.4)',
+        'ds-accent':    'rgb(var(--ds-accent-rgb) / <alpha-value>)',
+        'ds-accent-glow':'rgba(var(--ds-accent-rgb), 0.4)',
         'ds-green':     '#23A55A',
         'ds-red':       '#F23F42',
         'ds-yellow':    '#F0B232',
@@ -20,6 +20,7 @@ export default {
         'ds-active':    'rgb(var(--ds-active) / <alpha-value>)',
         'ds-header':    'rgb(var(--ds-header) / <alpha-value>)',
         'ds-divider':   'rgb(var(--ds-divider) / <alpha-value>)',
+        'ds-border':    'rgb(var(--ds-divider) / <alpha-value>)',
         'ds-mention':   'rgb(var(--ds-mention) / <alpha-value>)',
       },
       fontFamily: {
