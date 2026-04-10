@@ -29,7 +29,7 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 15:29`
+- Время: `2026-04-10 15:38`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
@@ -125,3 +125,7 @@ pm run build passes.
 - After the DM `isPlatformCreator` and `EMOJI_REGEX` fixes, a final focused hardening pass was applied to `src/components/Message.jsx`.
 - Main goal: remove obvious remaining runtime fragility in copy/edit/theme-dependent code paths without changing the overall message UX.
 - The file is now in a safer state for DM and text-channel rendering, but future work should prefer adding tests rather than more blind refactors.
+
+## 2026-04-10 message read-status handoff
+- Fixed broken read-status display in messages by replacing text glyphs with icon components.
+- This is a robustness fix, not a logic change: message read state still uses the same `is_read` flag.

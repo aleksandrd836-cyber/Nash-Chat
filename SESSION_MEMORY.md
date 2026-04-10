@@ -279,3 +279,16 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `src/components/Message.jsx`
+
+### 2026-04-10 message read-status icon fix
+- Replaced broken text-based read-status glyphs in `src/components/Message.jsx` with Lucide icons (`Check` / `CheckCheck`).
+- This avoids future mojibake issues from file encoding and keeps read indicators visually stable.
+- File touched:
+  - `src/components/Message.jsx`
+
+### Auto Log — 2026-04-10 15:38
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/Message.jsx`

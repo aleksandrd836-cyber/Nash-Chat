@@ -2,7 +2,7 @@
 import { getUserAvatar } from '../lib/avatar';
 import { useMessageReactions } from '../hooks/useReactions';
 import { LazyEmojiPicker } from './LazyEmojiPicker';
-import { Smile, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, Smile, Trash2 } from 'lucide-react';
 import { createPrivateDmSignedUrl, decodePrivateDmAttachment, isPrivateDmAttachment } from '../lib/dmAttachments';
 
 const PLATFORM_CREATOR_IDS = new Set([
@@ -47,6 +47,10 @@ async function copyTextToClipboard(value) {
     document.body.removeChild(textarea);
   }
 }
+
+const ReadStatusIcon = ({ isRead, className = '' }) => (
+  isRead ? <CheckCheck size={14} strokeWidth={2.5} className={className} /> : <Check size={14} strokeWidth={2.5} className={className} />
+);
 
 const EmojiGlyph = ({ emoji, size = 20, className = '' }) => (
   <span
@@ -592,8 +596,8 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
                   </span>
                 ) : (
                   isMine && isRead !== undefined && (
-                    <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
-                      {isRead ? 'вњ“вњ“' : 'вњ“'}
+                    <span className={`leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
+                      <ReadStatusIcon isRead={isRead} />
                     </span>
                   )
                 )}
@@ -665,8 +669,8 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
                  </span>
               ) : (
                 isMine && isRead !== undefined && (
-                  <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
-                    {isRead ? 'вњ“вњ“' : 'вњ“'}
+                  <span className={`leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
+                    <ReadStatusIcon isRead={isRead} />
                   </span>
                 )
               )}
