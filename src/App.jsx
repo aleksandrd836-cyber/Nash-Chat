@@ -11,15 +11,8 @@ import { useStore } from './store/useStore';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServerSidebar } from './components/ServerSidebar';
 import { Sidebar } from './components/Sidebar';
-import { TextChannel } from './components/TextChannel';
-import { VoiceChannel } from './components/VoiceChannel';
-import { MembersPanel } from './components/MembersPanel';
-import { DirectMessagePanel } from './components/DirectMessagePanel';
-import { UserPanel } from './components/UserPanel';
 import { ProfileFooter } from './components/ProfileFooter';
-import { Hub } from './components/Hub';
 
-import { getUserAvatar } from './lib/avatar';
 import { Globe, MessageSquare } from 'lucide-react';
 
 // Ленивая загрузка тяжелых компонентов
@@ -27,11 +20,25 @@ const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default
 const SettingsModal = lazy(() => import('./components/SettingsModal').then(m => ({ default: m.SettingsModal })));
 const ServerEntryModal = lazy(() => import('./components/ServerEntryModal').then(m => ({ default: m.ServerEntryModal })));
 const ServerSettingsModal = lazy(() => import('./components/ServerSettingsModal').then(m => ({ default: m.ServerSettingsModal })));
+const TextChannel = lazy(() => import('./components/TextChannel').then(m => ({ default: m.TextChannel })));
+const VoiceChannel = lazy(() => import('./components/VoiceChannel').then(m => ({ default: m.VoiceChannel })));
+const MembersPanel = lazy(() => import('./components/MembersPanel').then(m => ({ default: m.MembersPanel })));
+const DirectMessagePanel = lazy(() => import('./components/DirectMessagePanel').then(m => ({ default: m.DirectMessagePanel })));
+const Hub = lazy(() => import('./components/Hub').then(m => ({ default: m.Hub })));
 
 /** Глобальный спиннер для ленивой загрузки */
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20 opacity-50">
     <div className="w-8 h-8 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
+const PanelLoadingFallback = () => (
+  <div className="flex-1 flex items-center justify-center bg-ds-servers/40 backdrop-blur-[40px]">
+    <div className="flex flex-col items-center gap-4 opacity-70">
+      <div className="w-10 h-10 border-2 border-ds-accent border-t-transparent rounded-full animate-spin" />
+      <span className="text-[10px] text-ds-muted font-black uppercase tracking-[0.3em]">Загрузка</span>
+    </div>
   </div>
 );
 
