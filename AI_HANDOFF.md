@@ -29,12 +29,14 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 14:06`
+- Время: `2026-04-10 14:25`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/App.jsx`
-  - `vite.config.js`
+  - `src/components/DirectMessagePanel.jsx`
+  - `src/components/LazyEmojiPicker.jsx`
+  - `src/components/Message.jsx`
+  - `src/components/TextChannel.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -90,4 +92,11 @@ pm run build passes.
 - Added Suspense fallback for the central panel area.
 - Vite manualChunks now split vendor code into ui-vendor, emoji-vendor, supabase-vendor, voice-vendor, and vendor.
 - Main startup bundle is much smaller; future work should be targeted only if real loading issues remain.
+
+
+## 2026-04-10 emoji loading checkpoint
+- emoji-picker-react is now loaded on demand via src/components/LazyEmojiPicker.jsx.
+- TextChannel, DirectMessagePanel, and Message no longer import the picker directly in the normal render path.
+- Message rendering and reaction badges now use lightweight native emoji glyph spans instead of the picker package.
+- Build passes; emoji vendor remains a separate chunk and should load only when the picker is opened.
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDirectMessages } from '../hooks/useDirectMessages';
 import { getUserAvatar } from '../lib/avatar';
 import { Message } from './Message';
-import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
+import { LazyEmojiPicker } from './LazyEmojiPicker';
 import { 
   X, Send, Smile, Paperclip, Sparkles,
   MessageSquare, User, Clock, Check, 
@@ -337,7 +337,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
                </button>
                {showEmojiPicker && (
                   <div ref={pickerRef} className="absolute bottom-full right-0 mb-6 z-50 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-3xl overflow-hidden border border-ds-border">
-                    <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" emojiStyle={EmojiStyle.APPLE} skinTonesDisabled />
+                    <LazyEmojiPicker onEmojiClick={onEmojiClick} theme="dark" />
                   </div>
                )}
             </div>

@@ -1,58 +1,53 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 import { useMessageReactions } from '../hooks/useReactions';
-import EmojiPicker, { Emoji, EmojiStyle } from 'emoji-picker-react';
+import { LazyEmojiPicker } from './LazyEmojiPicker';
 import { Smile, Trash2 } from 'lucide-react';
 import { createPrivateDmSignedUrl, decodePrivateDmAttachment, isPrivateDmAttachment } from '../lib/dmAttachments';
 
-/** Константа стиля эмодзи для всего приложения */
-const EMOJI_STYLE = EmojiStyle.APPLE;
+const EmojiGlyph = ({ emoji, size = 20, className = '' }) => (
+  <span
+    className={className}
+    style={{ fontSize: `${size}px`, lineHeight: 1 }}
+  >
+    {emoji}
+  </span>
+);
 
-/** ID Глобальных создателей платформы */
-const CREATOR_IDS = ['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'];
-const isPlatformCreator = (id) => CREATOR_IDS.includes(id);
-
-/** Регулярное выражение для обнаружения эмодзи */
-const EMOJI_REGEX = /([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2194}-\u{2199}\u{21A9}-\u{21AA}\u{3297}\u{3299}\u{303D}\u{2139}\u{24C2}\u{1F191}-\u{1F19A}\u{E0020}-\u{E007F}\u{203C}\u{2049}\u{00A9}\u{00AE}\u{2122}\u{231A}\u{231B}\u{2328}\u{23CF}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267F}\u{2692}-\u{2694}\u{2696}\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26C8}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}\u{2712}\u{2714}\u{2716}\u{271D}\u{2721}\u{2728}\u{2733}\u{2734}\u{2744}\u{2747}\u{274C}\u{274E}\u{2753}-\u{2755}\u{2757}\u{2763}\u{2764}\u{2795}-\u{2797}\u{27A1}\u{27B0}\u{27BF}\u{2B1B}\u{2B1C}])/gu;
-
-/** Помощник для перевода символа эмодзи в формат unified */
-const unifiedFromEmoji = (emoji) => {
-  if (!emoji) return '';
-  return [...emoji].map(c => c.codePointAt(0).toString(16)).join('-');
-};
-
-/** Рендерит текст сообщения, заменяя эмодзи на компоненты Apple Emoji */
+/** Р РµРЅРґРµСЂРёС‚ С‚РµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ, Р·Р°РјРµРЅСЏСЏ СЌРјРѕРґР·Рё РЅР° РєРѕРјРїРѕРЅРµРЅС‚С‹ Apple Emoji */
 const MessageContent = ({ content, isJumbo = false }) => {
   if (!content) return null;
 
-  // Проверяем, состоит ли всё сообщение только из эмодзи (до 27 шт)
+  // РџСЂРѕРІРµСЂСЏРµРј, СЃРѕСЃС‚РѕРёС‚ Р»Рё РІСЃС‘ СЃРѕРѕР±С‰РµРЅРёРµ С‚РѕР»СЊРєРѕ РёР· СЌРјРѕРґР·Рё (РґРѕ 27 С€С‚)
   const emojisOnlyRegex = /^(\s*[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2194}-\u{2199}\u{21A9}-\u{21AA}\u{3297}\u{3299}\u{303D}\u{2139}\u{24C2}\u{1F191}-\u{1F19A}\u{E0020}-\u{E007F}\u{203C}\u{2049}\u{00A9}\u{00AE}\u{2122}\u{231A}\u{231B}\u{2328}\u{23CF}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}\u{25AA}\u{25AB}\u{25B6}\u{25C0}\u{25FB}-\u{25FE}\u{2600}-\u{2604}\u{260E}\u{2611}\u{2614}\u{2615}\u{2618}\u{261D}\u{2620}\u{2622}\u{2623}\u{2626}\u{262A}\u{262E}\u{262F}\u{2638}-\u{263A}\u{2640}\u{2642}\u{2648}-\u{2653}\u{2660}\u{2663}\u{2665}\u{2666}\u{2668}\u{267B}\u{267F}\u{2692}-\u{2694}\u{2696}\u{2697}\u{2699}\u{269B}\u{269C}\u{26A0}\u{26A1}\u{26AA}\u{26AB}\u{26B0}\u{26B1}\u{26BD}\u{26BE}\u{26C4}\u{26C5}\u{26C8}\u{26CE}\u{26CF}\u{26D1}\u{26D3}\u{26D4}\u{26E9}\u{26EA}\u{26F0}-\u{26F5}\u{26F7}-\u{26FA}\u{26FD}\u{2702}\u{2705}\u{2708}-\u{270D}\u{270F}\u{2712}\u{2714}\u{2716}\u{271D}\u{2721}\u{2728}\u{2733}\u{2734}\u{2744}\u{2747}\u{274C}\u{274E}\u{2753}-\u{2755}\u{2757}\u{2763}\u{2764}\u{2795}-\u{2797}\u{27A1}\u{27B0}\u{27BF}\u{2934}\u{2935}\u{2B05}-\u{2B07}\u{2B1B}\u{2B1C}\u{2B50}\u{2B55}\u{3030}\u{303D}\u{3297}\u{3299}]+\s*)+$/u;
   const isAllEmoji = emojisOnlyRegex.test(content.trim());
   const emojiSize = isAllEmoji ? 40 : 20;
 
-  // Если это только эмодзи, делаем их крупными и добавляем отступы
+  // Р•СЃР»Рё СЌС‚Рѕ С‚РѕР»СЊРєРѕ СЌРјРѕРґР·Рё, РґРµР»Р°РµРј РёС… РєСЂСѓРїРЅС‹РјРё Рё РґРѕР±Р°РІР»СЏРµРј РѕС‚СЃС‚СѓРїС‹
   if (isAllEmoji) {
     const emojis = content.match(EMOJI_REGEX) || [];
     return (
       <div className="flex flex-wrap gap-2 py-1 select-none">
         {emojis.map((emoji, idx) => (
           <div key={idx} className="scale-125 transform-gpu">
-            <Emoji unified={unifiedFromEmoji(emoji.trim())} emojiStyle={EMOJI_STYLE} size={emojiSize} />
+            <EmojiGlyph emoji={emoji.trim()} size={emojiSize} />
           </div>
         ))}
       </div>
     );
   }
 
-  // Для смешанного текста разбиваем строку и заменяем эмодзи инлайново
+  // Р”Р»СЏ СЃРјРµС€Р°РЅРЅРѕРіРѕ С‚РµРєСЃС‚Р° СЂР°Р·Р±РёРІР°РµРј СЃС‚СЂРѕРєСѓ Рё Р·Р°РјРµРЅСЏРµРј СЌРјРѕРґР·Рё РёРЅР»Р°Р№РЅРѕРІРѕ
   const parts = content.split(EMOJI_REGEX);
   return (
     <span className="leading-relaxed">
       {parts.map((part, idx) => {
-        if (EMOJI_REGEX.test(part)) {
+        const isEmojiPart = EMOJI_REGEX.test(part);
+        EMOJI_REGEX.lastIndex = 0;
+        if (isEmojiPart) {
           return (
             <span key={idx} className="inline-block mx-0.5 align-middle transform translate-y-[-1px]">
-              <Emoji unified={unifiedFromEmoji(part)} emojiStyle={EMOJI_STYLE} size={emojiSize} />
+              <EmojiGlyph emoji={part} size={emojiSize} />
             </span>
           );
         }
@@ -62,7 +57,7 @@ const MessageContent = ({ content, isJumbo = false }) => {
   );
 };
 
-/** Компонент для отображения вложения (картинка, видео или файл) */
+/** РљРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РІР»РѕР¶РµРЅРёСЏ (РєР°СЂС‚РёРЅРєР°, РІРёРґРµРѕ РёР»Рё С„Р°Р№Р») */
 function Attachment({ url, fileName, previewUrl = null }) {
   const [fullscreen, setFullscreen] = useState(false);
   const isPrivateAttachment = isPrivateDmAttachment(url);
@@ -73,7 +68,7 @@ function Attachment({ url, fileName, previewUrl = null }) {
     ? (fileName || decodedPrivatePath || resolvedUrl || url)
     : (resolvedUrl || url);
   const fallbackFileName = decodedPrivatePath?.split('/').pop()?.split('_').slice(2).join('_') || '';
-  const displayFileName = fileName || fallbackFileName || 'Прикреплённый файл';
+  const displayFileName = fileName || fallbackFileName || 'РџСЂРёРєСЂРµРїР»С‘РЅРЅС‹Р№ С„Р°Р№Р»';
   const extensionLabel = sourceForType.includes('.') ? sourceForType.split('.').pop().toUpperCase() : 'FILE';
   const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(sourceForType);
   const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(sourceForType);
@@ -99,8 +94,8 @@ function Attachment({ url, fileName, previewUrl = null }) {
       })
       .catch((err) => {
         if (!isActive) return;
-        console.error('[DM Attachment] Не удалось создать signed URL:', err);
-        setResolveError('Не удалось открыть вложение');
+        console.error('[DM Attachment] РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ signed URL:', err);
+        setResolveError('РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ РІР»РѕР¶РµРЅРёРµ');
       });
 
     return () => {
@@ -137,7 +132,7 @@ function Attachment({ url, fileName, previewUrl = null }) {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error('Ошибка скачивания:', err);
+      console.error('РћС€РёР±РєР° СЃРєР°С‡РёРІР°РЅРёСЏ:', err);
       if (resolvedUrl) {
         window.open(resolvedUrl, '_blank');
       }
@@ -163,7 +158,7 @@ function Attachment({ url, fileName, previewUrl = null }) {
           <Trash2 size={16} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-ds-red text-sm font-bold truncate">{fileName || '��������'}</p>
+          <p className="text-ds-red text-sm font-bold truncate">{fileName || 'Вложение'}</p>
           <p className="text-ds-red/70 text-[10px] uppercase font-bold tracking-wider mt-0.5">{resolveError}</p>
         </div>
       </div>
@@ -175,7 +170,7 @@ function Attachment({ url, fileName, previewUrl = null }) {
       <>
         <img
           src={resolvedUrl}
-          alt={fileName || "Вложение"}
+          alt={fileName || "Р’Р»РѕР¶РµРЅРёРµ"}
           onClick={() => setFullscreen(true)}
           className="mt-2 max-w-sm max-h-72 rounded-xl object-cover cursor-pointer hover:opacity-95 transition-opacity border border-ds-divider/30"
         />
@@ -186,7 +181,7 @@ function Attachment({ url, fileName, previewUrl = null }) {
           >
             <img
               src={resolvedUrl}
-              alt={fileName || "Вложение (полный размер)"}
+              alt={fileName || "Р’Р»РѕР¶РµРЅРёРµ (РїРѕР»РЅС‹Р№ СЂР°Р·РјРµСЂ)"}
               className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
             />
             <button
@@ -254,13 +249,13 @@ function Attachment({ url, fileName, previewUrl = null }) {
           {displayFileName}
         </p>
         <p className="text-ds-muted text-[10px] uppercase font-bold tracking-wider mt-0.5">
-          {extensionLabel} ����
+          {extensionLabel} файл
         </p>
       </div>
       <button
         onClick={handleDownload}
         className="w-8 h-8 rounded-lg flex items-center justify-center bg-ds-bg text-ds-muted hover:text-ds-accent hover:bg-ds-hover transition-all"
-        title="Скачать"
+        title="РЎРєР°С‡Р°С‚СЊ"
       >
         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
           <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
@@ -271,12 +266,12 @@ function Attachment({ url, fileName, previewUrl = null }) {
 }
 
 /**
- * Компонент списка реакций под сообщением.
+ * РљРѕРјРїРѕРЅРµРЅС‚ СЃРїРёСЃРєР° СЂРµР°РєС†РёР№ РїРѕРґ СЃРѕРѕР±С‰РµРЅРёРµРј.
  */
 function ReactionList({ reactions, userId, onToggle }) {
   if (!reactions || reactions.length === 0) return null;
 
-  // Группируем реакции по эмодзи
+  // Р“СЂСѓРїРїРёСЂСѓРµРј СЂРµР°РєС†РёРё РїРѕ СЌРјРѕРґР·Рё
   const grouped = reactions.reduce((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = { count: 0, me: false };
     acc[r.emoji].count++;
@@ -299,7 +294,7 @@ function ReactionList({ reactions, userId, onToggle }) {
           `}
         >
           <div className="scale-125 transform-gpu">
-             <Emoji unified={unifiedFromEmoji(emoji)} emojiStyle={EMOJI_STYLE} size={16} />
+             <EmojiGlyph emoji={emoji} size={16} className="scale-125 transform-gpu" />
           </div>
           <span>{meta.count}</span>
         </button>
@@ -309,7 +304,7 @@ function ReactionList({ reactions, userId, onToggle }) {
 }
 
 /**
- * Компонент контекстного меню (ПКМ)
+ * РљРѕРјРїРѕРЅРµРЅС‚ РєРѕРЅС‚РµРєСЃС‚РЅРѕРіРѕ РјРµРЅСЋ (РџРљРњ)
  */
 function ContextMenu({ x, y, options, onClose }) {
   useEffect(() => {
@@ -343,7 +338,7 @@ function ContextMenu({ x, y, options, onClose }) {
 }
 
 /**
- * Компонент одного сообщения.
+ * РљРѕРјРїРѕРЅРµРЅС‚ РѕРґРЅРѕРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ.
  */
 export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, onEdit, onDelete }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -367,7 +362,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
   const time = new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const fullTime = new Date(msg.created_at).toLocaleString('ru-RU');
   
-  let realName = 'Аноним';
+  let realName = 'РђРЅРѕРЅРёРј';
   let colorStr = null;
   if (msg.username) {
     [realName, colorStr] = msg.username.split('@@');
@@ -384,7 +379,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
   const displayColor = isAdmin ? '#ff4444' : 'var(--ds-text)';
   const isRead = msg.is_read;
   
-  // Расчет времени до удаления (14 дней)
+  // Р Р°СЃС‡РµС‚ РІСЂРµРјРµРЅРё РґРѕ СѓРґР°Р»РµРЅРёСЏ (14 РґРЅРµР№)
   const getExpiryLabel = () => {
     if (msg.isPending) return null;
     const createdDate = new Date(msg.created_at);
@@ -392,7 +387,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
     const now = new Date();
     const diff = expiryDate - now;
 
-    if (diff <= 0) return "Удаляется...";
+    if (diff <= 0) return "РЈРґР°Р»СЏРµС‚СЃСЏ...";
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -400,16 +395,16 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
     const secs = Math.floor((diff % (1000 * 60)) / 1000);
 
     let parts = [];
-    if (days > 0) parts.push(`${days}д`);
-    if (hours > 0) parts.push(`${hours}ч`);
-    if (mins > 0) parts.push(`${mins}м`);
-    if (days === 0 && hours === 0) parts.push(`${secs}с`);
+    if (days > 0) parts.push(`${days}Рґ`);
+    if (hours > 0) parts.push(`${hours}С‡`);
+    if (mins > 0) parts.push(`${mins}Рј`);
+    if (days === 0 && hours === 0) parts.push(`${secs}СЃ`);
 
-    return `Удалится через ${parts.join(' ')}`;
+    return `РЈРґР°Р»РёС‚СЃСЏ С‡РµСЂРµР· ${parts.join(' ')}`;
   };
   const expiryLabel = getExpiryLabel();
 
-  // Закрытие пикера по клику вне
+  // Р—Р°РєСЂС‹С‚РёРµ РїРёРєРµСЂР° РїРѕ РєР»РёРєСѓ РІРЅРµ
   useEffect(() => {
     function handleClick(e) {
       if (pickerRef.current && !pickerRef.current.contains(e.target)) {
@@ -420,7 +415,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showEmojiPicker]);
 
-  // Фокус при редактировании
+  // Р¤РѕРєСѓСЃ РїСЂРё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРё
   useEffect(() => {
     if (isEditing) {
       editInputRef.current?.focus();
@@ -456,27 +451,27 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
   };
 
   const menuOptions = [
-    { label: 'Копировать текст', icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>, onClick: () => navigator.clipboard.writeText(msg.content) },
+    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ С‚РµРєСЃС‚', icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>, onClick: () => navigator.clipboard.writeText(msg.content) },
     { separator: true },
     ...(isMine ? [
       { 
-        label: 'Редактировать', 
+        label: 'Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ', 
         icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>, 
         onClick: handleStartEdit 
       },
       { 
-        label: 'Удалить', 
+        label: 'РЈРґР°Р»РёС‚СЊ', 
         danger: true, 
         icon: <Trash2 size={14} />, 
         onClick: () => {
-          if (confirm('Удалить это сообщение?')) {
+          if (confirm('РЈРґР°Р»РёС‚СЊ СЌС‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ?')) {
             onDelete(msg.id);
           }
         } 
       },
     ] : []),
     { separator: true },
-    { label: 'Копировать ID', onClick: () => navigator.clipboard.writeText(msg.id) },
+    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ ID', onClick: () => navigator.clipboard.writeText(msg.id) },
   ];
 
   const reactionBtn = (
@@ -484,17 +479,15 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
       <button
         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
         className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 flex items-center justify-center rounded-lg bg-ds-bg border border-ds-divider/30 text-ds-muted hover:text-ds-text hover:bg-ds-hover shadow-lg"
-        title="Добавить реакцию"
+        title="Р”РѕР±Р°РІРёС‚СЊ СЂРµР°РєС†РёСЋ"
       >
         <Smile size={18} strokeWidth={2.5} />
       </button>
       {showEmojiPicker && (
         <div ref={pickerRef} className="absolute z-[100] bottom-full left-0 mb-2 shadow-2xl transition-all">
-          <EmojiPicker 
+          <LazyEmojiPicker 
              onEmojiClick={handleEmojiClick} 
              theme={document.documentElement.classList.contains('light-theme') ? 'light' : 'dark'} 
-             emojiStyle={EMOJI_STYLE}
-             skinTonesDisabled 
           />
         </div>
       )}
@@ -515,9 +508,9 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
         className="w-full bg-transparent text-ds-text text-sm resize-none focus:outline-none leading-relaxed p-1"
       />
       <div className="flex items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
-        <button onClick={handleSaveEdit} className="text-ds-accent hover:underline">Сохранить (Enter)</button>
+        <button onClick={handleSaveEdit} className="text-ds-accent hover:underline">РЎРѕС…СЂР°РЅРёС‚СЊ (Enter)</button>
         <div className="w-1 h-1 rounded-full bg-ds-muted"></div>
-        <button onClick={handleCancelEdit} className="text-ds-muted hover:text-ds-text transition-colors">Отмена (Esc)</button>
+        <button onClick={handleCancelEdit} className="text-ds-muted hover:text-ds-text transition-colors">РћС‚РјРµРЅР° (Esc)</button>
       </div>
     </div>
   );
@@ -547,16 +540,16 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
                   <MessageContent content={msg.content} />
                 </div>
                 {msg.is_edited && (
-                  <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(изменено)</span>
+                  <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(РёР·РјРµРЅРµРЅРѕ)</span>
                 )}
                 {msg.isPending ? (
                   <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
-                    ОТПРАВКА...
+                    РћРўРџР РђР’РљРђ...
                   </span>
                 ) : (
                   isMine && isRead !== undefined && (
                     <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent' : 'text-ds-muted'}`}>
-                      {isRead ? '✓✓' : '✓'}
+                      {isRead ? 'вњ“вњ“' : 'вњ“'}
                     </span>
                   )
                 )}
@@ -597,12 +590,12 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
           <span className="font-bold text-[14.5px] tracking-tight" style={{ color: displayColor }}>{realName}</span>
           {isPlatformAdmin && (
             <span className="px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle select-none">
-              СОЗДАТЕЛЬ
+              РЎРћР—Р”РђРўР•Р›Р¬
             </span>
           )}
           {isServerAdmin && (
             <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-[8px] font-black text-amber-500 uppercase tracking-tighter shadow-[0_0_8px_rgba(245,158,11,0.2)] align-middle select-none">
-              АДМИН
+              РђР”РњРРќ
             </span>
           )}
           {/* Reaction button next to name on hover for main messages */}
@@ -620,16 +613,16 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
                 <MessageContent content={msg.content} />
               </div>
               {msg.is_edited && (
-                <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(изменено)</span>
+                <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(РёР·РјРµРЅРµРЅРѕ)</span>
               )}
               {msg.isPending ? (
                  <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
-                   ОТПРАВКА...
+                   РћРўРџР РђР’РљРђ...
                  </span>
               ) : (
                 isMine && isRead !== undefined && (
                   <span className={`text-[11px] font-bold leading-none mb-1 select-none flex-shrink-0 ${isRead ? 'text-ds-accent vibe-glow-blue' : 'opacity-20'}`}>
-                    {isRead ? '✓✓' : '✓'}
+                    {isRead ? 'вњ“вњ“' : 'вњ“'}
                   </span>
                 )
               )}
@@ -653,6 +646,8 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
     </div>
   );
 }
+
+
 
 
 
