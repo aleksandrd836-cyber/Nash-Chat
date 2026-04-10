@@ -215,3 +215,30 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `src/App.jsx`
+
+### 2026-04-10 voice UI rerender optimization pass
+- Reduced avoidable rerenders in `src/components/VoiceChannel.jsx` and `src/components/Sidebar.jsx` after the larger voice refactor.
+- `VoiceChannel.jsx` changes:
+  - added `memo` for `ScreenPlayer`
+  - introduced memoized `channelParticipants`, `hasSelfInThisChannel`, `participantMap`, and `participantIdsKey`
+  - split localStorage volume restore from the global `volumeChanged` event listener
+  - replaced repeated participant lookups with `Map` reads
+  - hoisted creator ID checks into a shared `Set`
+  - memoized context-menu avatar/volume derivations
+- `Sidebar.jsx` changes:
+  - memoized flattened voice participants and text/voice channel lists
+  - split volume restore from the `volumeChanged` listener
+  - memoized context-menu avatar/volume derivations
+  - hoisted creator ID checks into a shared `Set`
+- `npm run build` passed after this optimization pass.
+- Files touched in this pass:
+  - `src/components/VoiceChannel.jsx`
+  - `src/components/Sidebar.jsx`
+
+### Auto Log — 2026-04-10 15:01
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/Sidebar.jsx`
+  - `src/components/VoiceChannel.jsx`

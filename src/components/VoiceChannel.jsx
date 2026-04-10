@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { memo, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getUserAvatar } from '../lib/avatar';
 import { ScreenPickerModal } from './ScreenPickerModal';
 import { Mic, Volume2, Users, MicOff, Headphones, LogOut, Monitor, Download, Maximize, X } from 'lucide-react';
 
+const CREATOR_IDS = new Set([
+  '43751682-690e-4934-a9f2-7300a816b92d',
+  '1380ae20-201a-4c77-aed3-93b3cb96f8d5'
+]);
 
-function ScreenPlayer({ participant, stream, onClose }) {
+const ScreenPlayer = memo(function ScreenPlayer({ participant, stream, onClose }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
   const [vol, setVol] = useState(1);
@@ -74,7 +78,7 @@ function ScreenPlayer({ participant, stream, onClose }) {
       </div>
     </div>
   );
-}
+});
 
 /**
  * Панель голосового канала.
@@ -105,8 +109,14 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     serverStatus,
   } = voice;
 
-  const channelParticipants = allParticipants[channel?.id] || [];
-  const hasSelfInThisChannel = channelParticipants.some((participant) => participant.userId === user?.id);
+  const channelParticipants = useMemo(
+    () => allParticipants[channel?.id] || [],
+    [allParticipants, channel?.id]
+  );
+  const hasSelfInThisChannel = useMemo(
+    () => channelParticipants.some((participant) => participant.userId === user?.id),
+    [channelParticipants, user?.id]
+  );
   const isInThisChannel = activeChannelId === channel?.id || hasSelfInThisChannel;
   const isJoiningThisChannel = !isInThisChannel && isConnecting && connectingChannelId === channel?.id;
 
@@ -118,6 +128,19 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
   const [watchedScreens, setWatchedScreens] = useState(new Set());
   const menuRef = useRef(null);
   const screenRequestCooldownRef = useRef({});
+  const participantMap = useMemo(
+    () => new Map(participants.map((participant) => [participant.userId, participant])),
+    [participants]
+  );
+  const participantIdsKey = useMemo(
+    () => participants.map((participant) => participant.userId).join('|'),
+    [participants]
+  );
+  const menuVolume = ctxMenu ? (volumes[ctxMenu.participant.userId] ?? 100) : 100;
+  const menuAvatarUrl = useMemo(
+    () => (ctxMenu ? getUserAvatar(ctxMenu.participant.username).imageUrl : ''),
+    [ctxMenu]
+  );
 
   // Сброс игнорируемых стримов при смене канала
   useEffect(() => {
@@ -135,38 +158,41 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     return () => window.removeEventListener('mousedown', handleClick);
   }, [ctxMenu]);
 
-  // Инициализировать громкость из localStorage и следить за изменениями
+  // Инициализировать громкость из localStorage
   useEffect(() => {
     const saved = {};
-    participants.forEach(p => {
-      const stored = localStorage.getItem(`vol_${p.userId}`);
-      saved[p.userId] = stored !== null ? Number(stored) : 100;
+    participants.forEach((participant) => {
+      const stored = localStorage.getItem(`vol_${participant.userId}`);
+      saved[participant.userId] = stored !== null ? Number(stored) : 100;
     });
-    setVolumes(prev => ({ ...prev, ...saved }));
+    setVolumes((prev) => ({ ...prev, ...saved }));
+  }, [participantIdsKey, participants]);
 
+  // Слушать внешние изменения громкости
+  useEffect(() => {
     const handleVolChange = (e) => {
-      setVolumes(prev => ({ ...prev, [e.detail.userId]: e.detail.volumePct }));
+      setVolumes((prev) => ({ ...prev, [e.detail.userId]: e.detail.volumePct }));
     };
     window.addEventListener('volumeChanged', handleVolChange);
     return () => window.removeEventListener('volumeChanged', handleVolChange);
-  }, [participants]);
+  }, []);
 
   useEffect(() => {
     setWatchedScreens((prev) => {
       const next = new Set(
         [...prev].filter((userId) => {
-          const participant = participants.find((item) => item.userId === userId);
+          const participant = participantMap.get(userId);
           return Boolean(participant?.isScreenSharing);
         })
       );
 
       return next.size === prev.size ? prev : next;
     });
-  }, [participants]);
+  }, [participantMap]);
 
   useEffect(() => {
     watchedScreens.forEach((userId) => {
-      const participant = participants.find((item) => item.userId === userId);
+      const participant = participantMap.get(userId);
       const stream = remoteScreens[userId];
       if (!participant?.isScreenSharing || stream) return;
 
@@ -176,7 +202,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       screenRequestCooldownRef.current[userId] = Date.now();
       requestScreenView?.(userId);
     });
-  }, [participants, remoteScreens, requestScreenView, watchedScreens]);
+  }, [participantMap, remoteScreens, requestScreenView, watchedScreens]);
 
   const handleContextMenu = useCallback((e, participant) => {
     if (participant.userId === user?.id) return;
@@ -336,7 +362,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   <div className="text-center min-w-0 w-full">
                       <p className={`font-black text-sm truncate flex items-center justify-center gap-2 px-2 transition-colors ${isActuallySpeaking ? 'text-ds-green' : 'text-ds-text'}`} style={{ color: p.userId === ownerId ? '#ff4444' : '' }}>
                         {p.username}
-                        {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(p.userId) && (
+                        {CREATOR_IDS.has(p.userId) && (
                           <span className="px-2 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[9px] font-black text-ds-accent uppercase tracking-widest vibe-glow-blue shadow-[0_0_10px_rgba(0,240,255,0.2)] vibe-creator-badge">
                             СОЗДАТЕЛЬ
                           </span>
@@ -497,14 +523,14 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
           <div className="flex items-center gap-4 mb-5 pb-4 border-b border-white/5">
             <div className="w-12 h-12 rounded-full bg-black/40 overflow-hidden border border-white/10">
               <img
-                src={getUserAvatar(ctxMenu.participant.username).imageUrl}
+                src={menuAvatarUrl}
                 alt={ctxMenu.participant.username}
                 className="w-full h-full object-cover"
               />
             </div>
             <p className="text-ds-text font-black text-base truncate" style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : 'var(--ds-text)' }}>
               {ctxMenu.participant.username}
-              {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(ctxMenu.participant.userId) && (
+              {CREATOR_IDS.has(ctxMenu.participant.userId) && (
                 <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
                   СОЗДАТЕЛЬ
                 </span>
@@ -516,13 +542,13 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
             <div className="flex items-center justify-between">
               <p className="text-ds-muted text-[10px] font-black uppercase tracking-[0.2em]">Громкость</p>
               <span className="text-ds-accent text-[11px] font-black tabular-nums vibe-glow-blue border border-ds-accent/30 px-2 py-0.5 rounded-full">
-                {volumes[ctxMenu.participant.userId] ?? 100}%
+                {menuVolume}%
               </span>
             </div>
 
             <input
               type="range" min="0" max="200" step="5"
-              value={volumes[ctxMenu.participant.userId] ?? 100}
+              value={menuVolume}
               onChange={e => handleVolumeChange(ctxMenu.participant.userId, e.target.value)}
               className="w-full h-1.5 rounded-full accent-ds-accent cursor-pointer bg-white/5"
             />
@@ -533,7 +559,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   key={v}
                   onClick={() => handleVolumeChange(ctxMenu.participant.userId, v)}
                   className={`py-2 rounded-xl text-[9px] font-black transition-all border ${
-                    (volumes[ctxMenu.participant.userId] ?? 100) === v
+                    menuVolume === v
                       ? 'bg-ds-accent border-ds-accent text-black vibe-glow-blue'
                       : 'bg-white/5 border-white/10 text-white/30 hover:text-white hover:border-white/20'
                   }`}

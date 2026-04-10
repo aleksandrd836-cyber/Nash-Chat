@@ -29,11 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-10 14:50`
+- Время: `2026-04-10 15:01`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/App.jsx`
+  - `src/components/Sidebar.jsx`
+  - `src/components/VoiceChannel.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -103,3 +104,10 @@ pm run build passes.
 - `src/App.jsx` now restores proper `Suspense` boundaries for lazy main panels and `MembersPanel`.
 - Added `startTransition` around navigation and lazy modal open actions to reduce React 18 synchronous-suspense risk.
 - Next step after this fix: verify app startup, channel switching, DM open/close, and settings/server modal open in both browser and exe builds.
+
+## 2026-04-10 voice UI perf handoff
+- Completed the first focused rerender pass for the post-refactor voice UI.
+- `VoiceChannel.jsx` now memoizes core derived state and avoids repeated participant scans inside effects.
+- `Sidebar.jsx` now memoizes flattened voice participants, split channel lists, and context-menu derived values.
+- This was intentionally kept logic-safe: no signaling or session behavior changed, only render-time derivations and listener setup were tightened.
+- Good next step after this checkpoint: verify whether `ChannelItem` / `VoiceParticipant` still rerender too often from inline handlers, but only if real UI jank remains.

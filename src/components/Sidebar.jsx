@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserPanel } from './UserPanel';
 import { ProfileFooter } from './ProfileFooter';
@@ -8,6 +8,11 @@ import { MicOff, Headphones } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { ChannelItem } from './Sidebar/ChannelItem';
 import { VoiceParticipant } from './Sidebar/VoiceParticipant';
+
+const CREATOR_IDS = new Set([
+  '43751682-690e-4934-a9f2-7300a816b92d',
+  '1380ae20-201a-4c77-aed3-93b3cb96f8d5'
+]);
 
 
 /**
@@ -52,6 +57,27 @@ export function Sidebar({
   const volMenuRef = useRef(null);
 
   const { activeChannelId, allParticipants, setParticipantVolume, isSpeaking } = voice;
+  const allVoiceParticipants = useMemo(
+    () => Object.values(allParticipants).flat(),
+    [allParticipants]
+  );
+  const participantIdsKey = useMemo(
+    () => allVoiceParticipants.map((participant) => participant.userId).join('|'),
+    [allVoiceParticipants]
+  );
+  const textChannels = useMemo(
+    () => channels.filter((channel) => channel.type === 'text'),
+    [channels]
+  );
+  const voiceChannels = useMemo(
+    () => channels.filter((channel) => channel.type === 'voice'),
+    [channels]
+  );
+  const menuVolume = ctxMenu ? (volumes[ctxMenu.participant.userId] ?? 100) : 100;
+  const menuAvatarUrl = useMemo(
+    () => (ctxMenu ? getUserAvatar(ctxMenu.participant.username).imageUrl : ''),
+    [ctxMenu]
+  );
 
   // ── Загрузка каналов ──
   useEffect(() => {
@@ -92,20 +118,21 @@ export function Sidebar({
 
   // Восстановить громкость из localStorage и следить за изменениями
   useEffect(() => {
-    const all = Object.values(allParticipants).flat();
     const saved = {};
-    all.forEach(p => {
-      const stored = localStorage.getItem(`vol_${p.userId}`);
-      if (stored !== null) saved[p.userId] = Number(stored);
+    allVoiceParticipants.forEach((participant) => {
+      const stored = localStorage.getItem(`vol_${participant.userId}`);
+      if (stored !== null) saved[participant.userId] = Number(stored);
     });
-    setVolumes(prev => ({ ...saved, ...prev }));
+    setVolumes((prev) => ({ ...saved, ...prev }));
+  }, [allVoiceParticipants, participantIdsKey]);
 
+  useEffect(() => {
     const handleVolChange = (e) => {
-      setVolumes(prev => ({ ...prev, [e.detail.userId]: e.detail.volumePct }));
+      setVolumes((prev) => ({ ...prev, [e.detail.userId]: e.detail.volumePct }));
     };
     window.addEventListener('volumeChanged', handleVolChange);
     return () => window.removeEventListener('volumeChanged', handleVolChange);
-  }, [allParticipants]);
+  }, []);
 
   // ── CRUD каналов ──
 
@@ -181,10 +208,6 @@ export function Sidebar({
     setVolumes(prev => ({ ...prev, [userId]: num }));
     setParticipantVolume?.(userId, num);
   }, [setParticipantVolume]);
-
-  const textChannels  = channels.filter(c => c.type === 'text');
-  const voiceChannels = channels.filter(c => c.type === 'voice');
-
 
   // ── Рендер ──
   return (
@@ -394,13 +417,13 @@ export function Sidebar({
         >
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-full bg-ds-bg overflow-hidden flex items-center justify-center flex-shrink-0">
-              <img src={getUserAvatar(ctxMenu.participant.username).imageUrl} alt={ctxMenu.participant.username} className="w-12 h-12 max-w-none" />
+              <img src={menuAvatarUrl} alt={ctxMenu.participant.username} className="w-12 h-12 max-w-none" />
             </div>
             <div className="text-center min-w-0 w-full">
               <p className={`font-black text-sm truncate flex items-center justify-center gap-2 px-2 transition-colors ${ctxMenu.participant.isSpeaking ? 'text-ds-green' : 'text-ds-text'}`} style={{ color: ctxMenu.participant.userId === ownerId ? '#ff4444' : '' }}>
                 {ctxMenu.participant.username}
               </p>
-              {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(ctxMenu.participant.userId) && (
+              {CREATOR_IDS.has(ctxMenu.participant.userId) && (
                 <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
                   СОЗДАТЕЛЬ
                 </span>
@@ -410,21 +433,21 @@ export function Sidebar({
           <div className="border-t border-ds-divider/40 pt-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-ds-muted text-xs font-semibold uppercase tracking-wider">Громкость</p>
-              <span className="text-ds-text text-xs font-bold tabular-nums">{volumes[ctxMenu.participant.userId] ?? 100}%</span>
+              <span className="text-ds-text text-xs font-bold tabular-nums">{menuVolume}%</span>
             </div>
             <input
               type="range" min="0" max="200" step="5"
-              value={volumes[ctxMenu.participant.userId] ?? 100}
+              value={menuVolume}
               onChange={e => handleVolumeChange(ctxMenu.participant.userId, e.target.value)}
               className="w-full h-1.5 rounded-full accent-ds-accent cursor-pointer"
-              style={{ background: `linear-gradient(to right, #5865F2 ${(volumes[ctxMenu.participant.userId] ?? 100) / 2}%, #3A3C42 ${(volumes[ctxMenu.participant.userId] ?? 100) / 2}%)` }}
+              style={{ background: `linear-gradient(to right, #5865F2 ${menuVolume / 2}%, #3A3C42 ${menuVolume / 2}%)` }}
             />
             <div className="flex gap-1 mt-3">
               {[0, 50, 100, 150, 200].map(v => (
                 <button key={v}
                   onClick={() => handleVolumeChange(ctxMenu.participant.userId, v)}
                   className={`flex-1 py-1 rounded text-[10px] font-semibold transition-colors ${
-                    (volumes[ctxMenu.participant.userId] ?? 100) === v
+                    menuVolume === v
                       ? 'bg-ds-accent text-white' : 'bg-ds-bg text-ds-muted hover:text-ds-text hover:bg-ds-hover'
                   }`}
                 >
