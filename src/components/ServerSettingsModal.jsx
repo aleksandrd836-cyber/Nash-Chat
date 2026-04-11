@@ -48,7 +48,8 @@ const TEXT = {
     '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0430\u0432\u0430\u0442\u0430\u0440 \u0441\u0435\u0440\u0432\u0435\u0440\u0430. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 Storage \u0432 Supabase.',
   deleteServerConfirmPrefix: '\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440 \u00ab',
   deleteServerConfirmSuffix: '\u00bb \u043f\u043e\u043b\u043d\u043e\u0441\u0442\u044c\u044e?',
-  manualCopyPrompt: '\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439 \u043a\u043e\u0434 \u0432\u0440\u0443\u0447\u043d\u0443\u044e:'
+  manualCopyPrompt: '\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439 \u043a\u043e\u0434 \u0432\u0440\u0443\u0447\u043d\u0443\u044e:',
+  deleteServerFailedPrefix: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440:'
 };
 
 function normalizeServerInviteCode(value) {
@@ -232,7 +233,18 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   async function handleDeleteServer() {
     if (!window.confirm(`${TEXT.deleteServerConfirmPrefix}${server.name}${TEXT.deleteServerConfirmSuffix}`)) return;
 
-    await supabase.from('servers').delete().eq('id', server.id);
+    const { data, error } = await supabase.rpc('delete_owned_server', { p_server_id: server.id });
+
+    if (error) {
+      alert(`${TEXT.deleteServerFailedPrefix}\n${error.message}`);
+      return;
+    }
+
+    if (data?.error) {
+      alert(`${TEXT.deleteServerFailedPrefix}\n${data.error}`);
+      return;
+    }
+
     onServerDeleted();
     onClose();
   }

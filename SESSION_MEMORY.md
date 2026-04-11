@@ -512,6 +512,13 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
 - User-facing strings in the two server modals were moved to ASCII-safe `\uXXXX` literals to avoid another mojibake regression.
 - Verification: `npm run build` passed on `2.5.38`.
 
+### 2026-04-11 server delete hardening
+- Direct `delete()` on `servers` was too fragile and gave the user no visible error when DB-side constraints or hidden tables blocked cascade removal.
+- Added RPC `delete_owned_server(UUID)` in `server-delete-hardening.sql` and mirrored it into `full-setup.sql`.
+- The function validates ownership via `auth.uid()`, then explicitly removes `channel_last_read`, `message_reactions`, `messages`, `channels`, `server_members`, and finally the server itself.
+- `src/components/ServerSettingsModal.jsx` now deletes through the RPC and shows an alert if Supabase returns an error instead of failing silently.
+- Verification: `npm run build` passed on `2.5.39`.
+
 ### Auto Log — 2026-04-11 04:08
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
@@ -536,4 +543,13 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `src/components/ServerEntryModal.jsx`
+  - `src/components/ServerSettingsModal.jsx`
+
+### Auto Log — 2026-04-11 14:59
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `full-setup.sql`
+  - `package.json`
+  - `public/version.json`
+  - `server-delete-hardening.sql`
   - `src/components/ServerSettingsModal.jsx`

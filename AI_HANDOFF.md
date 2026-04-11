@@ -29,11 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 14:47`
+- Время: `2026-04-11 14:59`
 - Последние staged-файлы перед коммитом:
+  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `src/components/ServerEntryModal.jsx`
+  - `server-delete-hardening.sql`
   - `src/components/ServerSettingsModal.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
@@ -217,3 +218,10 @@ pm run build passes.
 - `src/components/ServerSettingsModal.jsx` now marks the glow as `pointer-events-none`, raises the interactive content above it with `z-10`, and forces text selection on the invite input with inline `user-select: text`.
 - `src/components/ServerEntryModal.jsx` and `src/components/ServerSettingsModal.jsx` now store all visible Russian strings as `\uXXXX` literals, which avoids future mojibake even if terminal/file encoding gets weird.
 - Latest safe checkpoint after this fix: `npm run build` passes on `2.5.38`.
+
+## 2026-04-11 server deletion handoff
+- If a server refuses to delete from the settings modal, inspect `server-delete-hardening.sql` first.
+- The old UI path called `supabase.from('servers').delete()` directly and gave almost no signal when hidden DB dependencies blocked deletion.
+- New flow uses RPC `delete_owned_server(UUID)` that checks ownership and then explicitly clears dependent records: `channel_last_read`, `message_reactions`, `messages`, `channels`, `server_members`, and the `servers` row.
+- Frontend call site is `src/components/ServerSettingsModal.jsx`; it now surfaces Supabase errors through an alert instead of silently closing.
+- Latest safe checkpoint after this fix: `npm run build` passes on `2.5.39`.
