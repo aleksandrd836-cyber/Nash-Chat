@@ -136,6 +136,13 @@ export function Sidebar({
 
   // ── CRUD каналов ──
 
+  function formatChannelMutationError(action, error) {
+    if (error?.code === '42501') {
+      return `База данных запретила ${action} канала. Обычно это значит, что в Supabase ещё не применён свежий SQL для таблицы channels.`;
+    }
+    return error?.message || `Не удалось выполнить действие: ${action} канала.`;
+  }
+
   async function createChannel(type) {
     if (!selectedServer?.id) return;
     const existing = channels.filter(c => c.type === type);
@@ -148,7 +155,7 @@ export function Sidebar({
       .single();
     if (error) {
       console.error('createChannel error:', error);
-      alert(`Ошибка создания канала:\n${error.message}\n\nКод: ${error.code}`);
+      alert(`Ошибка создания канала:\n${formatChannelMutationError('создание', error)}\n\nКод: ${error.code}`);
       return;
     }
     if (data) {
@@ -164,7 +171,7 @@ export function Sidebar({
     const { error } = await supabase.from('channels').update({ name: trimmed }).eq('id', id);
     if (error) {
       console.error('renameChannel error:', error);
-      alert(`Ошибка переименования:\n${error.message}`);
+      alert(`Ошибка переименования:\n${formatChannelMutationError('переименование', error)}`);
     } else {
       setChannels(prev => prev.map(c => c.id === id ? { ...c, name: trimmed } : c));
     }
@@ -176,7 +183,7 @@ export function Sidebar({
     const { error } = await supabase.from('channels').delete().eq('id', ch.id);
     if (error) {
       console.error('deleteChannel error:', error);
-      alert(`Ошибка удаления:\n${error.message}`);
+      alert(`Ошибка удаления:\n${formatChannelMutationError('удаление', error)}`);
       return;
     }
     setChannels(prev => prev.filter(c => c.id !== ch.id));

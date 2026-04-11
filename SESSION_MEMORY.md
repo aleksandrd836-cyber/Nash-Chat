@@ -446,3 +446,24 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/ServerEntryModal.jsx`
   - `src/components/Sidebar/ChannelItem.jsx`
   - `src/components/Sidebar/VoiceParticipant.jsx`
+
+### 2026-04-11 channel RLS + theme pass
+- Root cause of channel creation failure was confirmed: `public.channels` had RLS enabled but no `INSERT / UPDATE / DELETE` policies.
+- Added owner-only channel management policies to `full-setup.sql` and created `channel-rls-hardening.sql` for live Supabase projects.
+- `src/components/Sidebar.jsx` now translates Supabase `42501` into a human explanation instead of only showing the raw database message.
+- Continued theme step 2 with shared surface primitives in `src/index.css`:
+  - stronger `vibe-primary-button`
+  - new `vibe-secondary-button`
+  - new `vibe-form-field`
+- Applied the shared theme primitives to `src/components/AuthPage.jsx` so login/register fields and CTA now look more consistent in both dark and light themes.
+
+### Auto Log — 2026-04-11 03:44
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `channel-rls-hardening.sql`
+  - `full-setup.sql`
+  - `package.json`
+  - `public/version.json`
+  - `src/components/AuthPage.jsx`
+  - `src/components/Sidebar.jsx`
+  - `src/index.css`

@@ -29,14 +29,15 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 03:28`
+- Время: `2026-04-11 03:44`
 - Последние staged-файлы перед коммитом:
+  - `channel-rls-hardening.sql`
+  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `src/components/MembersPanel.jsx`
-  - `src/components/ServerEntryModal.jsx`
-  - `src/components/Sidebar/ChannelItem.jsx`
-  - `src/components/Sidebar/VoiceParticipant.jsx`
+  - `src/components/AuthPage.jsx`
+  - `src/components/Sidebar.jsx`
+  - `src/index.css`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -183,3 +184,13 @@ pm run build passes.
 - This pass also quietly fixed one correctness issue in the members list: owner highlighting now actually receives `ownerId` in row rendering.
 - Creator badge labels in side lists are normalized to clean Russian text.
 - Build status after this continuation pass: `npm run build` succeeds on `2.5.33`.
+
+## 2026-04-11 channel permissions handoff
+- If channel create / rename / delete suddenly fails with Supabase code `42501`, inspect `channel-rls-hardening.sql` first.
+- That SQL adds missing write policies on `public.channels` so only the server owner can manage channels.
+- Repo mirror of the same logic was added to `full-setup.sql`.
+- UI-side clarification also lives in `src/components/Sidebar.jsx`, where raw Supabase permission errors are converted into a human message.
+
+## 2026-04-11 auth-theme handoff
+- Shared theme primitives were extended in `src/index.css` with `vibe-secondary-button` and `vibe-form-field`, while `vibe-primary-button` got stronger contrast and hover presence.
+- `src/components/AuthPage.jsx` now consumes those shared primitives, so auth fields and CTA match the newer shell/hub/voice styling more closely in both themes.

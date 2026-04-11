@@ -69,11 +69,11 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
         </div>
 
         {/* Auth Card */}
-        <div className="bg-ds-sidebar/80 backdrop-blur-3xl rounded-[3rem] p-8 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] relative group overflow-y-auto max-h-[75vh] no-scrollbar">
+        <div className="vibe-panel-strong rounded-[3rem] p-8 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] relative group overflow-y-auto max-h-[75vh] no-scrollbar">
           <div className="absolute inset-0 vibe-moving-glow opacity-[0.03] group-hover:opacity-[0.07] transition-opacity duration-700" />
           
           {/* Mode Switcher */}
-          <div className="flex bg-ds-bg/60 rounded-[1.5rem] p-1.5 mb-6 border border-white/5 relative z-10">
+          <div className="flex vibe-panel rounded-[1.5rem] p-1.5 mb-6 relative z-10">
             <button
               onClick={() => switchMode('login')}
               className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${mode === 'login'
@@ -109,7 +109,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                   type="text" value={username} onChange={(e) => setUsername(e.target.value)}
                   placeholder={mode === 'login' ? "CyberVibe_2026" : "Твой_Никнейм"}
                   required
-                  className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
+                  className="vibe-form-field w-full rounded-2xl px-5 py-4 text-sm font-bold"
                 />
               </div>
 
@@ -126,7 +126,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                     type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())}
                     placeholder="VIBE-XXXX-XXXX"
                     required
-                    className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
+                    className="vibe-form-field w-full rounded-2xl px-5 py-4 text-sm font-bold"
                   />
                 </div>
               )}
@@ -143,7 +143,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
                   type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 focus:bg-ds-bg/60 transition-all outline-none"
+                  className="vibe-form-field w-full rounded-2xl px-5 py-4 text-sm font-bold"
                 />
               </div>
 
@@ -183,7 +183,7 @@ export function AuthPage({ onSignIn, onSignUp, error, setError }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-ds-accent text-black font-black uppercase tracking-[0.2em] py-5 rounded-[1.5rem] transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(0,240,255,0.3)] vibe-glow-blue disabled:opacity-40 disabled:cursor-not-allowed mt-4 group overflow-hidden relative"
+                className="vibe-primary-button w-full font-black uppercase tracking-[0.2em] py-5 rounded-[1.5rem] transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed mt-4 group overflow-hidden relative"
               >
                 <div className="absolute inset-0 vibe-moving-glow opacity-40 group-hover:opacity-60 transition-opacity" />
                 <span className="relative z-10 flex items-center justify-center gap-3">

@@ -177,15 +177,59 @@ html.light-theme {
   .vibe-primary-button {
     border-radius: var(--vibe-radius-md);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 34%),
-      rgb(var(--ds-accent-rgb));
-    box-shadow: var(--vibe-glow-soft), 0 18px 38px rgba(var(--ds-accent-rgb), 0.18);
-    color: #031014;
+      linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02) 34%),
+      linear-gradient(135deg, rgba(var(--ds-accent-rgb), 0.98), rgba(var(--ds-accent-rgb), 0.82));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: var(--vibe-glow-soft), 0 18px 38px rgba(var(--ds-accent-rgb), 0.22);
+    color: #041218;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease, border-color 0.22s ease;
   }
 
   .light-theme .vibe-primary-button {
     color: #06202d;
     box-shadow: 0 0 0 1px rgba(0, 200, 245, 0.12), 0 14px 30px rgba(0, 200, 245, 0.18);
+  }
+
+  .vibe-primary-button:hover {
+    filter: brightness(1.04);
+    box-shadow: var(--vibe-glow-strong), 0 22px 42px rgba(var(--ds-accent-rgb), 0.24);
+  }
+
+  .vibe-secondary-button {
+    border-radius: var(--vibe-radius-md);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 42%),
+      rgba(var(--ds-sidebar), 0.72);
+    border: 1px solid var(--vibe-border-soft);
+    box-shadow: var(--vibe-shadow-soft);
+    color: rgb(var(--ds-text));
+    transition: transform 0.22s ease, border-color 0.22s ease, background-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+  }
+
+  .vibe-secondary-button:hover {
+    border-color: var(--vibe-border-strong);
+    box-shadow: var(--vibe-glow-soft), var(--vibe-shadow-soft);
+    color: rgb(var(--ds-text));
+  }
+
+  .vibe-form-field {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 48%),
+      rgba(var(--ds-input), 0.72);
+    border: 1px solid rgba(var(--ds-divider), 0.75);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 24px rgba(0, 0, 0, 0.12);
+    color: rgb(var(--ds-text));
+    transition: border-color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
+  }
+
+  .vibe-form-field::placeholder {
+    color: rgba(var(--ds-muted), 0.46);
+  }
+
+  .vibe-form-field:focus {
+    border-color: rgba(var(--ds-accent-rgb), 0.32);
+    box-shadow: var(--vibe-glow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    outline: none;
   }
 
   .vibe-label-eyebrow {
@@ -246,6 +290,21 @@ html.light-theme {
     background:
       linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.08)),
       linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 14%);
+  }
+
+  .light-theme .vibe-secondary-button {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.38) 30%, transparent 100%),
+      rgba(var(--ds-sidebar), 0.78);
+    box-shadow: 0 14px 30px rgba(168, 187, 212, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  }
+
+  .light-theme .vibe-form-field {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.48) 36%, transparent 100%),
+      rgba(var(--ds-input), 0.88);
+    border-color: rgba(165, 184, 209, 0.34);
+    box-shadow: 0 12px 24px rgba(166, 185, 209, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.96);
   }
 
   .vibe-glass {

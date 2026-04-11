@@ -396,6 +396,52 @@ CREATE POLICY "РЈС‡Р°СЃС‚РЅРёРєРё РІРёРґСЏС‚ Рє
     OR server_id IS NULL -- Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РєР°РЅР°Р»С‹ (РµСЃР»Рё Р±СѓРґСѓС‚)
   );
 
+DROP POLICY IF EXISTS "Server owners can create channels" ON channels;
+CREATE POLICY "Server owners can create channels" ON channels
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    server_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM servers s
+      WHERE s.id = channels.server_id
+        AND s.owner_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Server owners can update channels" ON channels;
+CREATE POLICY "Server owners can update channels" ON channels
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM servers s
+      WHERE s.id = channels.server_id
+        AND s.owner_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    server_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM servers s
+      WHERE s.id = channels.server_id
+        AND s.owner_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Server owners can delete channels" ON channels;
+CREATE POLICY "Server owners can delete channels" ON channels
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM servers s
+      WHERE s.id = channels.server_id
+        AND s.owner_id = auth.uid()
+    )
+  );
+
 -- РЎРѕРѕР±С‰РµРЅРёСЏ: РІРёРґРµС‚СЊ С‚РѕР»СЊРєРѕ СѓС‡Р°СЃС‚РЅРёРєР°Рј РєР°РЅР°Р»Р°
 CREATE POLICY "РЈС‡Р°СЃС‚РЅРёРєРё РІРёРґСЏС‚ СЃРѕРѕР±С‰РµРЅРёСЏ" ON messages
   FOR SELECT USING (
