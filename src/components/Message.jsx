@@ -638,12 +638,12 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
           <span className="font-bold text-[14.5px] tracking-tight" style={{ color: displayColor }}>{realName}</span>
           {isPlatformAdmin && (
             <span className="px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle select-none">
-              РЎРћР—Р”РђРўР•Р›Р¬
+              СОЗДАТЕЛЬ
             </span>
           )}
           {isServerAdmin && (
             <span className="px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-[8px] font-black text-amber-500 uppercase tracking-tighter shadow-[0_0_8px_rgba(245,158,11,0.2)] align-middle select-none">
-              РђР”РњРРќ
+              АДМИН
             </span>
           )}
           {/* Reaction button next to name on hover for main messages */}

@@ -176,7 +176,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   return (
     <div className="flex-1 flex flex-col bg-ds-bg min-w-0 relative">
       {/* Header */}
-      <div className="h-14 flex items-center px-6 gap-4 border-b border-ds-border flex-shrink-0 bg-ds-bg/40 backdrop-blur-md z-20 shadow-lg">
+      <div className="h-14 flex items-center px-6 gap-4 border-b border-ds-border flex-shrink-0 z-20 shadow-lg vibe-panel-strong">
         <button 
            onClick={onClose}
            className="p-2 -ml-2 rounded-xl text-ds-muted hover:text-ds-text hover:bg-ds-border transition-all md:hidden"
@@ -276,7 +276,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
           {/* Attachment Preview */}
           {attachment && (
             <div className="absolute bottom-full mb-4 left-0 animate-slide-up">
-              <div className="bg-ds-input rounded-[1.5rem] p-3 border border-ds-border shadow-2xl flex items-center gap-4 min-w-[200px]">
+            <div className="rounded-[1.5rem] p-3 border border-ds-border shadow-2xl flex items-center gap-4 min-w-[200px] vibe-panel">
                 {attachment.file.type.startsWith('video/') ? (
                   <video src={attachment.previewUrl} className="h-16 w-16 rounded-xl object-cover border border-ds-border shadow-lg" />
                 ) : attachment.file.type.startsWith('image/') ? (
@@ -300,7 +300,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
             </div>
           )}
 
-          <div className="relative bg-ds-input rounded-[1.5rem] flex items-end gap-3 p-2.5 border border-ds-border focus-within:border-ds-accent/30 transition-all shadow-2xl group/input">
+          <div className="relative rounded-[1.5rem] flex items-end gap-3 p-2.5 border border-ds-border focus-within:border-ds-accent/30 transition-all shadow-2xl group/input vibe-panel-strong">
             <div className="absolute inset-0 vibe-moving-glow opacity-0 group-focus-within/input:opacity-[0.03] rounded-[1.5rem] pointer-events-none" />
             
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />

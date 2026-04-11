@@ -169,7 +169,7 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
   return (
     <div className="flex-1 flex flex-col bg-ds-bg min-w-0 relative">
       {/* Header */}
-      <div className="h-12 flex items-center px-4 gap-2 flex-shrink-0 bg-ds-bg/40 backdrop-blur-md z-10 shadow-lg">
+      <div className="h-12 flex items-center px-4 gap-2 flex-shrink-0 z-10 shadow-lg vibe-panel-strong">
         <Hash size={20} className="text-ds-accent vibe-glow-blue" />
         <span className="text-ds-text font-bold text-[15px]">{channel.name}</span>
         
@@ -270,7 +270,7 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
             </div>
           )}
 
-          <div className="relative bg-ds-input rounded-[18px] flex items-end gap-2 px-3 py-3 border border-ds-divider/30 focus-within:vibe-glow-blue focus-within:border-ds-accent/60 transition-all duration-300 shadow-2xl">
+          <div className="relative rounded-[18px] flex items-end gap-2 px-3 py-3 border border-ds-divider/30 focus-within:vibe-glow-blue focus-within:border-ds-accent/60 transition-all duration-300 shadow-2xl vibe-panel-strong">
             {/* Кнопка скрепки */}
             <input
               ref={fileInputRef}

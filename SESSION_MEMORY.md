@@ -402,3 +402,25 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/VoiceChannel.jsx`
   - `src/index.css`
   - `tailwind.config.js`
+
+### 2026-04-11 DM creator badge and FAB layout fix
+- Fixed mojibake in direct-message author badges inside `src/components/Message.jsx` by restoring clean Russian labels for the platform-creator and server-admin chips (`���������`, `�����`).
+- Fixed the floating DM button overlap problem in `src/App.jsx`.
+- The FAB now uses contextual placement: on screens with a bottom composer (`activeDM` or text channel) it moves higher so it does not cover the send area; on other screens it stays lower.
+- Continued the theme pass after those fixes by moving more chat surfaces onto the shared panel system:
+  - `src/components/DirectMessagePanel.jsx`
+  - `src/components/TextChannel.jsx`
+  - `src/components/VoiceChannel.jsx`
+- Headers and composer/input containers now use the shared `vibe-panel` / `vibe-panel-strong` styling, which especially improves light-theme depth and consistency.
+- Verification: `npm run build` passed on version `2.5.32`.
+
+### Auto Log — 2026-04-11 03:19
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/App.jsx`
+  - `src/components/DirectMessagePanel.jsx`
+  - `src/components/Message.jsx`
+  - `src/components/TextChannel.jsx`
+  - `src/components/VoiceChannel.jsx`

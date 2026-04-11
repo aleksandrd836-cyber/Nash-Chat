@@ -29,14 +29,15 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 03:07`
+- Время: `2026-04-11 03:19`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
+  - `src/App.jsx`
+  - `src/components/DirectMessagePanel.jsx`
+  - `src/components/Message.jsx`
   - `src/components/TextChannel.jsx`
   - `src/components/VoiceChannel.jsx`
-  - `src/index.css`
-  - `tailwind.config.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -169,3 +170,10 @@ pm run build passes.
 - First theme pass is now in place: better light-theme contrast, stronger light-mode rails/panels, and more reliable CTA visibility.
 - Shared `vibe-primary-button` is now used in the most visible CTA paths in `TextChannel` and `VoiceChannel`.
 - Build status after the accent/theme fix: `npm run build` succeeds on `2.5.31`.
+
+## 2026-04-11 DM badge/FAB/theme handoff
+- Fixed corrupted creator/admin badge text in `Message.jsx` for direct messages.
+- Updated the global DM floating action button positioning logic in `App.jsx`: it now sits higher on screens with a bottom message composer so it no longer blocks send controls.
+- Continued theme step 2 by converting more chat/voice headers and composer surfaces to shared panel utilities in `DirectMessagePanel`, `TextChannel`, and `VoiceChannel`.
+- Result: better consistency between dark/light themes and fewer one-off transparent boxes.
+- Build status after this pass: `npm run build` succeeds on `2.5.32`.

@@ -233,7 +233,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
   return (
     <div className="flex-1 flex flex-col bg-ds-servers" onClick={() => setCtxMenu(null)}>
       {/* Header */}
-      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 bg-ds-sidebar/40 backdrop-blur-[40px] z-10 shadow-lg relative">
+      <div className="h-12 flex items-center px-4 gap-2 border-b border-white/5 flex-shrink-0 z-10 shadow-lg relative vibe-panel-strong">
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-ds-accent/20 to-transparent opacity-30" />
         <Mic size={20} className="text-ds-green vibe-glow-green relative z-10" />
         <span className="text-ds-text font-bold text-[15px]">{channel.name}</span>
@@ -418,7 +418,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   className={`w-14 h-14 rounded-2xl transition-all duration-300 flex items-center justify-center border
                     ${isMuted
                       ? 'bg-ds-red/10 border-ds-red/30 text-ds-red vibe-glow-red'
-                      : 'bg-ds-sidebar/40 border-white/10 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
+                      : 'vibe-panel border-white/10 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
                     }`}
                 >
                   {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -430,7 +430,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                   className={`w-14 h-14 rounded-2xl transition-all duration-300 flex items-center justify-center border
                     ${isDeafened
                       ? 'bg-ds-red/10 border-ds-red/30 text-ds-red vibe-glow-red'
-                      : 'bg-ds-sidebar/40 border-white/10 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
+                      : 'vibe-panel border-white/10 text-ds-muted hover:text-ds-accent hover:border-ds-accent/30 hover:bg-ds-accent/5 hover:vibe-glow-blue'
                     }`}
                 >
                   <div className="slashed-container">
@@ -458,7 +458,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                     <select 
                       value={quality} 
                       onChange={e => setQuality(e.target.value)}
-                      className={`w-full h-12 pl-10 pr-10 bg-ds-sidebar/40 hover:bg-ds-sidebar/60 border border-white/10 hover:border-ds-accent/30 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-ds-text outline-none appearance-none cursor-pointer transition-all backdrop-blur-md ${
+                      className={`w-full h-12 pl-10 pr-10 border border-white/10 hover:border-ds-accent/30 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-ds-text outline-none appearance-none cursor-pointer transition-all backdrop-blur-md vibe-panel ${
                         quality === '1080p' ? 'shadow-[0_0_15px_rgba(0,240,255,0.2)] border-ds-accent/40' : ''
                       }`}
                     >
