@@ -29,12 +29,14 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 02:56`
+- Время: `2026-04-11 03:07`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/App.jsx`
+  - `src/components/TextChannel.jsx`
+  - `src/components/VoiceChannel.jsx`
   - `src/index.css`
+  - `tailwind.config.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -160,3 +162,10 @@ pm run build passes.
 - Fixed by changing the top-level app shell in `src/App.jsx` from `fixed inset-0` to explicit viewport sizing and by reinforcing root min-height rules in `src/index.css`.
 - If the blank strip still appears after this version, the next debugging step should inspect Electron window sizing or any external wrapper constraints, not the inner screen layouts.
 - Build status after the shell-height correction: `npm run build` succeeds on `2.5.30`.
+
+## 2026-04-11 accent/theme handoff
+- Solved the dark-button regression at the root by changing Tailwind semantic color definitions from `rgb(var(--token) / alpha)` to `rgba(var(--token), alpha)`.
+- This matters because the project stores RGB tokens with commas, so the previous form could generate invalid CSS for accent backgrounds and text colors.
+- First theme pass is now in place: better light-theme contrast, stronger light-mode rails/panels, and more reliable CTA visibility.
+- Shared `vibe-primary-button` is now used in the most visible CTA paths in `TextChannel` and `VoiceChannel`.
+- Build status after the accent/theme fix: `npm run build` succeeds on `2.5.31`.

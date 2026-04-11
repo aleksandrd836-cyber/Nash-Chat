@@ -176,7 +176,7 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
         {!window.electronAPI && (
           <a 
             href={downloadUrl}
-            className="ml-auto flex items-center gap-2 px-4 py-1.5 bg-ds-accent text-black text-[12px] font-bold rounded-full transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:scale-105 active:scale-95"
+            className="ml-auto flex items-center gap-2 px-4 py-1.5 text-[12px] font-bold rounded-full transition-all hover:scale-105 active:scale-95 vibe-primary-button"
           >
             <Download size={16} />
             УСТАНОВИТЬ VIBE
@@ -328,7 +328,7 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
               id="send-btn"
               type="submit"
               disabled={(!draft.trim() && !attachment) || isBusy}
-              className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-ds-accent text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed vibe-glow-blue relative overflow-hidden group/send"
+              className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed relative overflow-hidden group/send vibe-primary-button"
             >
               {!isBusy && <div className="absolute inset-0 vibe-moving-glow opacity-40 group-hover/send:opacity-70 transition-opacity" />}
               {isBusy ? (
@@ -346,3 +346,4 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
     </div>
   );
 }
+

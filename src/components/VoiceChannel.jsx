@@ -264,7 +264,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
         {!window.electronAPI && (
           <a 
             href={downloadUrl}
-            className="ml-auto flex items-center gap-2 px-4 py-1.5 bg-ds-accent text-black text-[12px] font-bold rounded-full transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:scale-105 active:scale-95"
+            className="ml-auto flex items-center gap-2 px-4 py-1.5 text-[12px] font-bold rounded-full transition-all hover:scale-105 active:scale-95 vibe-primary-button"
           >
             <Download size={14} />
             УСТАНОВИТЬ VIBE
@@ -375,7 +375,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                           requestScreenView?.(p.userId);
                           setWatchedScreens(prev => new Set(prev).add(p.userId));
                         }}
-                        className="mt-2 bg-ds-accent text-black px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-ds-accent/20 vibe-glow-blue"
+                        className="mt-2 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all vibe-primary-button"
                       >
                         {stream ? 'WATCH' : 'RETRY STREAM'}
                       </button>
@@ -394,7 +394,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                id="join-voice-btn"
                onClick={() => joinVoiceChannel(channel.id, user, username, userColor)}
                disabled={isJoiningThisChannel}
-               className="w-full py-5 rounded-[2rem] bg-ds-accent text-black font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed vibe-glow-blue relative overflow-hidden group"
+               className="w-full py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden group vibe-primary-button"
              >
                <div className="absolute inset-0 vibe-moving-glow opacity-40 group-hover:opacity-60 transition-opacity" />
                {isJoiningThisChannel ? (
@@ -481,7 +481,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                         startScreenShare(quality, user);
                       }
                     }}
-                    className="flex-[1.5] h-12 rounded-2xl bg-ds-accent text-black font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center justify-center gap-3 shadow-lg shadow-ds-accent/20 hover:scale-[1.03] active:scale-95 group relative overflow-hidden"
+                    className="flex-[1.5] h-12 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center justify-center gap-3 hover:scale-[1.03] active:scale-95 group relative overflow-hidden vibe-primary-button"
                   >
                     <div className="absolute inset-0 vibe-moving-glow opacity-30 group-hover:opacity-50 transition-opacity" />
                     <Monitor size={18} strokeWidth={3} className="z-10" />
@@ -574,4 +574,5 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     </div>
   );
 }
+
 

@@ -380,3 +380,25 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `public/version.json`
   - `src/App.jsx`
   - `src/index.css`
+
+### 2026-04-11 accent token and theme pass
+- Fixed a root color-token bug that made multiple accent buttons render too dark or nearly black.
+- Root cause: Tailwind semantic colors were defined as `rgb(var(--token) / alpha)` while the project stores RGB components with commas (for example `0, 240, 255`), which leads to invalid CSS in some cases.
+- Updated `tailwind.config.js` to use `rgba(var(--token), <alpha-value>)` for semantic colors so `bg-ds-accent`, `text-ds-*`, `border-ds-*`, and related utilities render reliably.
+- Completed the first real theme pass in `src/index.css`:
+  - improved light-theme contrast and muted text
+  - strengthened panel/rail surfaces in light mode
+  - refined shell background layering for light mode
+  - improved primary button visibility and shadow treatment in both themes
+- Also moved the most visible CTA buttons in `src/components/VoiceChannel.jsx` and `src/components/TextChannel.jsx` onto the shared `vibe-primary-button` utility so they stay consistent across themes.
+- Verification: `npm run build` passed on version `2.5.31`.
+
+### Auto Log — 2026-04-11 03:07
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/TextChannel.jsx`
+  - `src/components/VoiceChannel.jsx`
+  - `src/index.css`
+  - `tailwind.config.js`

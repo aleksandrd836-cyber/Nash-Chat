@@ -39,12 +39,12 @@ html.light-theme {
   --ds-sidebar: 248, 250, 255;
   --ds-servers: 243, 247, 255;
   --ds-input: 255, 255, 255;
-  --ds-text: 17, 23, 35;
-  --ds-muted: 101, 111, 126;
-  --ds-hover: 228, 236, 247;
-  --ds-active: 217, 227, 240;
+  --ds-text: 16, 22, 33;
+  --ds-muted: 88, 98, 116;
+  --ds-hover: 226, 234, 246;
+  --ds-active: 214, 225, 241;
   --ds-header: 251, 253, 255;
-  --ds-divider: 198, 211, 230;
+  --ds-divider: 188, 204, 225;
   --ds-mention: 218, 226, 237;
   
   --ds-accent-rgb: 0, 200, 245;
@@ -79,6 +79,16 @@ html.light-theme {
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
     transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html.light-theme,
+  html.light-theme body,
+  html.light-theme #root {
+    background:
+      radial-gradient(circle at top left, rgba(0, 200, 245, 0.08), transparent 26%),
+      radial-gradient(circle at bottom right, rgba(145, 162, 255, 0.12), transparent 24%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(236, 242, 250, 0.96)),
+      rgb(var(--ds-bg));
   }
 
   /* Scrollbar styling - Modern & Subtle */
@@ -175,6 +185,7 @@ html.light-theme {
 
   .light-theme .vibe-primary-button {
     color: #06202d;
+    box-shadow: 0 0 0 1px rgba(0, 200, 245, 0.12), 0 14px 30px rgba(0, 200, 245, 0.18);
   }
 
   .vibe-label-eyebrow {
@@ -199,6 +210,42 @@ html.light-theme {
   .vibe-nav-orb--active {
     border-color: var(--vibe-border-strong);
     box-shadow: var(--vibe-glow-strong), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .light-theme .vibe-rail {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.42) 18%, transparent 100%),
+      linear-gradient(180deg, rgba(var(--ds-sidebar), 0.94), rgba(var(--ds-sidebar), 0.9));
+    border-color: var(--vibe-border-soft);
+    box-shadow: 0 18px 42px rgba(164, 182, 206, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  }
+
+  .light-theme .vibe-rail--servers {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.3) 18%, transparent 100%),
+      linear-gradient(180deg, rgba(var(--ds-servers), 0.96), rgba(var(--ds-servers), 0.92));
+  }
+
+  .light-theme .vibe-panel {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.26) 24%, transparent 100%),
+      rgba(var(--ds-sidebar), 0.62);
+    border-color: var(--vibe-border-soft);
+    box-shadow: 0 16px 36px rgba(165, 183, 208, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  }
+
+  .light-theme .vibe-panel-strong {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.38) 22%, transparent 100%),
+      rgba(var(--ds-bg), 0.7);
+    border-color: rgba(164, 183, 209, 0.24);
+    box-shadow: 0 20px 46px rgba(167, 186, 212, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  }
+
+  .light-theme .vibe-shell::before {
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.08)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 14%);
   }
 
   .vibe-glass {
