@@ -505,6 +505,13 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
 - Invite-code copy is now more reliable: tries Clipboard API first, then `execCommand('copy')`, and finally opens a manual copy prompt if the environment still blocks clipboard access.
 - Verification: `npm run build` passed on `2.5.37`.
 
+### 2026-04-11 invite field selection unblock
+- The invite-code field in server settings was still blocked by the parent shell's `select-none` behavior and by a decorative glow layer sitting over the card.
+- Fix: invite block overlays now use `pointer-events-none`, the input is promoted above the glow with `relative z-10`, and the field forces `user-select: text`.
+- Copy flow was also hardened with explicit `setSelectionRange(0, inviteCode.length)` before clipboard attempts.
+- User-facing strings in the two server modals were moved to ASCII-safe `\uXXXX` literals to avoid another mojibake regression.
+- Verification: `npm run build` passed on `2.5.38`.
+
 ### Auto Log — 2026-04-11 04:08
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
@@ -516,6 +523,14 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/ServerSettingsModal.jsx`
 
 ### Auto Log — 2026-04-11 04:22
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/ServerEntryModal.jsx`
+  - `src/components/ServerSettingsModal.jsx`
+
+### Auto Log — 2026-04-11 14:47
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
   - `package.json`

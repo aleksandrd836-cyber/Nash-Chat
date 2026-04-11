@@ -21,6 +21,36 @@ const PLATFORM_CREATOR_IDS = new Set([
   '1380ae20-201a-4c77-aed3-93b3cb96f8d5'
 ]);
 
+const TEXT = {
+  title: '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438',
+  subtitle: '\u0423\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u043f\u0440\u043e\u0441\u0442\u0440\u0430\u043d\u0441\u0442\u0432\u043e\u043c \u0441\u0435\u0440\u0432\u0435\u0440\u0430',
+  general: '\u041e\u0431\u0449\u0438\u0435',
+  serverName: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0435\u0440\u0430',
+  serverIconAlt: '\u0418\u043a\u043e\u043d\u043a\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0430',
+  iconHint:
+    '\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u043c\u044b\u0439 \u0440\u0430\u0437\u043c\u0435\u0440 \u0438\u043a\u043e\u043d\u043a\u0438: 128x128. \u041b\u0443\u0447\u0448\u0435 \u0432\u0441\u0435\u0433\u043e \u0440\u0430\u0431\u043e\u0442\u0430\u044e\u0442 \u043a\u0432\u0430\u0434\u0440\u0430\u0442\u043d\u044b\u0435 \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f \u0431\u0435\u0437 \u043b\u0438\u0448\u043d\u0435\u0433\u043e \u043c\u0435\u043b\u043a\u043e\u0433\u043e \u0442\u0435\u043a\u0441\u0442\u0430.',
+  accessCode: '\u041a\u043e\u0434 \u0434\u043e\u0441\u0442\u0443\u043f\u0430',
+  copyKey: '\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043a\u043b\u044e\u0447',
+  codeCopied: '\u041a\u043e\u0434 \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d',
+  membersPrefix: '\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0438 \u2014 ',
+  creator: '\u0421\u043e\u0437\u0434\u0430\u0442\u0435\u043b\u044c',
+  self: '(\u0432\u044b)',
+  owner: '\u0412\u043b\u0430\u0434\u0435\u043b\u0435\u0446',
+  member: '\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a',
+  danger: '\u041e\u043f\u0430\u0441\u043d\u0430\u044f \u0437\u043e\u043d\u0430',
+  deleteServer: '\u041f\u043e\u043b\u043d\u043e\u0441\u0442\u044c\u044e \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440',
+  removeMemberConfirm: '\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u043e\u0433\u043e \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430?',
+  refreshCodeConfirm:
+    '\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u0434 \u0434\u043e\u0441\u0442\u0443\u043f\u0430? \u0421\u0442\u0430\u0440\u044b\u0439 \u043a\u043e\u0434 \u043f\u0435\u0440\u0435\u0441\u0442\u0430\u043d\u0435\u0442 \u0440\u0430\u0431\u043e\u0442\u0430\u0442\u044c.',
+  refreshCodeError: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u0434 \u0441\u0435\u0440\u0432\u0435\u0440\u0430:',
+  gifForbidden: '\u0413\u0438\u0444\u043a\u0438 \u0437\u0434\u0435\u0441\u044c \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u044e\u0442\u0441\u044f. \u041b\u0443\u0447\u0448\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439 JPG \u0438\u043b\u0438 PNG.',
+  avatarUploadError:
+    '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0430\u0432\u0430\u0442\u0430\u0440 \u0441\u0435\u0440\u0432\u0435\u0440\u0430. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 Storage \u0432 Supabase.',
+  deleteServerConfirmPrefix: '\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440 \u00ab',
+  deleteServerConfirmSuffix: '\u00bb \u043f\u043e\u043b\u043d\u043e\u0441\u0442\u044c\u044e?',
+  manualCopyPrompt: '\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439 \u043a\u043e\u0434 \u0432\u0440\u0443\u0447\u043d\u0443\u044e:'
+};
+
 function normalizeServerInviteCode(value) {
   return value?.toUpperCase().replace(/[\s-]+/g, '').trim() ?? '';
 }
@@ -45,6 +75,10 @@ async function copyTextToClipboard(value) {
   textarea.value = text;
   textarea.setAttribute('readonly', '');
   textarea.style.position = 'fixed';
+  textarea.style.left = '16px';
+  textarea.style.top = '16px';
+  textarea.style.width = '1px';
+  textarea.style.height = '1px';
   textarea.style.opacity = '0';
   textarea.style.pointerEvents = 'none';
   document.body.appendChild(textarea);
@@ -119,20 +153,20 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   }, [fetchMembers]);
 
   async function handleKickMember(userId) {
-    if (!window.confirm('Удалить этого участника с сервера?')) return;
+    if (!window.confirm(TEXT.removeMemberConfirm)) return;
 
     await supabase.from('server_members').delete().eq('server_id', server.id).eq('user_id', userId);
     setMembers((prev) => prev.filter((member) => member.id !== userId));
   }
 
   async function handleRegenerateCode() {
-    if (!window.confirm('Обновить код доступа? Старый код перестанет работать.')) return;
+    if (!window.confirm(TEXT.refreshCodeConfirm)) return;
 
     const newCode = normalizeServerInviteCode(Math.random().toString(36).substring(2, 10).toUpperCase());
     const { error } = await supabase.from('servers').update({ invite_code: newCode }).eq('id', server.id);
 
     if (error) {
-      alert(`Не удалось обновить код сервера:\n${error.message}`);
+      alert(`${TEXT.refreshCodeError}\n${error.message}`);
       return;
     }
 
@@ -160,7 +194,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
     if (!file) return;
 
     if (file.type === 'image/gif') {
-      alert('Гифки здесь не поддерживаются. Лучше используй JPG или PNG.');
+      alert(TEXT.gifForbidden);
       return;
     }
 
@@ -188,7 +222,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
       server.icon_url = publicUrl;
     } catch (error) {
       console.error('[ServerSettings] Avatar upload failed:', error);
-      alert('Не удалось загрузить аватар сервера. Проверь настройки Storage в Supabase.');
+      alert(TEXT.avatarUploadError);
     } finally {
       setUploading(false);
       event.target.value = '';
@@ -196,7 +230,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   }
 
   async function handleDeleteServer() {
-    if (!window.confirm(`Удалить сервер «${server.name}» полностью?`)) return;
+    if (!window.confirm(`${TEXT.deleteServerConfirmPrefix}${server.name}${TEXT.deleteServerConfirmSuffix}`)) return;
 
     await supabase.from('servers').delete().eq('id', server.id);
     onServerDeleted();
@@ -206,13 +240,14 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   async function handleCopy() {
     if (!inviteCode) return;
 
-    inviteCodeInputRef.current?.focus();
-    inviteCodeInputRef.current?.select();
+    const input = inviteCodeInputRef.current;
+    input?.focus();
+    input?.setSelectionRange?.(0, inviteCode.length);
 
     const success = await copyTextToClipboard(inviteCode);
 
     if (!success) {
-      window.prompt('Скопируй код вручную:', inviteCode);
+      window.prompt(TEXT.manualCopyPrompt, inviteCode);
       return;
     }
 
@@ -228,7 +263,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
       }}
     >
       <div className="vibe-panel-strong rounded-[2.5rem] w-full max-w-lg h-[80vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative">
-        <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
+        <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30 pointer-events-none" />
 
         <div className="flex items-center justify-between px-8 py-6 vibe-panel border-b border-white/5 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -236,10 +271,8 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
               <Settings size={22} />
             </div>
             <div>
-              <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">Настройки</h2>
-              <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">
-                Управление пространством сервера
-              </p>
+              <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">{TEXT.title}</h2>
+              <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">{TEXT.subtitle}</p>
             </div>
           </div>
 
@@ -253,9 +286,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
 
         <div className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-10">
           <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">
-              Общие
-            </h3>
+            <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">{TEXT.general}</h3>
 
             <div className="flex items-center gap-8 mb-8 pb-8 border-b border-white/5">
               <div className="relative group/avatar">
@@ -268,11 +299,9 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                   }`}
                 >
                   {iconUrl ? (
-                    <img src={iconUrl} alt="Иконка сервера" className="w-full h-full object-cover" />
+                    <img src={iconUrl} alt={TEXT.serverIconAlt} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-3xl font-black text-ds-muted uppercase tracking-tighter">
-                      {server.name?.[0] || '?'}
-                    </span>
+                    <span className="text-3xl font-black text-ds-muted uppercase tracking-tighter">{server.name?.[0] || '?'}</span>
                   )}
 
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity">
@@ -297,9 +326,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
 
               <div className="flex-1 space-y-4">
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest ml-1">
-                    Название сервера
-                  </p>
+                  <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest ml-1">{TEXT.serverName}</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -317,25 +344,23 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                   </div>
                 </div>
 
-                <p className="text-[9px] text-ds-muted uppercase tracking-[0.1em] leading-relaxed">
-                  Рекомендуемый размер иконки: 128x128. Лучше всего работают квадратные изображения без лишнего мелкого текста.
-                </p>
+                <p className="text-[9px] text-ds-muted uppercase tracking-[0.1em] leading-relaxed">{TEXT.iconHint}</p>
               </div>
             </div>
           </section>
 
           <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Код доступа</h3>
+              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">{TEXT.accessCode}</h3>
               <button onClick={handleRegenerateCode} className="text-ds-accent/60 hover:text-ds-accent transition-colors">
                 <RefreshCw size={14} className={codeLoading ? 'animate-spin' : ''} />
               </button>
             </div>
 
             <div className="vibe-panel p-8 rounded-[2rem] flex flex-col items-center gap-6 relative group">
-              <div className="absolute inset-0 vibe-moving-glow opacity-10" />
+              <div className="absolute inset-0 vibe-moving-glow opacity-10 pointer-events-none" />
 
-              <div className="flex flex-col items-center gap-2 w-full">
+              <div className="relative z-10 flex flex-col items-center gap-2 w-full">
                 <div className="w-12 h-12 rounded-full bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue mb-2">
                   <UserPlus size={24} />
                 </div>
@@ -346,29 +371,33 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                   readOnly
                   spellCheck={false}
                   value={inviteCode || ''}
+                  onMouseDown={(event) => event.stopPropagation()}
                   onFocus={(event) => event.target.select()}
                   onClick={(event) => event.target.select()}
-                  className="w-full max-w-[260px] bg-transparent text-center text-3xl font-black text-ds-text tracking-[0.3em] uppercase outline-none select-all cursor-text"
+                  className="w-full max-w-[260px] bg-transparent text-center text-3xl font-black text-ds-text tracking-[0.3em] uppercase outline-none cursor-text"
+                  style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                   placeholder="········"
                 />
               </div>
 
               <button
                 onClick={handleCopy}
+                type="button"
                 disabled={!inviteCode}
-                className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center justify-center gap-3 ${
+                className={`relative z-10 w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center justify-center gap-3 ${
                   copied ? 'vibe-primary-button text-ds-bg vibe-glow-blue' : 'vibe-secondary-button text-ds-muted hover:text-ds-text'
                 }`}
               >
                 {copied ? <Check size={18} strokeWidth={3} /> : <Copy size={18} />}
-                {copied ? 'Код скопирован' : 'Скопировать ключ'}
+                {copied ? TEXT.codeCopied : TEXT.copyKey}
               </button>
             </div>
           </section>
 
           <section className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">
-              Участники — {members.length}
+              {TEXT.membersPrefix}
+              {members.length}
             </h3>
 
             <div className="vibe-panel space-y-1 rounded-[2rem] overflow-hidden p-2">
@@ -394,27 +423,20 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-bold truncate text-ds-text"
-                          style={member.color ? { color: member.color } : {}}
-                        >
+                        <p className="text-sm font-bold truncate text-ds-text" style={member.color ? { color: member.color } : {}}>
                           {member.username}
                           {isCreator && (
                             <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
-                              Создатель
+                              {TEXT.creator}
                             </span>
                           )}
-                          {isMe && (
-                            <span className="text-[9px] font-black text-ds-muted uppercase tracking-widest ml-2">
-                              (вы)
-                            </span>
-                          )}
+                          {isMe && <span className="text-[9px] font-black text-ds-muted uppercase tracking-widest ml-2">{TEXT.self}</span>}
                         </p>
 
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {isOwner ? <Crown size={10} className="text-ds-accent" /> : <User size={10} className="text-ds-muted" />}
                           <span className="text-[9px] font-black text-ds-muted uppercase tracking-[0.1em]">
-                            {isOwner ? 'Владелец' : 'Участник'}
+                            {isOwner ? TEXT.owner : TEXT.member}
                           </span>
                         </div>
                       </div>
@@ -437,14 +459,14 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           <section className="pt-10 border-t border-white/5 animate-fade-in" style={{ animationDelay: '0.5s' }}>
             <div className="flex items-center gap-2 mb-4 text-ds-red/60 px-1 font-black text-[10px] uppercase tracking-widest">
               <AlertCircle size={14} />
-              Опасная зона
+              {TEXT.danger}
             </div>
 
             <button
               onClick={handleDeleteServer}
               className="w-full py-4 rounded-2xl bg-ds-red/10 border border-ds-red/30 text-ds-red font-black uppercase tracking-[0.2em] text-[11px] transition-all hover:bg-ds-red hover:text-white group"
             >
-              Полностью удалить сервер
+              {TEXT.deleteServer}
             </button>
           </section>
         </div>

@@ -2,15 +2,41 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft, Globe, Link, Plus } from 'lucide-react';
 
+const TEXT = {
+  subtitle: '\u0421\u043e\u0437\u0434\u0430\u0439 \u0438\u043b\u0438 \u043f\u0440\u0438\u0441\u043e\u0435\u0434\u0438\u043d\u0438\u0441\u044c',
+  createServer: '\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440',
+  createServerHint: '\u0421\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0435 \u043f\u0440\u043e\u0441\u0442\u0440\u0430\u043d\u0441\u0442\u0432\u043e',
+  joinByCode: '\u0412\u043e\u0439\u0442\u0438 \u043f\u043e \u043a\u043e\u0434\u0443',
+  joinByCodeHint: '\u041a\u043b\u044e\u0447 \u043e\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u0441\u0442\u0432\u0430',
+  name: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435',
+  createPlaceholder: '\u041d\u0430\u043f\u0440\u0438\u043c\u0435\u0440: \u0412\u0430\u0439\u0431',
+  creating: '\u0421\u043e\u0437\u0434\u0430\u043d\u0438\u0435...',
+  createAction: '\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440',
+  inviteCode: '\u041a\u043e\u0434 \u043f\u0440\u0438\u0433\u043b\u0430\u0448\u0435\u043d\u0438\u044f',
+  joinPlaceholder: '\u041d\u0430\u043f\u0440\u0438\u043c\u0435\u0440: OC9B806C',
+  joining: '\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435...',
+  joinAction: '\u0412\u043e\u0439\u0442\u0438 \u043d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440',
+  notFound: '\u041a\u043e\u0434 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u043f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0432\u0432\u043e\u0434\u0430.',
+  alreadyMember: '\u0422\u044b \u0443\u0436\u0435 \u0441\u043e\u0441\u0442\u043e\u0438\u0448\u044c \u043d\u0430 \u044d\u0442\u043e\u043c \u0441\u0435\u0440\u0432\u0435\u0440\u0435.',
+  joinFailed: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u043e\u0439\u0442\u0438 \u043f\u043e \u043a\u043e\u0434\u0443.',
+  createTarget: '\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0435\u0440\u0430',
+  ownerTarget: '\u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0430',
+  rlsMessagePrefix:
+    'Supabase \u043f\u043e\u043a\u0430 \u043d\u0435 \u0440\u0430\u0437\u0440\u0435\u0448\u0430\u0435\u0442 ',
+  rlsMessageSuffix:
+    '. \u041e\u0431\u044b\u0447\u043d\u043e \u044d\u0442\u043e \u0437\u043d\u0430\u0447\u0438\u0442, \u0447\u0442\u043e \u0432 \u0431\u0430\u0437\u0435 \u0435\u0449\u0451 \u043d\u0435 \u043f\u0440\u0438\u043c\u0435\u043d\u0451\u043d \u0441\u0432\u0435\u0436\u0438\u0439 SQL \u0434\u043b\u044f tables servers \u0438 server_members.',
+  genericErrorPrefix: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435: '
+};
+
 const normalizeServerInviteCode = (value) =>
   value?.toUpperCase().replace(/[\s-]+/g, '').trim() ?? '';
 
 function formatServerFlowError(rawError, target) {
   if (rawError?.code === '42501') {
-    return `Supabase пока не разрешает ${target}. Обычно это значит, что в базе ещё не применён свежий SQL для tables servers и server_members.`;
+    return `${TEXT.rlsMessagePrefix}${target}${TEXT.rlsMessageSuffix}`;
   }
 
-  return rawError?.message || `Не удалось выполнить действие: ${target}.`;
+  return rawError?.message || `${TEXT.genericErrorPrefix}${target}.`;
 }
 
 export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
@@ -34,7 +60,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
         .single();
 
       if (serverError) {
-        throw new Error(formatServerFlowError(serverError, 'создание сервера'));
+        throw new Error(formatServerFlowError(serverError, TEXT.createTarget));
       }
 
       const { error: memberError } = await supabase
@@ -42,7 +68,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
         .insert({ server_id: server.id, user_id: currentUserId, role: 'owner' });
 
       if (memberError) {
-        throw new Error(formatServerFlowError(memberError, 'добавление владельца'));
+        throw new Error(formatServerFlowError(memberError, TEXT.ownerTarget));
       }
 
       onServerJoined(server);
@@ -71,19 +97,19 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
       }
 
       if (data?.error === 'not_found') {
-        setError('Код не найден. Проверь правильность ввода.');
+        setError(TEXT.notFound);
         return;
       }
 
       if (data?.error === 'already_member') {
-        setError('Ты уже состоишь на этом сервере.');
+        setError(TEXT.alreadyMember);
         return;
       }
 
       onServerJoined(data);
       onClose();
     } catch (requestError) {
-      setError(requestError.message || 'Не удалось войти по коду.');
+      setError(requestError.message || TEXT.joinFailed);
     } finally {
       setLoading(false);
     }
@@ -106,7 +132,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
             </div>
             <h2 className="text-ds-text font-black text-2xl uppercase tracking-tighter">VIBE</h2>
             <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] mt-1">
-              Создай или присоединись
+              {TEXT.subtitle}
             </p>
           </div>
 
@@ -125,10 +151,10 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
                   </div>
                   <div className="text-left">
                     <p className="text-ds-text font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">
-                      Создать сервер
+                      {TEXT.createServer}
                     </p>
                     <p className="text-[10px] text-ds-muted font-black uppercase tracking-widest mt-0.5">
-                      Собственное пространство
+                      {TEXT.createServerHint}
                     </p>
                   </div>
                 </button>
@@ -145,10 +171,10 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
                   </div>
                   <div className="text-left">
                     <p className="text-ds-text font-black uppercase text-sm tracking-tight group-hover:text-ds-accent transition-colors">
-                      Войти по коду
+                      {TEXT.joinByCode}
                     </p>
                     <p className="text-[10px] text-ds-muted font-black uppercase tracking-widest mt-0.5">
-                      Ключ от сообщества
+                      {TEXT.joinByCodeHint}
                     </p>
                   </div>
                 </button>
@@ -159,14 +185,14 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
                   <p className="text-[10px] font-black text-ds-muted uppercase tracking-[0.2em] ml-2">
-                    Название
+                    {TEXT.name}
                   </p>
                   <input
                     type="text"
                     value={serverName}
                     onChange={(event) => setServerName(event.target.value)}
                     onKeyDown={(event) => event.key === 'Enter' && handleCreate()}
-                    placeholder="Например: Вайб"
+                    placeholder={TEXT.createPlaceholder}
                     autoFocus
                     className="w-full border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 transition-all outline-none vibe-panel"
                   />
@@ -189,7 +215,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
                     disabled={loading || !serverName.trim()}
                     className="flex-1 font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40 vibe-primary-button"
                   >
-                    {loading ? 'Создание...' : 'Создать сервер'}
+                    {loading ? TEXT.creating : TEXT.createAction}
                   </button>
                 </div>
               </div>
@@ -199,14 +225,14 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
                   <p className="text-[10px] font-black text-ds-muted uppercase tracking-[0.2em] ml-2">
-                    Код приглашения
+                    {TEXT.inviteCode}
                   </p>
                   <input
                     type="text"
                     value={inviteCode}
                     onChange={(event) => setInviteCode(normalizeServerInviteCode(event.target.value))}
                     onKeyDown={(event) => event.key === 'Enter' && handleJoin()}
-                    placeholder="Например: OC9B806C"
+                    placeholder={TEXT.joinPlaceholder}
                     autoFocus
                     spellCheck={false}
                     className="w-full border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-black tracking-[0.18em] uppercase placeholder:tracking-normal focus:border-ds-accent/30 transition-all outline-none vibe-panel"
@@ -230,7 +256,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
                     disabled={loading || !inviteCode.trim()}
                     className="flex-1 font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40 vibe-primary-button"
                   >
-                    {loading ? 'Подключение...' : 'Войти на сервер'}
+                    {loading ? TEXT.joining : TEXT.joinAction}
                   </button>
                 </div>
               </div>

@@ -29,7 +29,7 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 04:22`
+- Время: `2026-04-11 14:47`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
@@ -211,3 +211,9 @@ pm run build passes.
 - Both files were rewritten cleanly in UTF-8 after text corruption slipped into the repo during prior edits.
 - Invite-code copy now has three layers: `navigator.clipboard`, hidden textarea + `document.execCommand('copy')`, and final manual prompt fallback.
 - Latest safe checkpoint after this fix: `npm run build` passes on `2.5.37`.
+
+## 2026-04-11 invite selection hotfix
+- The invite-code field in server settings could not be selected because the main app shell uses `select-none`, and the invite card also had a decorative glow layer intercepting interactions.
+- `src/components/ServerSettingsModal.jsx` now marks the glow as `pointer-events-none`, raises the interactive content above it with `z-10`, and forces text selection on the invite input with inline `user-select: text`.
+- `src/components/ServerEntryModal.jsx` and `src/components/ServerSettingsModal.jsx` now store all visible Russian strings as `\uXXXX` literals, which avoids future mojibake even if terminal/file encoding gets weird.
+- Latest safe checkpoint after this fix: `npm run build` passes on `2.5.38`.
