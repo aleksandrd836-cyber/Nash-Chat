@@ -86,18 +86,24 @@ export function createRequestStreamBroadcastHandler({
   screenStreamRef,
   peerConnsRef,
 }) {
-  return ({ payload }) => {
+  return async ({ payload }) => {
     if (payload.to !== userId || !screenStreamRef.current || !peerConnsRef.current[payload.from]) return;
 
     const pc = peerConnsRef.current[payload.from];
     const currentSenders = pc.getSenders();
+    let addedTrack = false;
 
     screenStreamRef.current.getTracks().forEach((track) => {
       const alreadyAdded = currentSenders.some((sender) => sender.track === track);
       if (!alreadyAdded) {
         console.log(`[WebRTC] Adding screen track for requester ${payload.from}`);
         pc.addTrack(track, screenStreamRef.current);
+        addedTrack = true;
       }
     });
+
+    if (addedTrack && typeof pc.onnegotiationneeded === 'function') {
+      await pc.onnegotiationneeded();
+    }
   };
 }

@@ -29,14 +29,17 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 15:08`
+- Время: `2026-04-11 15:45`
 - Последние staged-файлы перед коммитом:
-  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `server-management-hardening.sql`
-  - `src/components/ServerEntryModal.jsx`
-  - `src/components/ServerSettingsModal.jsx`
+  - `src/App.jsx`
+  - `src/components/Message.jsx`
+  - `src/components/ServerSidebar.jsx`
+  - `src/components/VoiceChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/screenShare.js`
+  - `src/hooks/voice/signaling.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -240,3 +243,15 @@ pm run build passes.
   - `src/components/ServerEntryModal.jsx`
   - `src/components/ServerSettingsModal.jsx`
 - Latest safe checkpoint after this pass: `npm run build` passes on `2.5.40`.
+
+## 2026-04-11 message-stream-realtime handoff
+- `src/components/Message.jsx` had user-visible mojibake only during optimistic send; the root cause was stale broken literals for the pending/edit/context labels. This pass centralizes those labels in a local `TEXT` map and uses clean UTF-8 values.
+- Screen share instability was addressed in three places:
+  - `src/hooks/voice/screenShare.js` now captures with safer constraints and applies quality after capture via `MediaStreamTrack.applyConstraints(...)`.
+  - `src/hooks/voice/screenShare.js` and `src/hooks/voice/signaling.js` now explicitly trigger renegotiation after adding/removing screen tracks.
+  - `src/hooks/useVoice.js` now updates `isScreenSharing` presence immediately on start/stop, which should reduce cases where viewers never see the stream state.
+- Live server sync now flows through `src/components/ServerSidebar.jsx` and `src/App.jsx`:
+  - subscribe to `servers` changes as well as `server_members`
+  - refresh the selected server object when its avatar/name/invite changes
+  - if the current user loses membership, clear selected server/channel and leave voice immediately
+- Latest safe checkpoint after this pass: `npm run build` passes on `2.5.41`.

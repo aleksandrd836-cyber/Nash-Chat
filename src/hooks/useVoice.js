@@ -15,6 +15,7 @@ import {
   resolveStableVoiceChannelId,
 } from './voice/utils';
 import {
+  applyScreenShareTrackProfile,
   attachScreenShareToPeers,
   buildScreenShareConstraints,
   detachScreenShareFromPeers,
@@ -704,7 +705,7 @@ export function useVoice() {
 
       tracks.forEach(t => t.stop());
       screenStreamRef.current = null; setIsScreenSharing(false);
-      setTimeout(() => updatePresenceStatus({ isScreenSharing: false }), 300);
+      setTimeout(() => updatePresenceStatus({ isScreenSharing: false }, true), 150);
     }
   }, [updatePresenceStatus]);
 
@@ -721,6 +722,7 @@ export function useVoice() {
         : await navigator.mediaDevices.getDisplayMedia(constraints);
 
       const videoTrack = stream.getVideoTracks()[0];
+      await applyScreenShareTrackProfile(videoTrack, profile);
       if (videoTrack && profile.contentHint) {
         // Prefer screen clarity for text/code over smoother motion.
         videoTrack.contentHint = profile.contentHint;
@@ -733,7 +735,7 @@ export function useVoice() {
       // Attach the screen stream to already connected peers.
       await attachScreenShareToPeers(peerConns.current, stream, profile);
 
-      updatePresenceStatus({ isScreenSharing: true });
+      await updatePresenceStatus({ isScreenSharing: true }, true);
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err) {
       console.error('Screen sharing error', err);

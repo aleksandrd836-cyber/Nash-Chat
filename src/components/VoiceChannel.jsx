@@ -7,6 +7,10 @@ const CREATOR_IDS = new Set([
   '43751682-690e-4934-a9f2-7300a816b92d',
   '1380ae20-201a-4c77-aed3-93b3cb96f8d5'
 ]);
+const STREAM_BUTTON_LABELS = {
+  watch: 'СМОТРЕТЬ',
+  retry: 'ПОВТОРИТЬ СТРИМ',
+};
 
 const ScreenPlayer = memo(function ScreenPlayer({ participant, stream, onClose }) {
   const containerRef = useRef(null);
@@ -377,7 +381,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                         }}
                         className="mt-2 px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all vibe-primary-button"
                       >
-                        {stream ? 'WATCH' : 'RETRY STREAM'}
+                        {stream ? STREAM_BUTTON_LABELS.watch : STREAM_BUTTON_LABELS.retry}
                       </button>
                     )}
                   </div>

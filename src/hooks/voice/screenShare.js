@@ -34,9 +34,7 @@ export function buildScreenShareConstraints(profile, sourceId = null) {
         mandatory: {
           chromeMediaSource: 'desktop',
           chromeMediaSourceId: sourceId,
-          minWidth: profile.width.ideal,
           maxWidth: profile.width.ideal,
-          minHeight: profile.height.ideal,
           maxHeight: profile.height.ideal,
           maxFrameRate: profile.frameRate.ideal,
         },
@@ -46,11 +44,24 @@ export function buildScreenShareConstraints(profile, sourceId = null) {
 
   return {
     video: {
-      ...profile,
       cursor: 'always',
     },
     audio: false,
   };
+}
+
+export async function applyScreenShareTrackProfile(track, profile) {
+  if (!track?.applyConstraints || !profile) return;
+
+  try {
+    await track.applyConstraints({
+      width: profile.width,
+      height: profile.height,
+      frameRate: profile.frameRate,
+    });
+  } catch (error) {
+    console.warn('[WebRTC] Failed to apply screen track constraints:', error);
+  }
 }
 
 export async function applyScreenShareSenderQuality(sender, profile) {
@@ -75,11 +86,20 @@ export async function attachScreenShareToPeers(peerConnections, stream, profile)
   const peers = Object.values(peerConnections);
 
   await Promise.all(peers.map(async (peerConnection) => {
+    let hasNewTrack = false;
     for (const track of tracks) {
+      const alreadyAdded = peerConnection.getSenders().some((sender) => sender.track === track);
+      if (alreadyAdded) continue;
+
       const sender = peerConnection.addTrack(track, stream);
+      hasNewTrack = true;
       if (track.kind === 'video') {
         await applyScreenShareSenderQuality(sender, profile);
       }
+    }
+
+    if (hasNewTrack && typeof peerConnection.onnegotiationneeded === 'function') {
+      await peerConnection.onnegotiationneeded();
     }
   }));
 }
@@ -89,15 +109,21 @@ export async function detachScreenShareFromPeers(peerConnections) {
 
   await Promise.all(peers.map(async (peerConnection) => {
     const senders = peerConnection.getSenders();
+    let removedTrack = false;
     await Promise.all(senders.map(async (sender) => {
       if (sender.track?.kind !== 'video') return;
 
       try {
         await sender.replaceTrack(null);
         peerConnection.removeTrack(sender);
+        removedTrack = true;
       } catch (error) {
         console.warn(error);
       }
     }));
+
+    if (removedTrack && typeof peerConnection.onnegotiationneeded === 'function') {
+      await peerConnection.onnegotiationneeded();
+    }
   }));
 }

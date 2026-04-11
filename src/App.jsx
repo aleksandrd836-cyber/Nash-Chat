@@ -139,6 +139,21 @@ function App() {
     setCenterImageError(false); // Сброс ошибки при смене сервера
   }
 
+  function handleSyncSelectedServer(server) {
+    startTransition(() => {
+      if (!server) {
+        setSelectedServer(null);
+        setSelectedChannel(null);
+        setActiveDM(null);
+        voice.leaveVoiceChannel?.();
+        return;
+      }
+
+      setSelectedServer(server);
+    });
+    setCenterImageError(false);
+  }
+
   function handleOpenSettings() {
     startTransition(() => {
       setSettingsOpen(true);
@@ -229,6 +244,7 @@ function App() {
           onSelectServer={handleSelectServer}
           onCreateServer={handleOpenServerEntry}
           onHomeClick={handleOpenHome}
+          onServerStateSync={handleSyncSelectedServer}
           refreshTrigger={serverRefresh}
         />
 

@@ -13,6 +13,26 @@ const PLATFORM_CREATOR_IDS = new Set([
 const isPlatformCreator = (userId) => PLATFORM_CREATOR_IDS.has(userId);
 const EMOJI_REGEX = /(\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*)/gu;
 const normalizeMessageText = (value) => (typeof value === 'string' ? value : String(value ?? ''));
+const TEXT = {
+  attachmentFallback: 'Прикреплённый файл',
+  attachmentOpenError: 'Не удалось открыть вложение',
+  attachmentTitle: 'Вложение',
+  attachmentFullSize: 'Вложение (полный размер)',
+  fileLabel: 'файл',
+  download: 'Скачать',
+  copyText: 'Копировать текст',
+  edit: 'Редактировать',
+  delete: 'Удалить',
+  deleteConfirm: 'Удалить это сообщение?',
+  copyId: 'Копировать ID',
+  saveEdit: 'Сохранить (Enter)',
+  cancelEdit: 'Отмена (Esc)',
+  anonymous: 'Аноним',
+  deleting: 'Удаляется...',
+  deletingIn: 'Удалится через',
+  edited: '(изменено)',
+  sending: 'ОТПРАВКА...',
+};
 
 function getEmojiPickerTheme() {
   if (typeof document === 'undefined') return 'dark';
@@ -116,7 +136,7 @@ function Attachment({ url, fileName, previewUrl = null }) {
     ? (fileName || decodedPrivatePath || resolvedUrl || url)
     : (resolvedUrl || url);
   const fallbackFileName = decodedPrivatePath?.split('/').pop()?.split('_').slice(2).join('_') || '';
-  const displayFileName = fileName || fallbackFileName || 'РџСЂРёРєСЂРµРїР»С‘РЅРЅС‹Р№ С„Р°Р№Р»';
+  const displayFileName = fileName || fallbackFileName || TEXT.attachmentFallback;
   const extensionLabel = sourceForType.includes('.') ? sourceForType.split('.').pop().toUpperCase() : 'FILE';
   const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(sourceForType);
   const isVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(sourceForType);
@@ -143,7 +163,7 @@ function Attachment({ url, fileName, previewUrl = null }) {
       .catch((err) => {
         if (!isActive) return;
         console.error('[DM Attachment] РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ signed URL:', err);
-        setResolveError('РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ РІР»РѕР¶РµРЅРёРµ');
+        setResolveError(TEXT.attachmentOpenError);
       });
 
     return () => {
@@ -434,7 +454,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
     const now = new Date();
     const diff = expiryDate - now;
 
-    if (diff <= 0) return "Удаляется...";
+    if (diff <= 0) return TEXT.deleting;
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -447,7 +467,7 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
     if (mins > 0) parts.push(`${mins}м`);
     if (days === 0 && hours === 0) parts.push(`${secs}с`);
 
-    return `Удалится через ${parts.join(' ')}`;
+    return `${TEXT.deletingIn} ${parts.join(' ')}`;
   };
   const expiryLabel = getExpiryLabel();
 
@@ -499,27 +519,27 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
   };
 
   const menuOptions = [
-    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ С‚РµРєСЃС‚', icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>, onClick: () => copyTextToClipboard(msg.content) },
+    { label: TEXT.copyText, icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>, onClick: () => copyTextToClipboard(msg.content) },
     { separator: true },
     ...(isMine ? [
       { 
-        label: 'Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ', 
+        label: TEXT.edit, 
         icon: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>, 
         onClick: handleStartEdit 
       },
       { 
-        label: 'РЈРґР°Р»РёС‚СЊ', 
+        label: TEXT.delete, 
         danger: true, 
         icon: <Trash2 size={14} />, 
         onClick: () => {
-          if (confirm('РЈРґР°Р»РёС‚СЊ СЌС‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ?')) {
+          if (confirm(TEXT.deleteConfirm)) {
             onDelete(msg.id);
           }
         } 
       },
     ] : []),
     { separator: true },
-    { label: 'РљРѕРїРёСЂРѕРІР°С‚СЊ ID', onClick: () => copyTextToClipboard(msg.id) },
+    { label: TEXT.copyId, onClick: () => copyTextToClipboard(msg.id) },
   ];
 
   const reactionBtn = (
@@ -556,9 +576,9 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
         className="w-full bg-transparent text-ds-text text-sm resize-none focus:outline-none leading-relaxed p-1"
       />
       <div className="flex items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
-        <button onClick={handleSaveEdit} className="text-ds-accent hover:underline">РЎРѕС…СЂР°РЅРёС‚СЊ (Enter)</button>
+        <button onClick={handleSaveEdit} className="text-ds-accent hover:underline">{TEXT.saveEdit}</button>
         <div className="w-1 h-1 rounded-full bg-ds-muted"></div>
-        <button onClick={handleCancelEdit} className="text-ds-muted hover:text-ds-text transition-colors">РћС‚РјРµРЅР° (Esc)</button>
+        <button onClick={handleCancelEdit} className="text-ds-muted hover:text-ds-text transition-colors">{TEXT.cancelEdit}</button>
       </div>
     </div>
   );
@@ -588,11 +608,11 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
                   <MessageContent content={msg.content} />
                 </div>
                 {msg.is_edited && (
-                  <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(РёР·РјРµРЅРµРЅРѕ)</span>
+                  <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">{TEXT.edited}</span>
                 )}
                 {msg.isPending ? (
                   <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
-                    РћРўРџР РђР’РљРђ...
+                    {TEXT.sending}
                   </span>
                 ) : (
                   isMine && isRead !== undefined && (
@@ -661,11 +681,11 @@ export function Message({ msg, prevMsg, currentUser, currentUserColor, ownerId, 
                 <MessageContent content={msg.content} />
               </div>
               {msg.is_edited && (
-                <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">(РёР·РјРµРЅРµРЅРѕ)</span>
+                <span className="text-[10px] text-ds-muted italic opacity-60 ml-1 select-none">{TEXT.edited}</span>
               )}
               {msg.isPending ? (
                  <span className="text-[9px] text-ds-accent animate-pulse font-black uppercase tracking-tighter mb-1 select-none flex-shrink-0">
-                   РћРўРџР РђР’РљРђ...
+                   {TEXT.sending}
                  </span>
               ) : (
                 isMine && isRead !== undefined && (

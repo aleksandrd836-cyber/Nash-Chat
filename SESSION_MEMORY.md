@@ -575,3 +575,26 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `server-management-hardening.sql`
   - `src/components/ServerEntryModal.jsx`
   - `src/components/ServerSettingsModal.jsx`
+
+### Auto Log � 2026-04-11 15:35
+- Fixed transient mojibake in message send state by replacing pending/edit/action labels in `src/components/Message.jsx` with clean string constants.
+- Hardened stream renegotiation in `src/hooks/voice/screenShare.js`, `src/hooks/voice/signaling.js`, and `src/hooks/useVoice.js`:
+  - removed fragile capture constraints from `getDisplayMedia`
+  - apply quality via `track.applyConstraints(...)`
+  - force renegotiation after adding/removing screen tracks
+  - push `isScreenSharing` presence immediately on start/stop
+- Added live server-state sync in `src/components/ServerSidebar.jsx` + `src/App.jsx` so server avatar/name updates propagate without re-login and kicked users are dropped out of the current server immediately.
+- Build checkpoint: `npm run build` passed on `2.5.41`.
+
+### Auto Log — 2026-04-11 15:45
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/App.jsx`
+  - `src/components/Message.jsx`
+  - `src/components/ServerSidebar.jsx`
+  - `src/components/VoiceChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/screenShare.js`
+  - `src/hooks/voice/signaling.js`

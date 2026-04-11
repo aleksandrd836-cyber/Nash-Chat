@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
 import { AlertTriangle, Info } from 'lucide-react';
@@ -7,11 +7,17 @@ import { AlertTriangle, Info } from 'lucide-react';
  * Вертикальная панель серверов слева.
  * Отображает иконки серверов участника и кнопку "+" для создания/вступления.
  */
-export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, onHomeClick, refreshTrigger }) {
+export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer, onCreateServer, onHomeClick, onServerStateSync, refreshTrigger }) {
   const [servers, setServers] = useState([]);
   const [imageErrors, setImageErrors] = useState({});
   const [isSlow, setIsSlow] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const selectedServerSnapshotRef = useRef('');
+  const onServerStateSyncRef = useRef(onServerStateSync);
+
+  useEffect(() => {
+    onServerStateSyncRef.current = onServerStateSync;
+  }, [onServerStateSync]);
 
   const fetchServers = useCallback(async () => {
     if (!currentUserId) return;
@@ -28,10 +34,36 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
     else setIsSlow(false);
 
     if (!error && data) {
-      setServers(data.map(row => ({ ...row.servers, role: row.role })));
+      const nextServers = data.map(row => ({ ...row.servers, role: row.role }));
+      setServers(nextServers);
+
+      if (selectedServerId) {
+        const selectedServer = nextServers.find((server) => server.id === selectedServerId) || null;
+
+        if (!selectedServer) {
+          selectedServerSnapshotRef.current = '';
+          onServerStateSyncRef.current?.(null);
+        } else {
+          const snapshot = JSON.stringify({
+            id: selectedServer.id,
+            name: selectedServer.name,
+            icon_url: selectedServer.icon_url,
+            owner_id: selectedServer.owner_id,
+            invite_code: selectedServer.invite_code,
+            role: selectedServer.role,
+          });
+
+          if (selectedServerSnapshotRef.current !== snapshot) {
+            selectedServerSnapshotRef.current = snapshot;
+            onServerStateSyncRef.current?.(selectedServer);
+          }
+        }
+      } else {
+        selectedServerSnapshotRef.current = '';
+      }
     }
     setIsLoading(false);
-  }, [currentUserId]);
+  }, [currentUserId, selectedServerId]);
 
   useEffect(() => {
     fetchServers();
@@ -40,6 +72,9 @@ export function ServerSidebar({ currentUserId, selectedServerId, onSelectServer,
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'server_members',
         filter: `user_id=eq.${currentUserId}`,
+      }, fetchServers)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'servers',
       }, fetchServers)
       .subscribe();
     return () => { sub.unsubscribe(); };
