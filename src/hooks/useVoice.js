@@ -120,6 +120,12 @@ export function useVoice() {
   const lastStableChannelIdRef = useRef(null);
   const serverVoiceStateRef = useRef(false);
 
+  const getLocalScreenSharingState = useCallback(() => (
+    Boolean(
+      screenStreamRef.current?.getVideoTracks?.().some((track) => track.readyState === 'live')
+    )
+  ), []);
+
   const removeChannelsByTopic = useCallback(async (topic, keepChannel = null) => {
     const existingChannels = typeof supabase.getChannels === 'function'
       ? supabase.getChannels()
@@ -447,12 +453,16 @@ export function useVoice() {
     const nextLastSeen = Object.prototype.hasOwnProperty.call(updates, 'last_seen')
       ? updates.last_seen
       : (presencePayload.current.last_seen || Date.now());
+    const nextIsScreenSharing = Object.prototype.hasOwnProperty.call(updates, 'isScreenSharing')
+      ? !!updates.isScreenSharing
+      : (nextChannelId ? getLocalScreenSharingState() : false);
 
     presencePayload.current = { 
       ...presencePayload.current, 
       ...updates, 
       sessionId: sessionIdRef.current,
       channelId: nextChannelId,
+      isScreenSharing: nextIsScreenSharing,
       last_seen: nextLastSeen,
       joined_at: updates.joined_at || presencePayload.current.joined_at || Date.now() 
     };
@@ -486,7 +496,7 @@ export function useVoice() {
     } else {
       presenceDebounceRef.current = setTimeout(sendUpdate, 400); // 400ms – золотая середина
     }
-  }, []);
+  }, [getLocalScreenSharingState]);
 
   const syncParticipants = useCallback((channel) => {
     syncLocalVoiceParticipants({
@@ -569,13 +579,15 @@ export function useVoice() {
 
     try {
       currentUserRef.current = { id: user.id, username };
+      const preservedScreenShareState = getLocalScreenSharingState();
+
       presencePayload.current = { 
         userId: user.id, 
         username, 
         color, 
         channelId,
         joined_at: Date.now(),
-        isScreenSharing: false, 
+        isScreenSharing: preservedScreenShareState,
         isSpeaking: false, 
         isMuted: isMutedRef.current, 
         isDeafened: isDeafenedRef.current,
@@ -640,7 +652,7 @@ export function useVoice() {
       // При фатальной ошибке зануляем реконнект, чтобы не спамить
       clearManagedTimeout(reconnectTimerRef);
     }
-  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, getLocalScreenSharingState, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 

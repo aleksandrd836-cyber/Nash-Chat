@@ -598,3 +598,17 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/screenShare.js`
   - `src/hooks/voice/signaling.js`
+
+### Auto Log � 2026-04-11 16:02
+- ����� ������� ������� ������ ����� ~15 ������: ��� ����� ���������� joinVoiceChannel ������ ������� presencePayload � isScreenSharing: false, � oice_sessions ����� ������ ��������� � ��������.
+- � src/hooks/useVoice.js �������� getLocalScreenSharingState(), � updatePresenceStatus() ������ ���� �������� ��������� screen-share �� live video track � �� ������ ��� �� heartbeat / reconnect.
+- ������������� presencePayload ��� �����/���������� ������ ��������� �������� ����� ������ ��������������� alse.
+- ������ ������ �������: 
+pm run build > 2.5.42.
+
+### Auto Log — 2026-04-11 16:05
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`

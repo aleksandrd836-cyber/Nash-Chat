@@ -29,17 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 15:45`
+- Время: `2026-04-11 16:05`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/App.jsx`
-  - `src/components/Message.jsx`
-  - `src/components/ServerSidebar.jsx`
-  - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/screenShare.js`
-  - `src/hooks/voice/signaling.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -255,3 +249,10 @@ pm run build passes.
   - refresh the selected server object when its avatar/name/invite changes
   - if the current user loses membership, clear selected server/channel and leave voice immediately
 - Latest safe checkpoint after this pass: `npm run build` passes on `2.5.41`.
+
+## 2026-04-11 stream-reconnect-state handoff
+- Fixed a regression where active screen sharing disappeared for viewers after ~15 seconds even though the streamer still saw it locally.
+- Root cause: src/hooks/useVoice.js rebuilt presencePayload.current with isScreenSharing: false during silent voice-channel reconnects; subsequent oice_sessions upserts overwrote the server state and the viewer UI hid the watch button.
+- Added getLocalScreenSharingState() and made both updatePresenceStatus() and the join/reconnect payload derive isScreenSharing from the live screen track when no explicit override is provided.
+- Build verified successfully with 
+pm run build (2.5.42).
