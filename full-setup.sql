@@ -114,14 +114,19 @@ CREATE TABLE IF NOT EXISTS direct_message_reactions (
 -- ============================================================
 
 -- Р¤СѓРЅРєС†РёСЏ РїСЂРёСЃРѕРµРґРёРЅРµРЅРёСЏ Рє СЃРµСЂРІРµСЂСѓ РїРѕ РёРЅРІР°Р№С‚Сѓ
+DROP FUNCTION IF EXISTS join_server_by_invite(TEXT);
 CREATE OR REPLACE FUNCTION join_server_by_invite(p_invite_code TEXT)
 RETURNS JSONB AS $$
 DECLARE
   v_server_record RECORD;
   v_membership    RECORD;
+  v_normalized_code TEXT := REGEXP_REPLACE(UPPER(BTRIM(p_invite_code)), '[^A-Z0-9]', '', 'g');
 BEGIN
   -- 1. РС‰РµРј СЃРµСЂРІРµСЂ
-  SELECT * INTO v_server_record FROM servers WHERE UPPER(invite_code) = UPPER(p_invite_code);
+  SELECT *
+    INTO v_server_record
+    FROM servers
+   WHERE REGEXP_REPLACE(UPPER(COALESCE(invite_code, '')), '[^A-Z0-9]', '', 'g') = v_normalized_code;
   
   IF NOT FOUND THEN
     RETURN jsonb_build_object('error', 'not_found');
@@ -148,7 +153,10 @@ BEGIN
     'invite_code', v_server_record.invite_code
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION join_server_by_invite(TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION reserve_invite_code(p_code TEXT, p_username TEXT)
 RETURNS JSONB AS $$
@@ -375,6 +383,22 @@ CREATE POLICY "РЈС‡Р°СЃС‚РЅРёРєРё РІРёРґСЏС‚ СЃ
     EXISTS (SELECT 1 FROM server_members WHERE server_id = id AND user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Users can create their own servers" ON servers;
+CREATE POLICY "Users can create their own servers" ON servers
+  FOR INSERT TO authenticated
+  WITH CHECK (owner_id = auth.uid());
+
+DROP POLICY IF EXISTS "Server owners can update their servers" ON servers;
+CREATE POLICY "Server owners can update their servers" ON servers
+  FOR UPDATE TO authenticated
+  USING (owner_id = auth.uid())
+  WITH CHECK (owner_id = auth.uid());
+
+DROP POLICY IF EXISTS "Server owners can delete their servers" ON servers;
+CREATE POLICY "Server owners can delete their servers" ON servers
+  FOR DELETE TO authenticated
+  USING (owner_id = auth.uid());
+
 -- РРЅРІР°Р№С‚-РєРѕРґС‹: С‡РёС‚Р°С‚СЊ РјРѕРіСѓС‚ РІСЃРµ (РґР»СЏ СЂРµРіРёСЃС‚СЂР°С†РёРё), РЅРѕ РјРµРЅСЏС‚СЊ вЂ” РЅРµС‚
 CREATE POLICY "Р’СЃРµ РјРѕРіСѓС‚ РїСЂРѕРІРµСЂСЏС‚СЊ РёРЅРІР°Р№С‚С‹" ON invite_codes
   FOR SELECT USING (true);
@@ -387,6 +411,32 @@ CREATE POLICY "РђРІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹Рµ РІР
 CREATE POLICY "РЈС‡Р°СЃС‚РЅРёРєРё РІРёРґСЏС‚ СЃРѕСЂР°С‚РЅРёРєРѕРІ РїРѕ СЃРµСЂРІРµСЂСѓ" ON server_members
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM server_members sm WHERE sm.server_id = server_members.server_id AND sm.user_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Users can create owner membership for own server" ON server_members;
+CREATE POLICY "Users can create owner membership for own server" ON server_members
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = auth.uid()
+    AND role = 'owner'
+    AND EXISTS (
+      SELECT 1
+      FROM servers s
+      WHERE s.id = server_members.server_id
+        AND s.owner_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Server owners can remove members" ON server_members;
+CREATE POLICY "Server owners can remove members" ON server_members
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM servers s
+      WHERE s.id = server_members.server_id
+        AND s.owner_id = auth.uid()
+    )
   );
 
 -- РљР°РЅР°Р»С‹: РІРёРґРµС‚СЊ С‚РѕР»СЊРєРѕ СѓС‡Р°СЃС‚РЅРёРєР°Рј СЃРµСЂРІРµСЂР°

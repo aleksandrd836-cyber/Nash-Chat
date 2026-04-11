@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { getUserAvatar } from '../lib/avatar';
 import { 
@@ -8,7 +8,7 @@ import {
 import { compressImage } from '../lib/image';
 
 /**
- * Надёжная функция копирования — работает и в браузере, и в Electron
+ * РќР°РґС‘Р¶РЅР°СЏ С„СѓРЅРєС†РёСЏ РєРѕРїРёСЂРѕРІР°РЅРёСЏ вЂ” СЂР°Р±РѕС‚Р°РµС‚ Рё РІ Р±СЂР°СѓР·РµСЂРµ, Рё РІ Electron
  */
 function copyToClipboard(text) {
   if (!text) return;
@@ -32,17 +32,22 @@ function legacyCopy(text) {
   document.body.removeChild(el);
 }
 
+function normalizeServerInviteCode(value) {
+  return value?.toUpperCase().replace(/[\s-]+/g, '').trim() ?? '';
+}
+
 export function ServerSettingsModal({ server, currentUserId, onClose, onServerDeleted }) {
   const [members, setMembers]         = useState([]);
   const [loading, setLoading]         = useState(true);
   const [copied, setCopied]           = useState(false);
   const [serverName, setServerName]   = useState(server.name);
   const [savingName, setSavingName]   = useState(false);
-  const [inviteCode, setInviteCode]   = useState(server.invite_code || '');
+  const [inviteCode, setInviteCode]   = useState(() => normalizeServerInviteCode(server.invite_code || ''));
   const [codeLoading, setCodeLoading] = useState(!server.invite_code);
   const [iconUrl, setIconUrl]         = useState(server.icon_url || '');
   const [uploading, setUploading]     = useState(false);
   const fileInputRef = useRef(null);
+  const inviteCodeInputRef = useRef(null);
 
   useEffect(() => {
     if (!server.invite_code) {
@@ -52,7 +57,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
         .eq('id', server.id)
         .single()
         .then(({ data }) => {
-          if (data?.invite_code) setInviteCode(data.invite_code);
+          if (data?.invite_code) setInviteCode(normalizeServerInviteCode(data.invite_code));
           setCodeLoading(false);
         });
     }
@@ -60,14 +65,14 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
-    // Используем RPC-функцию для обхода проблем RLS/Joins
+    // РСЃРїРѕР»СЊР·СѓРµРј RPC-С„СѓРЅРєС†РёСЋ РґР»СЏ РѕР±С…РѕРґР° РїСЂРѕР±Р»РµРј RLS/Joins
     const { data, error } = await supabase
       .rpc('get_server_members', { p_server_id: server.id });
     
     if (!error && data) {
       setMembers(data);
     } else {
-      console.error('[ServerSettings] Ошибка загрузки участников:', error);
+      console.error('[ServerSettings] РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СѓС‡Р°СЃС‚РЅРёРєРѕРІ:', error);
     }
     setLoading(false);
   }, [server.id]);
@@ -75,7 +80,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
   async function handleKickMember(userId) {
-    if (!window.confirm('Исключить этого участника?')) return;
+    if (!window.confirm('РСЃРєР»СЋС‡РёС‚СЊ СЌС‚РѕРіРѕ СѓС‡Р°СЃС‚РЅРёРєР°?')) return;
     await supabase
       .from('server_members')
       .delete()
@@ -85,8 +90,8 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   }
 
   async function handleRegenerateCode() {
-    if (!window.confirm('Сгенерировать новый код доступа?')) return;
-    const newCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    if (!window.confirm('РЎРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РЅРѕРІС‹Р№ РєРѕРґ РґРѕСЃС‚СѓРїР°?')) return;
+    const newCode = normalizeServerInviteCode(Math.random().toString(36).substring(2, 10).toUpperCase());
     const { error } = await supabase
       .from('servers')
       .update({ invite_code: newCode })
@@ -94,6 +99,9 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
     if (!error) {
       setInviteCode(newCode);
       setCopied(false);
+      server.invite_code = newCode;
+    } else {
+      alert(`РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ РєРѕРґ СЃРµСЂРІРµСЂР°:\n${error.message}`);
     }
   }
 
@@ -111,13 +119,13 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   async function handleAvatarUpload(e) {
     const file = e.target.files?.[0];
     if (file.type === 'image/gif') {
-      alert('Гифки — это пережиток прошлого! Для аватаров используйте JPG или PNG.');
+      alert('Р“РёС„РєРё вЂ” СЌС‚Рѕ РїРµСЂРµР¶РёС‚РѕРє РїСЂРѕС€Р»РѕРіРѕ! Р”Р»СЏ Р°РІР°С‚Р°СЂРѕРІ РёСЃРїРѕР»СЊР·СѓР№С‚Рµ JPG РёР»Рё PNG.');
       return;
     }
 
     setUploading(true);
     try {
-      // Сжимаем аватар перед загрузкой
+      // РЎР¶РёРјР°РµРј Р°РІР°С‚Р°СЂ РїРµСЂРµРґ Р·Р°РіСЂСѓР·РєРѕР№
       const finalFile = await compressImage(file);
       
       const ext = finalFile.name.split('.').pop();
@@ -142,15 +150,15 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
       setIconUrl(publicUrl);
       server.icon_url = publicUrl;
     } catch (err) {
-      console.error('[AvatarUpload] Ошибка:', err);
-      alert('Не удалось загрузить аватар. Проверьте соединение и настройки Storage в Supabase.');
+      console.error('[AvatarUpload] РћС€РёР±РєР°:', err);
+      alert('РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ Р°РІР°С‚Р°СЂ. РџСЂРѕРІРµСЂСЊС‚Рµ СЃРѕРµРґРёРЅРµРЅРёРµ Рё РЅР°СЃС‚СЂРѕР№РєРё Storage РІ Supabase.');
     } finally {
       setUploading(false);
     }
   }
 
   async function handleDeleteServer() {
-    if (!window.confirm(`Удалить сервер «${server.name}» полностью?`)) return;
+    if (!window.confirm(`РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ В«${server.name}В» РїРѕР»РЅРѕСЃС‚СЊСЋ?`)) return;
     await supabase.from('servers').delete().eq('id', server.id);
     onServerDeleted();
     onClose();
@@ -158,6 +166,8 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
 
   function handleCopy() {
     if (!inviteCode) return;
+    inviteCodeInputRef.current?.focus();
+    inviteCodeInputRef.current?.select();
     copyToClipboard(inviteCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -178,8 +188,8 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
               <Settings size={22} />
             </div>
             <div>
-              <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">Сервер</h2>
-              <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">Управление пространством</p>
+              <h2 className="text-ds-text font-black text-xl uppercase tracking-tighter">РЎРµСЂРІРµСЂ</h2>
+              <p className="text-[10px] text-ds-muted font-black uppercase tracking-[0.2em] -mt-0.5">РЈРїСЂР°РІР»РµРЅРёРµ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕРј</p>
             </div>
           </div>
           <button
@@ -195,7 +205,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           
           {/* General Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">Основное</h3>
+            <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">РћСЃРЅРѕРІРЅРѕРµ</h3>
             
             <div className="flex items-center gap-8 mb-8 pb-8 border-b border-white/5">
                {/* Avatar Picker Context */}
@@ -229,7 +239,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
 
                <div className="flex-1 space-y-4">
                   <div className="space-y-1.5">
-                     <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest ml-1">Название сервера</p>
+                     <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest ml-1">РќР°Р·РІР°РЅРёРµ СЃРµСЂРІРµСЂР°</p>
                      <div className="flex gap-2">
                         <input
                            type="text" value={serverName} onChange={e => setServerName(e.target.value)}
@@ -244,7 +254,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                      </div>
                   </div>
                   <p className="text-[9px] text-ds-muted uppercase tracking-[0.1em] leading-relaxed">
-                     Минимальный размер 128x128. Рекомендуем использовать квадратные изображения для лучшего вида.
+                     РњРёРЅРёРјР°Р»СЊРЅС‹Р№ СЂР°Р·РјРµСЂ 128x128. Р РµРєРѕРјРµРЅРґСѓРµРј РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РєРІР°РґСЂР°С‚РЅС‹Рµ РёР·РѕР±СЂР°Р¶РµРЅРёСЏ РґР»СЏ Р»СѓС‡С€РµРіРѕ РІРёРґР°.
                   </p>
                </div>
             </div>
@@ -253,7 +263,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           {/* Invite Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Код доступа</h3>
+              <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">РљРѕРґ РґРѕСЃС‚СѓРїР°</h3>
               <button onClick={handleRegenerateCode} className="text-ds-accent/60 hover:text-ds-accent transition-colors">
                 <RefreshCw size={14} className={codeLoading ? 'animate-spin' : ''} />
               </button>
@@ -265,9 +275,16 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                 <div className="w-12 h-12 rounded-full bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue mb-2">
                    <UserPlus size={24} />
                 </div>
-                <code className="text-3xl font-black text-ds-text tracking-[0.3em] uppercase drop-shadow-[0_0_15px_rgba(0,240,255,0.3)]">
-                  {inviteCode || '········'}
-                </code>
+                <input
+                  ref={inviteCodeInputRef}
+                  type="text"
+                  readOnly
+                  value={inviteCode || ''}
+                  onFocus={(event) => event.target.select()}
+                  onClick={(event) => event.target.select()}
+                  className="w-full max-w-[260px] bg-transparent text-center text-3xl font-black text-ds-text tracking-[0.3em] uppercase outline-none select-all cursor-text"
+                  placeholder="········"
+                />
               </div>
               <button
                 onClick={handleCopy} disabled={!inviteCode}
@@ -275,7 +292,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                   ${copied ? 'vibe-primary-button text-ds-bg vibe-glow-blue' : 'vibe-secondary-button text-ds-muted hover:text-ds-text'}`}
               >
                 {copied ? <Check size={18} strokeWidth={3} /> : <Copy size={18} />}
-                {copied ? 'КОПИЯ СНЯТА' : 'СКОПИРОВАТЬ КЛЮЧ'}
+                {copied ? 'РљРћРџРРЇ РЎРќРЇРўРђ' : 'РЎРљРћРџРР РћР’РђРўР¬ РљР›Р®Р§'}
               </button>
             </div>
           </section>
@@ -283,7 +300,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           {/* Members Section */}
           <section className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em] mb-4 ml-1">
-              Участники — {members.length}
+              РЈС‡Р°СЃС‚РЅРёРєРё вЂ” {members.length}
             </h3>
             <div className="vibe-panel space-y-1 rounded-[2rem] overflow-hidden p-2">
               {loading ? (
@@ -307,15 +324,15 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
                         {member.username}
                         {['43751682-690e-4934-a9f2-7300a816b92d', '1380ae20-201a-4c77-aed3-93b3cb96f8d5'].includes(member.id) && (
                           <span className="ml-2 px-1.5 py-0.5 rounded-md bg-ds-accent/10 border border-ds-accent/30 text-[8px] font-black text-ds-accent uppercase tracking-tighter vibe-glow-blue align-middle vibe-creator-badge">
-                            СОЗДАТЕЛЬ
+                            РЎРћР—Р”РђРўР•Р›Р¬
                           </span>
                         )}
-                        {isMe && <span className="text-[9px] font-black text-ds-muted uppercase tracking-widest ml-2">(ВЫ)</span>}
+                        {isMe && <span className="text-[9px] font-black text-ds-muted uppercase tracking-widest ml-2">(Р’Р«)</span>}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {isOwner ? <Crown size={10} className="text-ds-accent" /> : <User size={10} className="text-ds-muted" />}
                         <span className="text-[9px] font-black text-ds-muted uppercase tracking-[0.1em]">
-                          {isOwner ? 'Основатель' : 'Участник'}
+                          {isOwner ? 'РћСЃРЅРѕРІР°С‚РµР»СЊ' : 'РЈС‡Р°СЃС‚РЅРёРє'}
                         </span>
                       </div>
                     </div>
@@ -337,13 +354,13 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
           <section className="pt-10 border-t border-white/5 animate-fade-in" style={{ animationDelay: '0.5s' }}>
             <div className="flex items-center gap-2 mb-4 text-ds-red/60 px-1 font-black text-[10px] uppercase tracking-widest">
                <AlertCircle size={14} />
-               Опасная зона
+               РћРїР°СЃРЅР°СЏ Р·РѕРЅР°
             </div>
             <button
               onClick={handleDeleteServer}
               className="w-full py-4 rounded-2xl bg-ds-red/10 border border-ds-red/30 text-ds-red font-black uppercase tracking-[0.2em] text-[11px] transition-all hover:bg-ds-red hover:text-white group"
             >
-              УДАЛИТЬ СЕРВЕР ПОЛНОСТЬЮ
+              РЈР”РђР›РРўР¬ РЎР•Р Р’Р•Р  РџРћР›РќРћРЎРўР¬Р®
             </button>
           </section>
 
@@ -352,3 +369,6 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
     </div>
   );
 }
+
+
+

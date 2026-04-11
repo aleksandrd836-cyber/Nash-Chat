@@ -29,13 +29,14 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 03:50`
+- Время: `2026-04-11 04:08`
 - Последние staged-файлы перед коммитом:
+  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `src/components/HotkeysSettings.jsx`
+  - `server-rls-hardening.sql`
+  - `src/components/ServerEntryModal.jsx`
   - `src/components/ServerSettingsModal.jsx`
-  - `src/components/SettingsModal.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -198,3 +199,10 @@ pm run build passes.
 - Inspect `src/components/SettingsModal.jsx`, `src/components/ServerSettingsModal.jsx`, and `src/components/HotkeysSettings.jsx` first if someone reports theme inconsistency between dark and light modes.
 - Shared UI primitives used in this pass live in `src/index.css`: `vibe-primary-button`, `vibe-secondary-button`, and `vibe-form-field`.
 - Latest safe checkpoint after this continuation: `npm run build` passes on `2.5.35`.
+
+## 2026-04-11 server invite handoff
+- If server creation fails with RLS on `servers`, or server join codes return `not_found`, inspect `server-rls-hardening.sql` first.
+- This pass adds missing write policies for `servers` and `server_members`, and also normalizes invite-code lookup inside `join_server_by_invite`.
+- Client-side normalization for server join codes now lives in `src/components/ServerEntryModal.jsx`.
+- Server invite-code selection/copy UX now lives in `src/components/ServerSettingsModal.jsx`.
+- If Supabase throws `42P13 cannot change return type of existing function`, re-run the updated SQL that starts with `DROP FUNCTION IF EXISTS public.join_server_by_invite(TEXT);`.

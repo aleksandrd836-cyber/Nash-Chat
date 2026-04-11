@@ -483,3 +483,27 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/HotkeysSettings.jsx`
   - `src/components/ServerSettingsModal.jsx`
   - `src/components/SettingsModal.jsx`
+
+### 2026-04-11 server creation + server invite fix
+- Fixed another RLS gap: server creation was blocked because `public.servers` and `public.server_members` had no write policies for owner flows.
+- Added owner-scoped create/update/delete policies for `servers` and owner membership/delete policies for `server_members` in `full-setup.sql`.
+- Added `server-rls-hardening.sql` for live Supabase apply.
+- Hardened `join_server_by_invite` to normalize codes by stripping spaces and dashes before lookup, reducing false `not_found` results when users type formatted codes manually.
+- Updated `src/components/ServerEntryModal.jsx` to normalize join codes client-side and show clearer permission errors on server creation.
+- Updated `src/components/ServerSettingsModal.jsx` so the invite code can be focused/selected directly, and copy now also selects the code field first.
+- Verification: `npm run build` passed on version `2.5.36`.
+
+### 2026-04-11 Supabase function redeploy fix
+- PostgreSQL refused to replace `join_server_by_invite(text)` in-place on some projects with `42P13`.
+- Fix: SQL hardening scripts now explicitly `DROP FUNCTION IF EXISTS ...` before recreating `join_server_by_invite(TEXT)`.
+- Added `GRANT EXECUTE` after recreation so authenticated users can still call the RPC immediately.
+
+### Auto Log — 2026-04-11 04:08
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `full-setup.sql`
+  - `package.json`
+  - `public/version.json`
+  - `server-rls-hardening.sql`
+  - `src/components/ServerEntryModal.jsx`
+  - `src/components/ServerSettingsModal.jsx`
