@@ -29,12 +29,10 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 04:08`
+- Время: `2026-04-11 04:22`
 - Последние staged-файлы перед коммитом:
-  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `server-rls-hardening.sql`
   - `src/components/ServerEntryModal.jsx`
   - `src/components/ServerSettingsModal.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
@@ -206,3 +204,10 @@ pm run build passes.
 - Client-side normalization for server join codes now lives in `src/components/ServerEntryModal.jsx`.
 - Server invite-code selection/copy UX now lives in `src/components/ServerSettingsModal.jsx`.
 - If Supabase throws `42P13 cannot change return type of existing function`, re-run the updated SQL that starts with `DROP FUNCTION IF EXISTS public.join_server_by_invite(TEXT);`.
+- The minimal recovery path is to drop and recreate only `public.join_server_by_invite(TEXT)` plus `GRANT EXECUTE`, without re-running the entire script.
+
+## 2026-04-11 server modal encoding handoff
+- If server create/join modal or server settings suddenly show mojibake, inspect `src/components/ServerEntryModal.jsx` and `src/components/ServerSettingsModal.jsx` first.
+- Both files were rewritten cleanly in UTF-8 after text corruption slipped into the repo during prior edits.
+- Invite-code copy now has three layers: `navigator.clipboard`, hidden textarea + `document.execCommand('copy')`, and final manual prompt fallback.
+- Latest safe checkpoint after this fix: `npm run build` passes on `2.5.37`.

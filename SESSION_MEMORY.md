@@ -497,6 +497,13 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
 - PostgreSQL refused to replace `join_server_by_invite(text)` in-place on some projects with `42P13`.
 - Fix: SQL hardening scripts now explicitly `DROP FUNCTION IF EXISTS ...` before recreating `join_server_by_invite(TEXT)`.
 - Added `GRANT EXECUTE` after recreation so authenticated users can still call the RPC immediately.
+- If Supabase already has the old function, re-run only the updated function block starting with `DROP FUNCTION IF EXISTS public.join_server_by_invite(TEXT);`.
+
+### 2026-04-11 server modals utf8 + clipboard fix
+- `src/components/ServerEntryModal.jsx` and `src/components/ServerSettingsModal.jsx` were rewritten cleanly after mojibake text appeared in UI.
+- Restored all Russian labels in create/join server flow and in server settings sections.
+- Invite-code copy is now more reliable: tries Clipboard API first, then `execCommand('copy')`, and finally opens a manual copy prompt if the environment still blocks clipboard access.
+- Verification: `npm run build` passed on `2.5.37`.
 
 ### Auto Log — 2026-04-11 04:08
 - Автоматически записано git hook перед коммитом.
@@ -505,5 +512,13 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `server-rls-hardening.sql`
+  - `src/components/ServerEntryModal.jsx`
+  - `src/components/ServerSettingsModal.jsx`
+
+### Auto Log — 2026-04-11 04:22
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
   - `src/components/ServerEntryModal.jsx`
   - `src/components/ServerSettingsModal.jsx`
