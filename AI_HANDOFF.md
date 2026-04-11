@@ -29,15 +29,14 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 03:19`
+- Время: `2026-04-11 03:28`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/App.jsx`
-  - `src/components/DirectMessagePanel.jsx`
-  - `src/components/Message.jsx`
-  - `src/components/TextChannel.jsx`
-  - `src/components/VoiceChannel.jsx`
+  - `src/components/MembersPanel.jsx`
+  - `src/components/ServerEntryModal.jsx`
+  - `src/components/Sidebar/ChannelItem.jsx`
+  - `src/components/Sidebar/VoiceParticipant.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -177,3 +176,10 @@ pm run build passes.
 - Continued theme step 2 by converting more chat/voice headers and composer surfaces to shared panel utilities in `DirectMessagePanel`, `TextChannel`, and `VoiceChannel`.
 - Result: better consistency between dark/light themes and fewer one-off transparent boxes.
 - Build status after this pass: `npm run build` succeeds on `2.5.32`.
+
+## 2026-04-11 side-theme handoff
+- Theme polishing now includes the remaining major side surfaces, not just central chat panels.
+- `MembersPanel`, `ChannelItem`, `VoiceParticipant`, and `ServerEntryModal` were updated to use the shared rail/panel/CTA language.
+- This pass also quietly fixed one correctness issue in the members list: owner highlighting now actually receives `ownerId` in row rendering.
+- Creator badge labels in side lists are normalized to clean Russian text.
+- Build status after this continuation pass: `npm run build` succeeds on `2.5.33`.

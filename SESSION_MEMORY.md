@@ -424,3 +424,25 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/Message.jsx`
   - `src/components/TextChannel.jsx`
   - `src/components/VoiceChannel.jsx`
+
+### 2026-04-11 theme continuation: side surfaces and modal polish
+- Continued theme step 2 beyond chat/voice composers into the remaining high-visibility side surfaces.
+- Rebuilt `src/components/MembersPanel.jsx` onto the shared rail/panel language:
+  - right rail now uses the same shell system as other sidebars
+  - member rows have deeper hover/selection surfaces
+  - creator badge text is normalized (`���������`)
+  - fixed owner highlighting path by correctly passing `ownerId` into member rows
+- Restyled `src/components/Sidebar/ChannelItem.jsx` for stronger hierarchy in both themes: better active state, cleaner owner controls, and more premium hover states.
+- Restyled `src/components/Sidebar/VoiceParticipant.jsx` to match the updated side-panel language and normalized its creator badge label.
+- Polished `src/components/ServerEntryModal.jsx` so the create/join modal now uses the shared panel system and primary CTA styling instead of older one-off dark boxes.
+- Verification: `npm run build` passed on version `2.5.33`.
+
+### Auto Log — 2026-04-11 03:28
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/MembersPanel.jsx`
+  - `src/components/ServerEntryModal.jsx`
+  - `src/components/Sidebar/ChannelItem.jsx`
+  - `src/components/Sidebar/VoiceParticipant.jsx`

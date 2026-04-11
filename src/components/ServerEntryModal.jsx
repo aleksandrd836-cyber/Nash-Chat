@@ -75,7 +75,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-ds-servers rounded-[2.5rem] w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-ds-border overflow-hidden animate-slide-up flex flex-col relative">
+      <div className="rounded-[2.5rem] w-full max-w-sm shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-ds-border overflow-hidden animate-slide-up flex flex-col relative vibe-panel-strong">
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30" />
         
         <div className="p-8 space-y-8">
@@ -93,7 +93,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
               <div className="flex flex-col gap-4 animate-fade-in">
                 <button
                   onClick={() => setMode('create')}
-                  className="group flex items-center gap-4 p-5 bg-ds-bg/50 hover:bg-ds-accent/5 border border-ds-border hover:border-ds-accent/30 rounded-3xl transition-all"
+                  className="group flex items-center gap-4 p-5 border border-ds-border hover:border-ds-accent/30 rounded-3xl transition-all vibe-panel"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue group-hover:scale-110 transition-transform">
                     <Plus size={28} strokeWidth={3} />
@@ -106,7 +106,7 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
 
                 <button
                   onClick={() => setMode('join')}
-                  className="group flex items-center gap-4 p-5 bg-ds-bg/50 hover:bg-ds-accent/5 border border-ds-border hover:border-ds-accent/30 rounded-3xl transition-all"
+                  className="group flex items-center gap-4 p-5 border border-ds-border hover:border-ds-accent/30 rounded-3xl transition-all vibe-panel"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-ds-accent/10 flex items-center justify-center text-ds-accent vibe-glow-blue group-hover:scale-110 transition-transform">
                     <Link size={28} strokeWidth={3} />
@@ -129,17 +129,17 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
                     onKeyDown={e => e.key === 'Enter' && handleCreate()}
                     placeholder="Ультра Сервер"
                     autoFocus
-                    className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 transition-all outline-none"
+                    className="w-full border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-bold placeholder-ds-muted/30 focus:border-ds-accent/30 transition-all outline-none vibe-panel"
                   />
                 </div>
                 {error && <p className="text-ds-red text-[10px] font-black uppercase text-center">{error}</p>}
                 <div className="flex gap-3">
-                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-ds-bg/50 border border-ds-border rounded-2xl text-ds-muted hover:text-ds-text transition-all">
+                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center border border-ds-border rounded-2xl text-ds-muted hover:text-ds-text transition-all vibe-panel">
                     <ArrowLeft size={20} />
                   </button>
                   <button
                     onClick={handleCreate} disabled={loading || !serverName.trim()}
-                    className="flex-1 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
+                    className="flex-1 font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40 vibe-primary-button"
                   >
                     {loading ? 'СОЗДАНИЕ...' : 'СОЗДАТЬ СЕРВЕР'}
                   </button>
@@ -157,17 +157,17 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
                     onKeyDown={e => e.key === 'Enter' && handleJoin()}
                     placeholder="КЛЮЧ ХХХХ"
                     autoFocus
-                    className="w-full bg-ds-bg/40 border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-black tracking-[0.3em] uppercase placeholder:tracking-normal focus:border-ds-accent/30 transition-all outline-none"
+                    className="w-full border border-ds-border rounded-2xl px-5 py-4 text-ds-text text-sm font-black tracking-[0.3em] uppercase placeholder:tracking-normal focus:border-ds-accent/30 transition-all outline-none vibe-panel"
                   />
                 </div>
                 {error && <p className="text-ds-red text-[10px] font-black uppercase text-center">{error}</p>}
                 <div className="flex gap-3">
-                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center bg-ds-bg/40 border border-ds-border rounded-2xl text-ds-muted hover:text-ds-text transition-all">
+                  <button onClick={() => setMode('choose')} className="w-16 h-14 flex items-center justify-center border border-ds-border rounded-2xl text-ds-muted hover:text-ds-text transition-all vibe-panel">
                     <ArrowLeft size={20} />
                   </button>
                   <button
                     onClick={handleJoin} disabled={loading || !inviteCode.trim()}
-                    className="flex-1 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
+                    className="flex-1 font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40 vibe-primary-button"
                   >
                     {loading ? 'ПРОВЕРКА...' : 'ВОЙТИ НА СЕРВЕР'}
                   </button>
