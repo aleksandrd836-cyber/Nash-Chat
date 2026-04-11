@@ -222,6 +222,165 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION delete_owned_server(UUID) TO authenticated;
 
+DROP FUNCTION IF EXISTS create_owned_server(TEXT);
+DROP FUNCTION IF EXISTS update_owned_server(UUID, TEXT, TEXT);
+DROP FUNCTION IF EXISTS regenerate_server_invite_code(UUID);
+DROP FUNCTION IF EXISTS remove_server_member(UUID, UUID);
+
+CREATE OR REPLACE FUNCTION create_owned_server(p_name TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_server servers%ROWTYPE;
+  v_clean_name TEXT := NULLIF(BTRIM(COALESCE(p_name, '')), '');
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN jsonb_build_object('error', 'not_authenticated');
+  END IF;
+
+  IF v_clean_name IS NULL THEN
+    RETURN jsonb_build_object('error', 'empty_name');
+  END IF;
+
+  INSERT INTO servers (name, owner_id)
+  VALUES (v_clean_name, auth.uid())
+  RETURNING * INTO v_server;
+
+  INSERT INTO server_members (server_id, user_id, role)
+  VALUES (v_server.id, auth.uid(), 'owner')
+  ON CONFLICT (server_id, user_id) DO UPDATE SET role = 'owner';
+
+  RETURN to_jsonb(v_server);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION create_owned_server(TEXT) TO authenticated;
+
+CREATE OR REPLACE FUNCTION update_owned_server(
+  p_server_id UUID,
+  p_name TEXT DEFAULT NULL,
+  p_icon_url TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_server servers%ROWTYPE;
+  v_clean_name TEXT := NULLIF(BTRIM(COALESCE(p_name, '')), '');
+  v_clean_icon_url TEXT := NULLIF(BTRIM(COALESCE(p_icon_url, '')), '');
+BEGIN
+  SELECT *
+    INTO v_server
+    FROM servers
+   WHERE id = p_server_id
+   LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'server_not_found');
+  END IF;
+
+  IF v_server.owner_id <> auth.uid() THEN
+    RETURN jsonb_build_object('error', 'forbidden');
+  END IF;
+
+  UPDATE servers
+     SET name = COALESCE(v_clean_name, name),
+         icon_url = CASE
+           WHEN p_icon_url IS NULL THEN icon_url
+           ELSE v_clean_icon_url
+         END
+   WHERE id = p_server_id
+   RETURNING * INTO v_server;
+
+  RETURN to_jsonb(v_server);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION update_owned_server(UUID, TEXT, TEXT) TO authenticated;
+
+CREATE OR REPLACE FUNCTION regenerate_server_invite_code(p_server_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_server servers%ROWTYPE;
+  v_new_code TEXT;
+BEGIN
+  SELECT *
+    INTO v_server
+    FROM servers
+   WHERE id = p_server_id
+   LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'server_not_found');
+  END IF;
+
+  IF v_server.owner_id <> auth.uid() THEN
+    RETURN jsonb_build_object('error', 'forbidden');
+  END IF;
+
+  LOOP
+    v_new_code := UPPER(SUBSTR(MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT), 1, 8));
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+        FROM servers
+       WHERE invite_code = v_new_code
+         AND id <> p_server_id
+    );
+  END LOOP;
+
+  UPDATE servers
+     SET invite_code = v_new_code
+   WHERE id = p_server_id
+   RETURNING * INTO v_server;
+
+  RETURN to_jsonb(v_server);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION regenerate_server_invite_code(UUID) TO authenticated;
+
+CREATE OR REPLACE FUNCTION remove_server_member(p_server_id UUID, p_user_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_server servers%ROWTYPE;
+BEGIN
+  SELECT *
+    INTO v_server
+    FROM servers
+   WHERE id = p_server_id
+   LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'server_not_found');
+  END IF;
+
+  IF v_server.owner_id <> auth.uid() THEN
+    RETURN jsonb_build_object('error', 'forbidden');
+  END IF;
+
+  IF p_user_id = v_server.owner_id THEN
+    RETURN jsonb_build_object('error', 'cannot_remove_owner');
+  END IF;
+
+  DELETE FROM server_members
+   WHERE server_id = p_server_id
+     AND user_id = p_user_id;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION remove_server_member(UUID, UUID) TO authenticated;
+
 CREATE OR REPLACE FUNCTION reserve_invite_code(p_code TEXT, p_username TEXT)
 RETURNS JSONB AS $$
 DECLARE

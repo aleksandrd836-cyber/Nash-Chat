@@ -519,6 +519,18 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
 - `src/components/ServerSettingsModal.jsx` now deletes through the RPC and shows an alert if Supabase returns an error instead of failing silently.
 - Verification: `npm run build` passed on `2.5.39`.
 
+### 2026-04-11 server actions rpc pass
+- Continued the server-management hardening beyond delete: create server, regenerate invite code, kick member, rename server, and avatar update now avoid raw table mutations in the UI.
+- Added `server-management-hardening.sql` plus matching definitions in `full-setup.sql` for:
+  - `create_owned_server(TEXT)`
+  - `update_owned_server(UUID, TEXT, TEXT)`
+  - `regenerate_server_invite_code(UUID)`
+  - `remove_server_member(UUID, UUID)`
+- `src/components/ServerEntryModal.jsx` now creates servers through RPC instead of direct inserts into `servers` + `server_members`.
+- `src/components/ServerSettingsModal.jsx` now uses RPC for rename, invite regeneration, member kick, avatar update, and delete error surfacing.
+- Goal of this pass: remove silent failures and centralize ownership checks in DB-side security-definer functions.
+- Verification: `npm run build` passed on `2.5.40`.
+
 ### Auto Log — 2026-04-11 04:08
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
@@ -552,4 +564,14 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `package.json`
   - `public/version.json`
   - `server-delete-hardening.sql`
+  - `src/components/ServerSettingsModal.jsx`
+
+### Auto Log — 2026-04-11 15:08
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `full-setup.sql`
+  - `package.json`
+  - `public/version.json`
+  - `server-management-hardening.sql`
+  - `src/components/ServerEntryModal.jsx`
   - `src/components/ServerSettingsModal.jsx`

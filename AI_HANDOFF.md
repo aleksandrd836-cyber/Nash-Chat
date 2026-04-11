@@ -29,12 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 14:59`
+- Время: `2026-04-11 15:08`
 - Последние staged-файлы перед коммитом:
   - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `server-delete-hardening.sql`
+  - `server-management-hardening.sql`
+  - `src/components/ServerEntryModal.jsx`
   - `src/components/ServerSettingsModal.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
@@ -225,3 +226,17 @@ pm run build passes.
 - New flow uses RPC `delete_owned_server(UUID)` that checks ownership and then explicitly clears dependent records: `channel_last_read`, `message_reactions`, `messages`, `channels`, `server_members`, and the `servers` row.
 - Frontend call site is `src/components/ServerSettingsModal.jsx`; it now surfaces Supabase errors through an alert instead of silently closing.
 - Latest safe checkpoint after this fix: `npm run build` passes on `2.5.39`.
+
+## 2026-04-11 server actions RPC handoff
+- If server actions feel flaky, inspect `server-management-hardening.sql` together with `server-delete-hardening.sql`.
+- The frontend no longer relies on raw inserts/updates/deletes for the main server-owner flows.
+- Current RPC map:
+  - `create_owned_server(TEXT)` for server creation
+  - `update_owned_server(UUID, TEXT, TEXT)` for rename/icon update
+  - `regenerate_server_invite_code(UUID)` for invite refresh
+  - `remove_server_member(UUID, UUID)` for kicks
+  - `delete_owned_server(UUID)` for full deletion
+- Main client call sites:
+  - `src/components/ServerEntryModal.jsx`
+  - `src/components/ServerSettingsModal.jsx`
+- Latest safe checkpoint after this pass: `npm run build` passes on `2.5.40`.

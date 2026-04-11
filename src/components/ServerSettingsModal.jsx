@@ -49,8 +49,21 @@ const TEXT = {
   deleteServerConfirmPrefix: '\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440 \u00ab',
   deleteServerConfirmSuffix: '\u00bb \u043f\u043e\u043b\u043d\u043e\u0441\u0442\u044c\u044e?',
   manualCopyPrompt: '\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439 \u043a\u043e\u0434 \u0432\u0440\u0443\u0447\u043d\u0443\u044e:',
-  deleteServerFailedPrefix: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440:'
+  deleteServerFailedPrefix: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440:',
+  saveNameFailedPrefix: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440:',
+  kickFailedPrefix: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430:',
+  ownerKickForbidden: '\u0412\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u043d\u0435\u043b\u044c\u0437\u044f \u0443\u0434\u0430\u043b\u0438\u0442\u044c.',
+  regenerateFailedPrefix: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u043a\u043e\u0434:',
+  forbidden: '\u0423 \u0442\u0435\u0431\u044f \u043d\u0435\u0442 \u043f\u0440\u0430\u0432 \u043d\u0430 \u044d\u0442\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435.',
+  serverNotFound: '\u0421\u0435\u0440\u0432\u0435\u0440 \u0443\u0436\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d.'
 };
+
+function mapServerActionError(code, fallbackPrefix) {
+  if (code === 'forbidden') return TEXT.forbidden;
+  if (code === 'server_not_found') return TEXT.serverNotFound;
+  if (code === 'cannot_remove_owner') return TEXT.ownerKickForbidden;
+  return fallbackPrefix ? `${fallbackPrefix}\n${code}` : code;
+}
 
 function normalizeServerInviteCode(value) {
   return value?.toUpperCase().replace(/[\s-]+/g, '').trim() ?? '';
@@ -156,18 +169,44 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
   async function handleKickMember(userId) {
     if (!window.confirm(TEXT.removeMemberConfirm)) return;
 
-    await supabase.from('server_members').delete().eq('server_id', server.id).eq('user_id', userId);
+    const { data, error } = await supabase.rpc('remove_server_member', {
+      p_server_id: server.id,
+      p_user_id: userId
+    });
+
+    if (error) {
+      alert(`${TEXT.kickFailedPrefix}\n${error.message}`);
+      return;
+    }
+
+    if (data?.error) {
+      alert(mapServerActionError(data.error, TEXT.kickFailedPrefix));
+      return;
+    }
+
     setMembers((prev) => prev.filter((member) => member.id !== userId));
   }
 
   async function handleRegenerateCode() {
     if (!window.confirm(TEXT.refreshCodeConfirm)) return;
 
-    const newCode = normalizeServerInviteCode(Math.random().toString(36).substring(2, 10).toUpperCase());
-    const { error } = await supabase.from('servers').update({ invite_code: newCode }).eq('id', server.id);
+    const { data, error } = await supabase.rpc('regenerate_server_invite_code', {
+      p_server_id: server.id
+    });
 
     if (error) {
-      alert(`${TEXT.refreshCodeError}\n${error.message}`);
+      alert(`${TEXT.regenerateFailedPrefix}\n${error.message}`);
+      return;
+    }
+
+    if (data?.error) {
+      alert(mapServerActionError(data.error, TEXT.regenerateFailedPrefix));
+      return;
+    }
+
+    const newCode = normalizeServerInviteCode(data?.invite_code || '');
+    if (!newCode) {
+      alert(TEXT.regenerateFailedPrefix);
       return;
     }
 
@@ -181,11 +220,26 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
 
     setSavingName(true);
 
-    const { error } = await supabase.from('servers').update({ name: serverName.trim() }).eq('id', server.id);
+    const { data, error } = await supabase.rpc('update_owned_server', {
+      p_server_id: server.id,
+      p_name: serverName.trim(),
+      p_icon_url: null
+    });
 
-    if (!error) {
-      server.name = serverName.trim();
+    if (error) {
+      alert(`${TEXT.saveNameFailedPrefix}\n${error.message}`);
+      setSavingName(false);
+      return;
     }
+
+    if (data?.error) {
+      alert(mapServerActionError(data.error, TEXT.saveNameFailedPrefix));
+      setSavingName(false);
+      return;
+    }
+
+    server.name = data?.name || serverName.trim();
+    setServerName(server.name);
 
     setSavingName(false);
   }
@@ -215,15 +269,24 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
       const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const publicUrl = data.publicUrl;
 
-      const { error: dbError } = await supabase.from('servers').update({ icon_url: publicUrl }).eq('id', server.id);
+      const { data: updatedServer, error: dbError } = await supabase.rpc('update_owned_server', {
+        p_server_id: server.id,
+        p_name: null,
+        p_icon_url: publicUrl
+      });
 
       if (dbError) throw dbError;
+      if (updatedServer?.error) throw new Error(updatedServer.error);
 
       setIconUrl(publicUrl);
       server.icon_url = publicUrl;
     } catch (error) {
       console.error('[ServerSettings] Avatar upload failed:', error);
-      alert(TEXT.avatarUploadError);
+      if (error?.message === 'forbidden' || error?.message === 'server_not_found') {
+        alert(mapServerActionError(error.message));
+      } else {
+        alert(TEXT.avatarUploadError);
+      }
     } finally {
       setUploading(false);
       event.target.value = '';
@@ -241,7 +304,7 @@ export function ServerSettingsModal({ server, currentUserId, onClose, onServerDe
     }
 
     if (data?.error) {
-      alert(`${TEXT.deleteServerFailedPrefix}\n${data.error}`);
+      alert(mapServerActionError(data.error, TEXT.deleteServerFailedPrefix));
       return;
     }
 

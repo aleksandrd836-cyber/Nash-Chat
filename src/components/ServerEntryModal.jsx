@@ -21,6 +21,7 @@ const TEXT = {
   joinFailed: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u043e\u0439\u0442\u0438 \u043f\u043e \u043a\u043e\u0434\u0443.',
   createTarget: '\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0435\u0440\u0430',
   ownerTarget: '\u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0430',
+  emptyName: '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u043d\u0435 \u0434\u043e\u043b\u0436\u043d\u043e \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c.',
   rlsMessagePrefix:
     'Supabase \u043f\u043e\u043a\u0430 \u043d\u0435 \u0440\u0430\u0437\u0440\u0435\u0448\u0430\u0435\u0442 ',
   rlsMessageSuffix:
@@ -33,7 +34,11 @@ const normalizeServerInviteCode = (value) =>
 
 function formatServerFlowError(rawError, target) {
   if (rawError?.code === '42501') {
-    return `${TEXT.rlsMessagePrefix}${target}${TEXT.rlsMessageSuffix}`;
+      return `${TEXT.rlsMessagePrefix}${target}${TEXT.rlsMessageSuffix}`;
+  }
+
+  if (rawError?.message) {
+    return rawError.message;
   }
 
   return rawError?.message || `${TEXT.genericErrorPrefix}${target}.`;
@@ -53,25 +58,23 @@ export function ServerEntryModal({ currentUserId, onClose, onServerJoined }) {
     setError(null);
 
     try {
-      const { data: server, error: serverError } = await supabase
-        .from('servers')
-        .insert({ name: serverName.trim(), owner_id: currentUserId })
-        .select()
-        .single();
+      const { data, error: serverError } = await supabase.rpc('create_owned_server', {
+        p_name: serverName.trim()
+      });
 
       if (serverError) {
         throw new Error(formatServerFlowError(serverError, TEXT.createTarget));
       }
 
-      const { error: memberError } = await supabase
-        .from('server_members')
-        .insert({ server_id: server.id, user_id: currentUserId, role: 'owner' });
-
-      if (memberError) {
-        throw new Error(formatServerFlowError(memberError, TEXT.ownerTarget));
+      if (data?.error === 'empty_name') {
+        throw new Error(TEXT.emptyName);
       }
 
-      onServerJoined(server);
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      onServerJoined(data);
       onClose();
     } catch (requestError) {
       setError(requestError.message);
