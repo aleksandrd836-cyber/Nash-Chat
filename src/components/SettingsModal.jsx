@@ -187,7 +187,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
     >
       <div 
         style={{ backgroundColor: 'rgb(var(--ds-servers))' }}
-        className="rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_150px_rgba(0,0,0,1)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative"
+        className="vibe-panel-strong rounded-[2.5rem] w-full max-w-2xl h-[85vh] shadow-[0_0_150px_rgba(0,0,0,1)] border border-white/10 overflow-hidden animate-slide-up flex flex-col relative"
       >
         <div className="absolute top-0 inset-x-0 h-1 vibe-moving-glow opacity-30 pointer-events-none" />
         
@@ -216,7 +216,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
             <div className="space-y-6">
               <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Мой профиль</h3>
               
-              <div className="flex items-center gap-8 bg-black/40 p-6 rounded-[2.5rem] border border-white/5 shadow-inner relative group">
+              <div className="vibe-panel flex items-center gap-8 p-6 rounded-[2.5rem] relative group">
                 <div className="absolute inset-0 vibe-moving-glow opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl pointer-events-none" />
                 <div className="relative">
                   <div className="w-[120px] h-[120px] rounded-[3rem] bg-black/40 overflow-hidden border-2 border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
@@ -232,13 +232,13 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                     <div className="flex gap-2">
                       <input
                         type="text" value={username} onChange={e => setUsername(e.target.value)}
-                        className="flex-1 bg-black/20 border border-white/5 rounded-2xl px-4 py-3 text-ds-text text-sm font-bold focus:border-ds-accent/30 transition-all outline-none"
+                        className="vibe-form-field flex-1 rounded-2xl px-4 py-3 text-sm font-bold"
                       />
                     </div>
                   </div>
                   <button
                     onClick={saveSettings} disabled={savingNick}
-                    className="w-full py-3 bg-ds-accent text-black font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-ds-accent/20 vibe-glow-blue disabled:opacity-40"
+                    className="vibe-primary-button w-full py-3 font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40"
                   >
                     {savingNick ? 'ПРИМЕНЕНИЕ...' : 'СОХРАНИТЬ ИЗМЕНЕНИЯ'}
                   </button>
@@ -263,7 +263,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                   <div className="relative">
                     <select
                       value={selectedDevice} onChange={e => setSelectedDevice(e.target.value)}
-                      className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-ds-muted text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
+                      className="vibe-form-field w-full rounded-2xl px-4 py-3 text-xs font-bold appearance-none cursor-pointer"
                     >
                       <option value="">(Системный по умолчанию)</option>
                       {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Микрофон`}</option>)}
@@ -275,7 +275,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                   <div className="relative">
                     <select
                       value={selectedOutput} onChange={e => setSelectedOutput(e.target.value)}
-                      className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-ds-muted text-xs font-bold focus:border-ds-accent/30 transition-all outline-none appearance-none cursor-pointer"
+                      className="vibe-form-field w-full rounded-2xl px-4 py-3 text-xs font-bold appearance-none cursor-pointer"
                     >
                       <option value="">(Системный по умолчанию)</option>
                       {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Устройство вывода`}</option>)}
@@ -285,7 +285,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
               </div>
 
               {/* Mic Test Visualization */}
-              <div className="p-8 bg-black/40 border border-white/5 rounded-[2rem] relative overflow-hidden group">
+              <div className="vibe-panel p-8 rounded-[2rem] relative overflow-hidden group">
                  <div className="absolute inset-0 vibe-moving-glow opacity-10 pointer-events-none" />
                  <div className="relative z-10 flex flex-col items-center">
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 border-[3px] mb-4
@@ -340,7 +340,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                  </div>
 
                  {noiseSuppression && (
-                   <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                   <div className="vibe-panel p-6 rounded-3xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                      <div className="flex justify-between items-center px-1">
                        <div className="flex items-center gap-2">
                           <p className="text-[10px] font-black text-ds-muted uppercase tracking-[0.2em] font-mono">Сила подавления</p>
@@ -384,7 +384,7 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
               <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Внешний вид</h3>
             </div>
             
-            <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center justify-between group">
+            <div className="vibe-panel p-6 rounded-3xl flex items-center justify-between group">
                <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 border ${theme === 'light' ? 'bg-ds-accent/10 border-ds-accent text-ds-accent vibe-glow-blue' : 'bg-white/5 border-white/10 text-ds-muted'}`}>
                      {theme === 'light' ? <Sun size={24} /> : <Moon size={24} />}
@@ -421,8 +421,8 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
                 { key: 'enabled_mute', label: 'Выкл. микрофон' },
                 { key: 'enabled_unmute', label: 'Вкл. микрофон' },
               ].map(item => (
-                <label key={item.key} className="flex items-center justify-between px-5 py-4 bg-black/40 border border-white/5 rounded-2xl cursor-pointer hover:bg-black/60 transition-all group">
-                  <span className="text-[11px] font-bold text-white/70 group-hover:text-white transition-colors">{item.label}</span>
+                <label key={item.key} className="vibe-panel flex items-center justify-between px-5 py-4 rounded-2xl cursor-pointer hover:border-ds-accent/20 transition-all group">
+                  <span className="text-[11px] font-bold text-ds-text/80 group-hover:text-ds-text transition-colors">{item.label}</span>
                   <div className="relative inline-flex items-center">
                     <input
                       type="checkbox" checked={notifSettings[item.key]}
@@ -443,17 +443,17 @@ export function SettingsModal({ user, username: initialUsername, userColor, onCl
             <section className="animate-fade-in" style={{ animationDelay: '0.4s' }}>
                <div className="flex items-center gap-2 mb-6">
                 <Monitor size={16} className="text-ds-accent" />
-                <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Приложение</h3>
+                <h3 className="text-[11px] font-black text-ds-muted uppercase tracking-[0.3em]">Приложение</h3>
               </div>
-              <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center justify-between">
+              <div className="vibe-panel p-6 rounded-3xl flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Версия сборки</p>
-                  <p className="text-white font-mono text-sm">{appVersion}</p>
+                  <p className="text-[10px] font-black text-ds-muted uppercase tracking-widest mb-1">Версия сборки</p>
+                  <p className="text-ds-text font-mono text-sm">{appVersion}</p>
                 </div>
                 <button
                    onClick={handleCheckUpdate}
-                   className={`px-5 py-2.5 rounded-2xl border border-white/10 text-[10px] font-black uppercase tracking-widest transition-all
-                    ${updateStatus === 'checking' ? 'opacity-50 cursor-wait' : 'hover:bg-white/5 hover:border-white/20'}`}
+                   className={`vibe-secondary-button px-5 py-2.5 text-[10px] font-black uppercase tracking-widest
+                    ${updateStatus === 'checking' ? 'opacity-50 cursor-wait' : 'hover:text-ds-text'}`}
                 >
                   {updateStatus === 'checking' ? 'ПРОВЕРКА...' : 'ПРОВЕРИТЬ ОБНОВЛЕНИЯ'}
                 </button>

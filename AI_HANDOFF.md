@@ -29,15 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 03:44`
+- Время: `2026-04-11 03:50`
 - Последние staged-файлы перед коммитом:
-  - `channel-rls-hardening.sql`
-  - `full-setup.sql`
   - `package.json`
   - `public/version.json`
-  - `src/components/AuthPage.jsx`
-  - `src/components/Sidebar.jsx`
-  - `src/index.css`
+  - `src/components/HotkeysSettings.jsx`
+  - `src/components/ServerSettingsModal.jsx`
+  - `src/components/SettingsModal.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -194,3 +192,9 @@ pm run build passes.
 ## 2026-04-11 auth-theme handoff
 - Shared theme primitives were extended in `src/index.css` with `vibe-secondary-button` and `vibe-form-field`, while `vibe-primary-button` got stronger contrast and hover presence.
 - `src/components/AuthPage.jsx` now consumes those shared primitives, so auth fields and CTA match the newer shell/hub/voice styling more closely in both themes.
+
+## 2026-04-11 settings-theme handoff
+- Theme step 2 now includes the settings stack, not only the main shell and channel panels.
+- Inspect `src/components/SettingsModal.jsx`, `src/components/ServerSettingsModal.jsx`, and `src/components/HotkeysSettings.jsx` first if someone reports theme inconsistency between dark and light modes.
+- Shared UI primitives used in this pass live in `src/index.css`: `vibe-primary-button`, `vibe-secondary-button`, and `vibe-form-field`.
+- Latest safe checkpoint after this continuation: `npm run build` passes on `2.5.35`.

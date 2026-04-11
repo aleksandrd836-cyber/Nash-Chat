@@ -467,3 +467,19 @@ pm run build ???????; emoji vendor ???????? ????????? ?????? ? ?????? ?????? ???
   - `src/components/AuthPage.jsx`
   - `src/components/Sidebar.jsx`
   - `src/index.css`
+
+### 2026-04-11 theme continuation: settings and server modals
+- Continued theme step 2 into the remaining utility surfaces.
+- `src/components/SettingsModal.jsx` now uses the shared `vibe-panel`, `vibe-form-field`, and `vibe-secondary-button` language for profile, audio, notification, and app-update sections.
+- `src/components/ServerSettingsModal.jsx` now matches the same system: cleaner invite block, readable member rows in both themes, and more consistent action buttons.
+- `src/components/HotkeysSettings.jsx` was also aligned with the shared panel treatment so the settings stack no longer visually breaks in desktop mode.
+- Verification: `npm run build` passed on version `2.5.35`.
+
+### Auto Log — 2026-04-11 03:50
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/HotkeysSettings.jsx`
+  - `src/components/ServerSettingsModal.jsx`
+  - `src/components/SettingsModal.jsx`
