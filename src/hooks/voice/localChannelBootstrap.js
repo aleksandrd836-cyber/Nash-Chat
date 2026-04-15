@@ -11,6 +11,7 @@ export function setupLocalVoiceChannel({
   createIceBroadcastHandler,
   createUserLeftBroadcastHandler,
   createRequestStreamBroadcastHandler,
+  handleAdminVoiceStateBroadcast,
   createLocalVoiceChannelStatusHandler,
   createPeerConnection,
   removeSessionFromParticipantMap,
@@ -86,6 +87,10 @@ export function setupLocalVoiceChannel({
     screenStreamRef,
     peerConnsRef,
   }));
+
+  channel.on('broadcast', { event: 'admin-voice-state' }, ({ payload }) => {
+    handleAdminVoiceStateBroadcast?.(payload);
+  });
 
   channel.subscribe(createLocalVoiceChannelStatusHandler({
     channel,

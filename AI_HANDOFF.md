@@ -29,11 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-11 16:05`
+- Время: `2026-04-15 17:20`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
+  - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
+  - `src/hooks/voice/localChannelBootstrap.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -256,3 +258,11 @@ pm run build passes.
 - Added getLocalScreenSharingState() and made both updatePresenceStatus() and the join/reconnect payload derive isScreenSharing from the live screen track when no explicit override is provided.
 - Build verified successfully with 
 pm run build (2.5.42).
+
+## 2026-04-15 creator-voice-override handoff
+- Added a fast remote voice-state override for platform creators in voice channels.
+- src/hooks/useVoice.js now exposes orceParticipantVoiceState(targetUserId, state) and applies incoming dmin-voice-state broadcasts for creator-issued unmute/undeafen actions.
+- src/hooks/voice/localChannelBootstrap.js subscribes to the new dmin-voice-state broadcast event.
+- src/components/VoiceChannel.jsx shows ����� ��� and �������� ���� actions in the participant context menu only for creator accounts.
+- Build verified with 
+pm run build (2.5.44).

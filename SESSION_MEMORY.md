@@ -612,3 +612,26 @@ pm run build > 2.5.42.
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log — 2026-04-11 22:18
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+
+### Auto Log � 2026-04-15 17:18
+- �������� ������� creator override ��� voice mute/deafen.
+- � src/hooks/useVoice.js �������� broadcast dmin-voice-state: ������������� ��������� ����� ������� ����� mute ��� deafen � �������� ������������, � ������ ���� ����� ��������� ����� ��������� � ��������� presence.
+- � src/hooks/voice/localChannelBootstrap.js ������� listener ��� dmin-voice-state.
+- � src/components/VoiceChannel.jsx � ����������� ���� ��������� ��������� ������� ������ ����� ��� � �������� ����, ������� ������ ���������.
+- ������ ������: 
+pm run build > 2.5.44.
+
+### Auto Log — 2026-04-15 17:20
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/VoiceChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/localChannelBootstrap.js`

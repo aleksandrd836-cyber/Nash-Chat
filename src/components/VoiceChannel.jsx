@@ -105,6 +105,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     toggleMute,
     toggleDeafen,
     setParticipantVolume,
+    forceParticipantVoiceState,
     startScreenShare,
     stopScreenShare,
     requestScreenView,
@@ -145,6 +146,10 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     () => (ctxMenu ? getUserAvatar(ctxMenu.participant.username).imageUrl : ''),
     [ctxMenu]
   );
+  const selectedParticipant = ctxMenu
+    ? (participantMap.get(ctxMenu.participant.userId) || ctxMenu.participant)
+    : null;
+  const isCurrentUserCreator = CREATOR_IDS.has(user?.id);
 
   // Сброс игнорируемых стримов при смене канала
   useEffect(() => {
@@ -572,6 +577,34 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
                 </button>
               ))}
             </div>
+
+            {isCurrentUserCreator && selectedParticipant && (
+              <div className="pt-4 mt-4 border-t border-white/5 space-y-2">
+                {selectedParticipant.isMuted && (
+                  <button
+                    onClick={async () => {
+                      await forceParticipantVoiceState?.(selectedParticipant.userId, { isMuted: false });
+                      setCtxMenu(null);
+                    }}
+                    className="w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all vibe-primary-button"
+                  >
+                    Снять мут
+                  </button>
+                )}
+
+                {selectedParticipant.isDeafened && (
+                  <button
+                    onClick={async () => {
+                      await forceParticipantVoiceState?.(selectedParticipant.userId, { isDeafened: false });
+                      setCtxMenu(null);
+                    }}
+                    className="w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all vibe-primary-button"
+                  >
+                    Включить звук
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

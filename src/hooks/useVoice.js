@@ -62,6 +62,11 @@ import {
   upsertVoiceSession,
 } from '../lib/voiceSessions';
 
+const PLATFORM_CREATOR_IDS = new Set([
+  '43751682-690e-4934-a9f2-7300a816b92d',
+  '1380ae20-201a-4c77-aed3-93b3cb96f8d5',
+]);
+
 /**
  * Хук голосового чата (V7 - Ультра-стабильный)
  * Исправляет ошибки signalingState и добавляет мониторинг сети.
@@ -498,6 +503,57 @@ export function useVoice() {
     }
   }, [getLocalScreenSharingState]);
 
+  const applyForcedVoiceState = useCallback(async ({ isMuted: forcedMuted, isDeafened: forcedDeafened } = {}) => {
+    const nextMuted = typeof forcedMuted === 'boolean' ? forcedMuted : isMutedRef.current;
+    const nextDeafened = typeof forcedDeafened === 'boolean' ? forcedDeafened : isDeafenedRef.current;
+
+    isMutedRef.current = nextMuted;
+    isDeafenedRef.current = nextDeafened;
+    setIsMuted(nextMuted);
+    setIsDeafened(nextDeafened);
+
+    const micEnabled = !(nextMuted || nextDeafened);
+    if (localStream.current) {
+      localStream.current.getAudioTracks().forEach((track) => {
+        track.enabled = micEnabled;
+      });
+    }
+    if (originalMicStreamRef.current) {
+      originalMicStreamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = micEnabled;
+      });
+    }
+
+    Object.keys(gainNodesRef.current).forEach((userId) => {
+      const gainNode = gainNodesRef.current[userId];
+      if (!gainNode) return;
+
+      if (nextDeafened) {
+        gainNode.gain.value = 0;
+        return;
+      }
+
+      const savedVolume = localStorage.getItem(`vol_${userId}`);
+      gainNode.gain.value = savedVolume !== null ? Number(savedVolume) / 100 : 1.0;
+    });
+
+    await updatePresenceStatus({
+      isMuted: nextMuted,
+      isDeafened: nextDeafened,
+    }, true);
+  }, [updatePresenceStatus]);
+
+  const handleAdminVoiceStateBroadcast = useCallback(async (payload) => {
+    const currentUserId = currentUserRef.current?.id;
+    if (!currentUserId || payload?.to !== currentUserId) return;
+    if (!PLATFORM_CREATOR_IDS.has(payload?.from)) return;
+
+    await applyForcedVoiceState({
+      isMuted: payload?.state?.isMuted,
+      isDeafened: payload?.state?.isDeafened,
+    });
+  }, [applyForcedVoiceState]);
+
   const syncParticipants = useCallback((channel) => {
     syncLocalVoiceParticipants({
       channel,
@@ -609,6 +665,7 @@ export function useVoice() {
         createIceBroadcastHandler,
         createUserLeftBroadcastHandler,
         createRequestStreamBroadcastHandler,
+        handleAdminVoiceStateBroadcast,
         createLocalVoiceChannelStatusHandler,
         createPeerConnection,
         removeSessionFromParticipantMap,
@@ -652,7 +709,7 @@ export function useVoice() {
       // При фатальной ошибке зануляем реконнект, чтобы не спамить
       clearManagedTimeout(reconnectTimerRef);
     }
-  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, getLocalScreenSharingState, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
@@ -704,6 +761,25 @@ export function useVoice() {
     window.dispatchEvent(new CustomEvent('volumeChanged', { 
       detail: { userId, volumePct } 
     }));
+  }, []);
+
+  const forceParticipantVoiceState = useCallback(async (targetUserId, state = {}) => {
+    const currentUserId = currentUserRef.current?.id;
+    if (!currentUserId || !PLATFORM_CREATOR_IDS.has(currentUserId)) return;
+    if (!targetUserId || !realtimeChannel.current || realtimeChannel.current.state !== 'joined') return;
+
+    await realtimeChannel.current.send({
+      type: 'broadcast',
+      event: 'admin-voice-state',
+      payload: {
+        from: currentUserId,
+        to: targetUserId,
+        state: {
+          ...(typeof state.isMuted === 'boolean' ? { isMuted: state.isMuted } : {}),
+          ...(typeof state.isDeafened === 'boolean' ? { isDeafened: state.isDeafened } : {}),
+        },
+      },
+    });
   }, []);
 
   const stopScreenShare = useCallback(async () => {
@@ -812,6 +888,7 @@ export function useVoice() {
     activeChannelId, connectingChannelId, participants, allParticipants, ping, voiceError, serverStatus,
     isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens,
     joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, setParticipantVolume,
+    forceParticipantVoiceState,
     startScreenShare, stopScreenShare, requestScreenView: (id) => {
       realtimeChannel.current?.send({ type: 'broadcast', event: 'request-stream', payload: { from: currentUserRef.current.id, to: id } });
     },
