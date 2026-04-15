@@ -652,3 +652,25 @@ pm run build > 2.5.45.
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/channelStatus.js`
   - `src/hooks/voice/localChannelBootstrap.js`
+
+### Auto Log � 2026-04-15 18:55
+- ���������� ������������ voice-state: UI ������ �� ������ ������ ������ ���������� ��� ������� ������ Supabase realtime/voice_sessions, ���� WebRTC peer/audio/video ��� ����.
+- `src/hooks/useVoice.js`: �������� `participantSnapshotsRef`, fallback ������ ��������������� ���������� �� ���������� ��������� snapshot + �� ����� peer/audio/video ������, � screen-share �� ��������� ������ ��-�� �������� ���� presence.
+- `src/hooks/voice/globalPresence.js`: ���������� presence-����� ������ ������ �������� �������������� ����� `CLOSED` / `CHANNEL_ERROR`, � �� ������ � ������ fallback.
+- `src/components/VoiceChannel.jsx`: �������� ������ ������ �� ������������, ���� ��� �������� video-track, ���� ���� participant-state �������� �������.
+- ��������: `npm run build` -> `2.5.46`.
+
+### Auto Log — 2026-04-15 19:05
+- Added another stream-protection layer: watched screen playback is no longer tied only to the current `participants` list.
+- `src/hooks/useVoice.js`: exposed `getParticipantSnapshot(userId, channelId)` so the UI can keep using the latest known participant metadata during brief presence drops.
+- `src/components/VoiceChannel.jsx`: now renders watched streams from `participants + watched remoteScreens backed by snapshots`, so a live stream does not disappear just because the avatar briefly drops out.
+- Build check: `npm run build` -> `2.5.46`.
+
+### Auto Log — 2026-04-15 19:09
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/VoiceChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/globalPresence.js`

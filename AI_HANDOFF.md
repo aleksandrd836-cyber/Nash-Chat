@@ -29,13 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-15 18:17`
+- Время: `2026-04-15 19:09`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
+  - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/channelStatus.js`
-  - `src/hooks/voice/localChannelBootstrap.js`
+  - `src/hooks/voice/globalPresence.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -274,3 +274,19 @@ pm run build (2.5.44).
 - src/hooks/voice/channelStatus.js now flushes pending stream requests on SUBSCRIBED; wiring added in src/hooks/voice/localChannelBootstrap.js.
 - Build verified successfully with 
 pm run build (2.5.45).
+
+## 2026-04-15 voice-presence-resilience handoff
+- Deepened the long-standing fix for the case where WebRTC audio stays alive but participant avatars disappear after Supabase presence/realtime instability.
+- `src/hooks/useVoice.js` now keeps a participant snapshot registry (`participantSnapshotsRef`) so active peers can be restored from the last good metadata even after `voice_sessions` or presence drops a user from the map.
+- The active-channel fallback now promotes live peer/audio/video state back into the rendered participant list instead of trusting only the latest server response.
+- Remote screen streams are no longer deleted just because a temporary participant sync says `isScreenSharing=false`; they are kept while the incoming video track is still live.
+- `src/hooks/voice/globalPresence.js` now always attempts to recover the global presence channel after `CLOSED` / `CHANNEL_ERROR`, even when the server-backed session map was still healthy at the moment of failure.
+- `src/components/VoiceChannel.jsx` now keeps watched streams pinned while either the participant still advertises screen share or the remote video track is still live.
+- Build verified successfully with `npm run build` (`2.5.46`).
+
+## 2026-04-15 stream-render-detached-from-participants handoff
+- Added one more stream-safety layer: active screen playback no longer depends strictly on the current `participants` array.
+- `src/hooks/useVoice.js` now exposes `getParticipantSnapshot(userId, channelId)` so UI can reuse the latest known participant metadata even if presence briefly drops that user from the visible list.
+- `src/components/VoiceChannel.jsx` now renders watched screen shares from a merged list of live participants + watched remote streams backed by participant snapshots.
+- The auto-retry watcher in `VoiceChannel` also uses `getParticipantSnapshot(...)`, so a watched stream can continue/retry even if the avatar temporarily disappears from the participant grid.
+- Build verified successfully with `npm run build` (`2.5.46`).

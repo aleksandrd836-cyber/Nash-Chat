@@ -51,7 +51,6 @@ export function createGlobalPresenceStatusHandler({
   presencePayloadRef,
   sessionIdRef,
   isLeavingRef,
-  serverVoiceStateRef,
   RECONNECT_DELAY_MS,
   scheduleRecovery,
 }) {
@@ -73,13 +72,12 @@ export function createGlobalPresenceStatusHandler({
     }
 
     if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-      if (!cancelledRef.current && !isLeavingRef.current && !serverVoiceStateRef.current) {
+      if (!cancelledRef.current && !isLeavingRef.current) {
         console.log('[useVoice] Global channel actually lost, recovering in 4s...');
         scheduleRecovery(RECONNECT_DELAY_MS, () => {
           if (
             !cancelledRef.current &&
             !isLeavingRef.current &&
-            !serverVoiceStateRef.current &&
             globalPresenceRef.current === channel
           ) {
             return true;

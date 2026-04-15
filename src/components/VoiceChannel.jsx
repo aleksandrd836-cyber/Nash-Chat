@@ -109,6 +109,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     startScreenShare,
     stopScreenShare,
     requestScreenView,
+    getParticipantSnapshot,
     voiceError,
     clearVoiceError,
     serverStatus,
@@ -137,6 +138,24 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     () => new Map(participants.map((participant) => [participant.userId, participant])),
     [participants]
   );
+  const participantsToRender = useMemo(() => {
+    const byUserId = new Map(participants.map((participant) => [participant.userId, participant]));
+
+    [...watchedScreens].forEach((userId) => {
+      if (byUserId.has(userId) || !remoteScreens[userId]) return;
+
+      const snapshot = getParticipantSnapshot?.(userId, channel?.id);
+      if (snapshot) {
+        byUserId.set(userId, {
+          ...snapshot,
+          isScreenSharing: true,
+        });
+      }
+    });
+
+    return Array.from(byUserId.values())
+      .sort((left, right) => (left.joined_at || 0) - (right.joined_at || 0));
+  }, [channel?.id, getParticipantSnapshot, participants, remoteScreens, watchedScreens]);
   const participantIdsKey = useMemo(
     () => participants.map((participant) => participant.userId).join('|'),
     [participants]
@@ -191,17 +210,20 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       const next = new Set(
         [...prev].filter((userId) => {
           const participant = participantMap.get(userId);
-          return Boolean(participant?.isScreenSharing);
+          const hasLiveStream = Boolean(
+            remoteScreens[userId]?.getVideoTracks?.().some((track) => track.readyState === 'live')
+          );
+          return Boolean(participant?.isScreenSharing || hasLiveStream);
         })
       );
 
       return next.size === prev.size ? prev : next;
     });
-  }, [participantMap]);
+  }, [participantMap, remoteScreens]);
 
   useEffect(() => {
     watchedScreens.forEach((userId) => {
-      const participant = participantMap.get(userId);
+      const participant = participantMap.get(userId) || getParticipantSnapshot?.(userId, channel?.id);
       const stream = remoteScreens[userId];
       if (!participant?.isScreenSharing || stream) return;
 
@@ -211,7 +233,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
       screenRequestCooldownRef.current[userId] = Date.now();
       requestScreenView?.(userId);
     });
-  }, [participantMap, remoteScreens, requestScreenView, watchedScreens]);
+  }, [channel?.id, getParticipantSnapshot, participantMap, remoteScreens, requestScreenView, watchedScreens]);
 
   const handleContextMenu = useCallback((e, participant) => {
     if (participant.userId === user?.id) return;
@@ -325,9 +347,9 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
         </div>
 
         {/* Participants grid */}
-        {isInThisChannel && participants.length > 0 && (
+        {isInThisChannel && participantsToRender.length > 0 && (
           <div className="flex flex-wrap gap-8 justify-center w-full max-w-6xl">
-            {participants.map((p) => {
+            {participantsToRender.map((p) => {
               const participantKey = p.sessionId ? `${p.userId}:${p.sessionId}` : p.userId;
               const { imageUrl } = getUserAvatar(p.username);
               const isMe = p.userId === user?.id;
