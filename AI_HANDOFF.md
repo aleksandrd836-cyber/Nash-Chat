@@ -29,12 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-15 17:20`
+- Время: `2026-04-15 18:17`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`
   - `src/hooks/voice/localChannelBootstrap.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
@@ -266,3 +266,11 @@ pm run build (2.5.42).
 - src/components/VoiceChannel.jsx shows ����� ��� and �������� ���� actions in the participant context menu only for creator accounts.
 - Build verified with 
 pm run build (2.5.44).
+
+## 2026-04-15 voice-reconnect-ui-fallback handoff
+- Fixed the case where users still heard each other but avatars/participants disappeared after Supabase realtime/voice_sessions failures, which also killed stream watch/retry UX.
+- src/hooks/useVoice.js now preserves the last known participant map, falls back away from oice_sessions on runtime connectivity failures, and merges active peer/audio/video connections back into the visible participant list for the active channel.
+- Added pendingStreamRequestsRef so stream retry requests made during signaling outages are replayed automatically once the voice channel re-subscribes.
+- src/hooks/voice/channelStatus.js now flushes pending stream requests on SUBSCRIBED; wiring added in src/hooks/voice/localChannelBootstrap.js.
+- Build verified successfully with 
+pm run build (2.5.45).

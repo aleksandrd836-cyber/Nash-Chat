@@ -124,12 +124,102 @@ export function useVoice() {
   const lastVoiceSessionCleanupRef = useRef(0);
   const lastStableChannelIdRef = useRef(null);
   const serverVoiceStateRef = useRef(false);
+  const lastKnownParticipantsRef = useRef({});
+  const pendingStreamRequestsRef = useRef(new Set());
 
   const getLocalScreenSharingState = useCallback(() => (
     Boolean(
       screenStreamRef.current?.getVideoTracks?.().some((track) => track.readyState === 'live')
     )
   ), []);
+
+  const mergeParticipantMaps = useCallback((baseMap = {}, incomingMap = {}) => {
+    const merged = { ...baseMap };
+
+    Object.entries(incomingMap).forEach(([channelId, incomingParticipants]) => {
+      const existingParticipants = merged[channelId] || [];
+      const bySessionKey = new Map(
+        existingParticipants.map((participant) => [getParticipantSessionKey(participant), participant])
+      );
+
+      incomingParticipants.forEach((participant) => {
+        bySessionKey.set(getParticipantSessionKey(participant), {
+          ...bySessionKey.get(getParticipantSessionKey(participant)),
+          ...participant,
+        });
+      });
+
+      merged[channelId] = Array.from(bySessionKey.values())
+        .sort((left, right) => (left.joined_at || 0) - (right.joined_at || 0));
+    });
+
+    return merged;
+  }, []);
+
+  const buildConnectedPeerFallbackMap = useCallback((baseMap = {}) => {
+    const activeChannelId = activeChannelIdRef.current;
+    if (!activeChannelId) return baseMap;
+
+    const fallbackParticipants = [];
+    const knownChannelParticipants = [
+      ...(baseMap[activeChannelId] || []),
+      ...(lastKnownParticipantsRef.current[activeChannelId] || []),
+    ];
+    const snapshotByUserId = new Map(
+      knownChannelParticipants.map((participant) => [participant.userId, participant])
+    );
+
+    const activePeerIds = new Set([
+      ...Object.keys(peerConns.current || {}),
+      ...Object.keys(audioElements.current || {}),
+      ...Object.keys(remoteScreens || {}),
+    ]);
+
+    activePeerIds.forEach((userId) => {
+      const peerConnection = peerConns.current?.[userId];
+      const peerIsAlive = !peerConnection || !['closed', 'failed'].includes(peerConnection.connectionState);
+      if (!peerIsAlive) return;
+
+      const snapshot = snapshotByUserId.get(userId);
+      if (!snapshot) return;
+
+      fallbackParticipants.push({
+        ...snapshot,
+        channelId: activeChannelId,
+        last_seen: Date.now(),
+      });
+    });
+
+    if (currentUserRef.current?.id && presencePayload.current?.channelId === activeChannelId) {
+      fallbackParticipants.push({
+        userId: currentUserRef.current.id,
+        username: currentUserRef.current.username,
+        color: presencePayload.current.color,
+        isScreenSharing: getLocalScreenSharingState(),
+        isSpeaking: !!isSpeakingRef.current,
+        isMuted: !!isMutedRef.current,
+        isDeafened: !!isDeafenedRef.current,
+        joined_at: presencePayload.current.joined_at || Date.now(),
+        last_seen: Date.now(),
+        sessionId: sessionIdRef.current,
+      });
+    }
+
+    if (fallbackParticipants.length === 0) return baseMap;
+
+    return mergeParticipantMaps(baseMap, {
+      [activeChannelId]: fallbackParticipants,
+    });
+  }, [getLocalScreenSharingState, mergeParticipantMaps, remoteScreens]);
+
+  const applyParticipantMap = useCallback((nextParticipants, { preserveConnectedPeers = false } = {}) => {
+    const mergedParticipants = preserveConnectedPeers
+      ? buildConnectedPeerFallbackMap(nextParticipants)
+      : nextParticipants;
+
+    lastKnownParticipantsRef.current = mergedParticipants;
+    setAllParticipants(mergedParticipants);
+  }, [buildConnectedPeerFallbackMap]);
 
   const removeChannelsByTopic = useCallback(async (topic, keepChannel = null) => {
     const existingChannels = typeof supabase.getChannels === 'function'
@@ -151,7 +241,7 @@ export function useVoice() {
     try {
       const nextParticipants = await fetchActiveVoiceSessions();
       serverVoiceStateRef.current = true;
-      setAllParticipants(nextParticipants);
+      applyParticipantMap(nextParticipants, { preserveConnectedPeers: true });
     } catch (error) {
       const message = error?.message?.toLowerCase?.() ?? '';
       const isSchemaMissing =
@@ -159,21 +249,33 @@ export function useVoice() {
         error?.code === '42P01' ||
         message.includes('voice_sessions') ||
         message.includes('cleanup_stale_voice_sessions');
+      const isConnectivityFailure =
+        message.includes('failed to fetch') ||
+        message.includes('network') ||
+        message.includes('name not resolved') ||
+        message.includes('websocket') ||
+        message.includes('fetch');
 
-      if (isSchemaMissing) {
+      if (isSchemaMissing || isConnectivityFailure || serverVoiceStateRef.current) {
         serverVoiceStateRef.current = false;
+        applyParticipantMap(lastKnownParticipantsRef.current, { preserveConnectedPeers: true });
       }
 
       if (!isSchemaMissing) {
         console.warn('[useVoice] Voice sessions refresh failed:', error);
       }
     }
-  }, []);
+  }, [applyParticipantMap]);
 
   const mutateRealtimeParticipants = useCallback((updater) => {
     if (serverVoiceStateRef.current) return;
-    setAllParticipants(updater);
-  }, []);
+    setAllParticipants((prev) => {
+      const next = updater(prev);
+      const resilientNext = buildConnectedPeerFallbackMap(next);
+      lastKnownParticipantsRef.current = resilientNext;
+      return resilientNext;
+    });
+  }, [buildConnectedPeerFallbackMap]);
 
 
   // ── СИНХРОНИЗАЦИЯ УЧАСТНИКОВ В ЦЕНТРЕ (derived state) ──
@@ -184,6 +286,7 @@ export function useVoice() {
       return;
     }
     const list = allParticipants[activeChannelId] || [];
+    lastKnownParticipantsRef.current = allParticipants;
     setParticipants(list);
   }, [allParticipants, activeChannelId]);
 
@@ -229,6 +332,12 @@ export function useVoice() {
       return changed ? next : prev;
     });
   }, [participants]);
+
+  useEffect(() => {
+    Object.keys(remoteScreens).forEach((userId) => {
+      pendingStreamRequestsRef.current.delete(userId);
+    });
+  }, [remoteScreens]);
 
 
   const closePeer = useCallback((userId, force = false) => {
@@ -554,6 +663,21 @@ export function useVoice() {
     });
   }, [applyForcedVoiceState]);
 
+  const flushPendingStreamRequests = useCallback(async () => {
+    const pendingUserIds = Array.from(pendingStreamRequestsRef.current);
+    if (pendingUserIds.length === 0) return;
+    if (!realtimeChannel.current || realtimeChannel.current.state !== 'joined') return;
+    if (!currentUserRef.current?.id) return;
+
+    await Promise.all(pendingUserIds.map(async (userId) => {
+      await realtimeChannel.current.send({
+        type: 'broadcast',
+        event: 'request-stream',
+        payload: { from: currentUserRef.current.id, to: userId },
+      }).catch(() => {});
+    }));
+  }, []);
+
   const syncParticipants = useCallback((channel) => {
     syncLocalVoiceParticipants({
       channel,
@@ -693,6 +817,7 @@ export function useVoice() {
         upsertVoiceSession,
         refreshVoiceSessions,
         appendParticipantToChannel,
+        flushPendingStreamRequests,
         scheduleManagedTimeout,
         resolveStableVoiceChannelId,
         joinVoiceChannel,
@@ -709,7 +834,7 @@ export function useVoice() {
       // При фатальной ошибке зануляем реконнект, чтобы не спамить
       clearManagedTimeout(reconnectTimerRef);
     }
-  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
@@ -890,7 +1015,10 @@ export function useVoice() {
     joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, setParticipantVolume,
     forceParticipantVoiceState,
     startScreenShare, stopScreenShare, requestScreenView: (id) => {
-      realtimeChannel.current?.send({ type: 'broadcast', event: 'request-stream', payload: { from: currentUserRef.current.id, to: id } });
+      pendingStreamRequestsRef.current.add(id);
+      if (realtimeChannel.current?.state === 'joined' && currentUserRef.current?.id) {
+        realtimeChannel.current.send({ type: 'broadcast', event: 'request-stream', payload: { from: currentUserRef.current.id, to: id } });
+      }
     },
     clearVoiceError: () => setVoiceError(null)
   };

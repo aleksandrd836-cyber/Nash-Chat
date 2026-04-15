@@ -635,3 +635,20 @@ pm run build > 2.5.44.
   - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/localChannelBootstrap.js`
+
+### Auto Log � 2026-04-15 18:14
+- ��������� ��������� ��������: ��� ������� ������� � Supabase realtime/voice_sessions UI ������ �� ������ ������ ���������� � �������� �����, ���� ����� WebRTC peer-���������� �� ��� ����������.
+- � src/hooks/useVoice.js �������� resilient fallback: ��� ������ oice_sessions ���������� ������������� � server source �� local presence fallback, ��������� last known participant map � ������������� ��������������� ���������� �� �������� peer/audio/video ������.
+- ��������� ������� pendingStreamRequestsRef: ��������� ������ ������ ������ �� �������� �� ����� reconnect � ������������� ���������� ����� ���������� SUBSCRIBED.
+- � src/hooks/voice/channelStatus.js � src/hooks/voice/localChannelBootstrap.js �������� flush pending stream requests ����� �������� realtime-������.
+- ������ ������: 
+pm run build > 2.5.45.
+
+### Auto Log — 2026-04-15 18:17
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`
+  - `src/hooks/voice/localChannelBootstrap.js`
