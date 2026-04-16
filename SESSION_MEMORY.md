@@ -758,3 +758,16 @@ pm run build passed, version synced to 2.5.53.
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log - 2026-04-16 01:29
+- Fixed console spam in voice session refresh after orphan cleanup patch.
+- src/hooks/useVoice.js: replaced incorrect clearManagedTimeout(orphanedRemotePeerTimersRef.current[userId]) call with direct clearTimeout(...) because the helper expects a ref object, not a timer id.
+- Validation: 
+pm run build passed, version synced to 2.5.54.
+
+### Auto Log — 2026-04-16 13:01
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`

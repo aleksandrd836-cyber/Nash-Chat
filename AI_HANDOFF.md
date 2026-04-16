@@ -29,7 +29,7 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 12:32`
+- Время: `2026-04-16 13:01`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
@@ -326,3 +326,10 @@ pm run build succeeded (2.5.51).
 - Final fix: order in src/hooks/useVoice.js is now pplyParticipantMap -> closePeer -> mutateRealtimeParticipants -> reconcileRemotePeerPresence -> refreshVoiceSessions.
 - Validation: 
 pm run build succeeded (2.5.53).
+
+## 2026-04-16 voice-sessions-console-spam handoff
+- Symptom: repeated console warnings [useVoice] Voice sessions refresh failed: TypeError: Cannot read properties of undefined (reading 'current').
+- Root cause in src/hooks/useVoice.js: econcileRemotePeerPresence() passed orphanedRemotePeerTimersRef.current[userId] into clearManagedTimeout, but clearManagedTimeout expects a ref object with .current, not a raw timeout id.
+- Fix: call native clearTimeout(...) on the stored timer id and then delete the map entry.
+- Validation: 
+pm run build succeeded (2.5.54).

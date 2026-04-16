@@ -346,7 +346,9 @@ export function useVoice() {
     ]);
 
     activeSessionUserIds.forEach((userId) => {
-      clearManagedTimeout(orphanedRemotePeerTimersRef.current[userId]);
+      if (orphanedRemotePeerTimersRef.current[userId]) {
+        clearTimeout(orphanedRemotePeerTimersRef.current[userId]);
+      }
       delete orphanedRemotePeerTimersRef.current[userId];
     });
 
@@ -368,7 +370,6 @@ export function useVoice() {
       }, 4000);
     });
   }, [
-    clearManagedTimeout,
     closePeer,
     mutateRealtimeParticipants,
     remoteScreens,
