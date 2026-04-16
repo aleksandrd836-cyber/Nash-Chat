@@ -29,13 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 14:36`
+- Время: `2026-04-16 16:02`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
+  - `src/components/Sidebar.jsx`
   - `src/components/VoiceChannel.jsx`
-  - `src/hooks/useVoice.js`
-  - `src/hooks/voice/cleanup.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -343,3 +342,11 @@ pm run build succeeded (2.5.54).
 - Result: reloads should no longer leave phantom local control buttons when the user is not actually in voice.
 - Validation: 
 pm run build succeeded (2.5.55).
+
+## 2026-04-16 local-refresh-ghost-ui-hardening handoff
+- Previous fix was insufficient because VoiceChannel.jsx still treated hasSelfInThisChannel (from stale participant lists) as proof the local user was connected.
+- New rule: local controls are gated strictly by localVoiceChannelId, not by seeing the current user inside llParticipants.
+- src/components/VoiceChannel.jsx: isInThisChannel now depends on localVoiceChannelId === channel.id; stale self participant rows no longer keep local control buttons alive after refresh.
+- src/components/Sidebar.jsx: hides the current user's stale voice-channel sub-row unless the local voice session is actually active in that channel.
+- Validation: 
+pm run build succeeded (2.5.56).

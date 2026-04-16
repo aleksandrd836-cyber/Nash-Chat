@@ -56,7 +56,7 @@ export function Sidebar({
   const [volumes, setVolumes] = useState({});
   const volMenuRef = useRef(null);
 
-  const { activeChannelId, allParticipants, setParticipantVolume, isSpeaking } = voice;
+  const { activeChannelId, localVoiceChannelId, allParticipants, setParticipantVolume, isSpeaking } = voice;
   const allVoiceParticipants = useMemo(
     () => Object.values(allParticipants).flat(),
     [allParticipants]
@@ -312,7 +312,9 @@ export function Sidebar({
 
               {voiceChannels.map(ch => {
                 const isActive       = activeChannelId === ch.id;
-                const chParticipants = allParticipants[ch.id] || [];
+                const chParticipants = (allParticipants[ch.id] || []).filter((participant) => (
+                  participant.userId !== currentUserId || localVoiceChannelId === ch.id
+                ));
 
                 return (
                   <div key={ch.id}>

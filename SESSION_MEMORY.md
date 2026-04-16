@@ -788,3 +788,18 @@ pm run build passed, version synced to 2.5.55.
   - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/cleanup.js`
+
+### Auto Log - 2026-04-16 01:42
+- Tightened local ghost-voice UI after refresh/reload.
+- src/components/VoiceChannel.jsx: local control state no longer trusts stale self presence; only localVoiceChannelId can keep leave/stream/mute controls visible.
+- src/components/Sidebar.jsx: the current user's stale voice participant entry is hidden under voice channels unless localVoiceChannelId === channel.id.
+- Validation: 
+pm run build passed, version synced to 2.5.56.
+
+### Auto Log — 2026-04-16 16:02
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/Sidebar.jsx`
+  - `src/components/VoiceChannel.jsx`

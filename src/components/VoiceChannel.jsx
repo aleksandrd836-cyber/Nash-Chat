@@ -125,8 +125,8 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     [channelParticipants, user?.id]
   );
   const hasLocalVoiceControls = localVoiceChannelId === channel?.id;
-  const isInThisChannel = hasLocalVoiceControls || hasSelfInThisChannel;
-  const isJoiningThisChannel = !isInThisChannel && isConnecting && connectingChannelId === channel?.id;
+  const isInThisChannel = hasLocalVoiceControls;
+  const isJoiningThisChannel = !hasLocalVoiceControls && isConnecting && connectingChannelId === channel?.id;
 
   // ── Контекстное меню ──
   const [ctxMenu, setCtxMenu] = useState(null); // { participant, x, y }
@@ -141,7 +141,10 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     [participants]
   );
   const participantsToRender = useMemo(() => {
-    const byUserId = new Map(participants.map((participant) => [participant.userId, participant]));
+    const visibleParticipants = participants.filter((participant) => (
+      participant.userId !== user?.id || hasLocalVoiceControls
+    ));
+    const byUserId = new Map(visibleParticipants.map((participant) => [participant.userId, participant]));
 
     [...watchedScreens].forEach((userId) => {
       if (byUserId.has(userId) || !remoteScreens[userId]) return;
@@ -157,7 +160,7 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
 
     return Array.from(byUserId.values())
       .sort((left, right) => (left.joined_at || 0) - (right.joined_at || 0));
-  }, [channel?.id, getParticipantSnapshot, participants, remoteScreens, watchedScreens]);
+  }, [channel?.id, getParticipantSnapshot, hasLocalVoiceControls, participants, remoteScreens, user?.id, watchedScreens]);
   const participantIdsKey = useMemo(
     () => participants.map((participant) => participant.userId).join('|'),
     [participants]
