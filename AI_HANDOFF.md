@@ -29,12 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 11:08`
+- Время: `2026-04-16 11:25`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/cleanup.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -313,3 +312,10 @@ pm run build (2.5.45).
 - Result: tray-exited users should disappear quickly for everyone else instead of lingering ~1 minute with a stale watch-stream button.
 - Validation: 
 pm run build succeeded (2.5.50).
+
+## 2026-04-16 startup-crash-tdz-usevoice handoff
+- After the remote tray-exit cleanup patch, src/hooks/useVoice.js crashed on app load with ReferenceError: Cannot access 'ke' before initialization in production.
+- Root cause: econcileRemotePeerPresence was declared before mutateRealtimeParticipants and closePeer, but referenced both in its dependency array/body. In bundled prod code this became a TDZ access during hook setup.
+- Fix: move the primary mutateRealtimeParticipants and closePeer callback declarations above econcileRemotePeerPresence, remove duplicate lower declarations, rebuild.
+- Validation: 
+pm run build succeeded (2.5.51).

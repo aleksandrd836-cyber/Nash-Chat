@@ -726,3 +726,16 @@ pm run build passed, version synced to 2.5.50.
   - `public/version.json`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/cleanup.js`
+
+### Auto Log - 2026-04-16 01:17
+- Fixed startup crash ReferenceError: Cannot access 'ke' before initialization caused by hook callback ordering in src/hooks/useVoice.js.
+- Moved mutateRealtimeParticipants and closePeer above econcileRemotePeerPresence() so the callback no longer references TDZ variables during module initialization.
+- Validation: 
+pm run build passed, version synced to 2.5.51.
+
+### Auto Log — 2026-04-16 11:25
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`

@@ -291,6 +291,28 @@ export function useVoice() {
     setAllParticipants(mergedParticipants);
   }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
 
+
+  const closePeer = useCallback((userId, force = false) => {
+    if (!force && ghostPeersRef.current[userId]) return;
+    if (peerConns.current[userId]) {
+      console.log(`[WebRTC] Closing ${userId}`);
+      peerConns.current[userId].close();
+      delete peerConns.current[userId];
+    }
+    if (audioElements.current[userId]) {
+      audioElements.current[userId].srcObject = null;
+      if (audioElements.current[userId].parentNode) {
+        audioElements.current[userId].parentNode.removeChild(audioElements.current[userId]);
+      }
+      delete audioElements.current[userId];
+    }
+    if (gainNodesRef.current[userId]) {
+      try { gainNodesRef.current[userId].disconnect(); } catch {}
+      delete gainNodesRef.current[userId];
+    }
+    setRemoteScreens(prev => { const next = {...prev}; delete next[userId]; return next; });
+  }, []);
+
   const reconcileRemotePeerPresence = useCallback((nextParticipants = {}) => {
     const activeChannelId = activeChannelIdRef.current;
     if (!activeChannelId) return;
@@ -461,27 +483,6 @@ export function useVoice() {
     });
   }, [remoteScreens]);
 
-
-  const closePeer = useCallback((userId, force = false) => {
-    if (!force && ghostPeersRef.current[userId]) return;
-    if (peerConns.current[userId]) {
-      console.log(`[WebRTC] Closing ${userId}`);
-      peerConns.current[userId].close();
-      delete peerConns.current[userId];
-    }
-    if (audioElements.current[userId]) {
-      audioElements.current[userId].srcObject = null;
-      if (audioElements.current[userId].parentNode) {
-        audioElements.current[userId].parentNode.removeChild(audioElements.current[userId]);
-      }
-      delete audioElements.current[userId];
-    }
-    if (gainNodesRef.current[userId]) {
-      try { gainNodesRef.current[userId].disconnect(); } catch {}
-      delete gainNodesRef.current[userId];
-    }
-    setRemoteScreens(prev => { const next = {...prev}; delete next[userId]; return next; });
-  }, []);
 
   const createPeerConnection = useCallback((remoteUserId, signalingChannel) => {
     if (peerConns.current[remoteUserId]) return peerConns.current[remoteUserId];
