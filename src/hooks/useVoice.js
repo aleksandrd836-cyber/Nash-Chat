@@ -67,10 +67,11 @@ const PLATFORM_CREATOR_IDS = new Set([
   '1380ae20-201a-4c77-aed3-93b3cb96f8d5',
 ]);
 const PARTICIPANT_FALLBACK_GRACE_MS = 30000;
+const LOCAL_VOICE_SESSION_STORAGE_KEY = 'vibe_local_voice_session';
 
 /**
- * Хук голосового чата (V7 - Ультра-стабильный)
- * Исправляет ошибки signalingState и добавляет мониторинг сети.
+ * РҐСѓРє РіРѕР»РѕСЃРѕРІРѕРіРѕ С‡Р°С‚Р° (V7 - РЈР»СЊС‚СЂР°-СЃС‚Р°Р±РёР»СЊРЅС‹Р№)
+ * РСЃРїСЂР°РІР»СЏРµС‚ РѕС€РёР±РєРё signalingState Рё РґРѕР±Р°РІР»СЏРµС‚ РјРѕРЅРёС‚РѕСЂРёРЅРі СЃРµС‚Рё.
  */
 
 export function useVoice() {
@@ -102,7 +103,7 @@ export function useVoice() {
   const isSpeakingRef    = useRef(false);
   const activeChannelIdRef = useRef(null);
   const fakeVADIntervalRef = useRef(null);
-  const remoteAnalysersRef = useRef({}); // Локальный анализ громкости других участников
+  const remoteAnalysersRef = useRef({}); // Р›РѕРєР°Р»СЊРЅС‹Р№ Р°РЅР°Р»РёР· РіСЂРѕРјРєРѕСЃС‚Рё РґСЂСѓРіРёС… СѓС‡Р°СЃС‚РЅРёРєРѕРІ
   const iceDisconnectTimers = useRef({});
   const autoMutedByDeafenRef = useRef(false);
 
@@ -128,6 +129,27 @@ export function useVoice() {
   const lastKnownParticipantsRef = useRef({});
   const pendingStreamRequestsRef = useRef(new Set());
   const participantSnapshotsRef = useRef(new Map());
+
+  const persistLocalVoiceSessionMarker = useCallback((marker) => {
+    try {
+      if (!marker?.sessionId) {
+        localStorage.removeItem(LOCAL_VOICE_SESSION_STORAGE_KEY);
+        return;
+      }
+
+      localStorage.setItem(LOCAL_VOICE_SESSION_STORAGE_KEY, JSON.stringify({
+        sessionId: marker.sessionId,
+        channelId: marker.channelId || null,
+        updatedAt: Date.now(),
+      }));
+    } catch {}
+  }, []);
+
+  const clearLocalVoiceSessionMarker = useCallback(() => {
+    try {
+      localStorage.removeItem(LOCAL_VOICE_SESSION_STORAGE_KEY);
+    } catch {}
+  }, []);
 
   const getLocalScreenSharingState = useCallback(() => (
     Boolean(
@@ -327,8 +349,8 @@ export function useVoice() {
   }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
 
 
-  // ── СИНХРОНИЗАЦИЯ УЧАСТНИКОВ В ЦЕНТРЕ (derived state) ──
-  // Мы больше не управляем участниками канала отдельно, берем их из глобального списка
+  // в”Ђв”Ђ РЎРРќРҐР РћРќРР—РђР¦РРЇ РЈР§РђРЎРўРќРРљРћР’ Р’ Р¦Р•РќРўР Р• (derived state) в”Ђв”Ђ
+  // РњС‹ Р±РѕР»СЊС€Рµ РЅРµ СѓРїСЂР°РІР»СЏРµРј СѓС‡Р°СЃС‚РЅРёРєР°РјРё РєР°РЅР°Р»Р° РѕС‚РґРµР»СЊРЅРѕ, Р±РµСЂРµРј РёС… РёР· РіР»РѕР±Р°Р»СЊРЅРѕРіРѕ СЃРїРёСЃРєР°
   useEffect(() => {
     if (!activeChannelId) {
       setParticipants([]);
@@ -365,7 +387,7 @@ export function useVoice() {
     };
   }, [refreshVoiceSessions]);
 
-  // СИНХРОНИЗАЦИЯ СТРИМОВ
+  // РЎРРќРҐР РћРќРР—РђР¦РРЇ РЎРўР РРњРћР’
   useEffect(() => {
     setRemoteScreens(prev => {
       const next = { ...prev };
@@ -467,6 +489,7 @@ export function useVoice() {
   }, [closePeer]);
 
   const cleanupAll = useCallback(async () => {
+    clearLocalVoiceSessionMarker();
     await cleanupVoiceSessionState({
       currentUserRef,
       sessionIdRef,
@@ -507,9 +530,40 @@ export function useVoice() {
       presencePayloadRef: presencePayload,
       supabaseClient: supabase,
     });
-  }, [closePeer, mutateRealtimeParticipants, refreshVoiceSessions, removeSessionFromParticipantMap]);
+  }, [clearLocalVoiceSessionMarker, closePeer, mutateRealtimeParticipants, refreshVoiceSessions, removeSessionFromParticipantMap]);
+  useEffect(() => {
+    let cancelled = false;
 
-  // Глобальный канал (инициализация после всех функций)
+    const cleanupOrphanedLocalVoiceSession = async () => {
+      try {
+        const rawMarker = localStorage.getItem(LOCAL_VOICE_SESSION_STORAGE_KEY);
+        if (!rawMarker) return;
+
+        const marker = JSON.parse(rawMarker);
+        if (!marker?.sessionId) {
+          clearLocalVoiceSessionMarker();
+          return;
+        }
+
+        await removeVoiceSession(marker.sessionId).catch(() => {});
+        if (!cancelled) {
+          clearLocalVoiceSessionMarker();
+          await refreshVoiceSessions();
+        }
+      } catch {
+        clearLocalVoiceSessionMarker();
+      }
+    };
+
+    cleanupOrphanedLocalVoiceSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearLocalVoiceSessionMarker, refreshVoiceSessions]);
+
+
+  // Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ РєР°РЅР°Р» (РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїРѕСЃР»Рµ РІСЃРµС… С„СѓРЅРєС†РёР№)
   useEffect(() => {
     const cancelledRef = { current: false };
     const initGlobalChannel = async () => {
@@ -607,6 +661,24 @@ export function useVoice() {
       globalPresence.current = null;
     };
   }, [buildParticipantMapFromPresenceState, cleanupAll, mutateRealtimeParticipants, pruneStaleParticipantMap, removeChannelsByTopic, removeSessionFromParticipantMap, updateParticipantSpeakingMap]);
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onAppQuitRequested?.(async () => {
+      try {
+        if (activeChannelIdRef.current || presencePayload.current.channelId) {
+          await cleanupAll();
+        } else {
+          clearLocalVoiceSessionMarker();
+        }
+      } finally {
+        window.electronAPI?.notifyAppQuitReady?.();
+      }
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [cleanupAll, clearLocalVoiceSessionMarker]);
+
 
   const updatePresenceStatus = useCallback(async (updates, immediate = false) => {
     const nextChannelId = Object.prototype.hasOwnProperty.call(updates, 'channelId')
@@ -634,7 +706,7 @@ export function useVoice() {
     const sendUpdate = async () => {
       const payload = { ...presencePayload.current };
       
-      // БЛОКИРОВКА: Не шлем, если мы в процессе смены канала или вылета
+      // Р‘Р›РћРљРР РћР’РљРђ: РќРµ С€Р»РµРј, РµСЃР»Рё РјС‹ РІ РїСЂРѕС†РµСЃСЃРµ СЃРјРµРЅС‹ РєР°РЅР°Р»Р° РёР»Рё РІС‹Р»РµС‚Р°
       if (isLeavingRef.current || isSwitchingRef.current) return;
 
       if (payload.channelId && payload.userId) {
@@ -656,7 +728,7 @@ export function useVoice() {
     if (immediate) {
       await sendUpdate();
     } else {
-      presenceDebounceRef.current = setTimeout(sendUpdate, 400); // 400ms – золотая середина
+      presenceDebounceRef.current = setTimeout(sendUpdate, 400); // 400ms вЂ“ Р·РѕР»РѕС‚Р°СЏ СЃРµСЂРµРґРёРЅР°
     }
   }, [getLocalScreenSharingState]);
 
@@ -748,13 +820,13 @@ export function useVoice() {
     );
     setConnectingChannelId(channelId);
     
-    // Если мы уже подключаемся к ЭТОМУ ЖЕ каналу — игнорируем повторный вызов
+    // Р•СЃР»Рё РјС‹ СѓР¶Рµ РїРѕРґРєР»СЋС‡Р°РµРјСЃСЏ Рє Р­РўРћРњРЈ Р–Р• РєР°РЅР°Р»Сѓ вЂ” РёРіРЅРѕСЂРёСЂСѓРµРј РїРѕРІС‚РѕСЂРЅС‹Р№ РІС‹Р·РѕРІ
     if (isConnecting && activeChannelIdRef.current === channelId) {
       console.log('[useVoice] Already connecting to this channel, skipping...');
       return;
     }
 
-    // 1. Очистка старого КАНАЛА (сигналки) — делаем всегда, чтобы не дублировать слушателей
+    // 1. РћС‡РёСЃС‚РєР° СЃС‚Р°СЂРѕРіРѕ РљРђРќРђР›Рђ (СЃРёРіРЅР°Р»РєРё) вЂ” РґРµР»Р°РµРј РІСЃРµРіРґР°, С‡С‚РѕР±С‹ РЅРµ РґСѓР±Р»РёСЂРѕРІР°С‚СЊ СЃР»СѓС€Р°С‚РµР»РµР№
     if (realtimeChannel.current) {
       console.log('[useVoice] Intentionally removing old channel before re-joining');
       const oldChannel = realtimeChannel.current;
@@ -764,20 +836,20 @@ export function useVoice() {
 
     isSwitchingRef.current = true;
 
-    // 2. Полная очистка МЕДИА (микрофон, пиры) — ТОЛЬКО если мы реально меняем комнату
+    // 2. РџРѕР»РЅР°СЏ РѕС‡РёСЃС‚РєР° РњР•Р”РРђ (РјРёРєСЂРѕС„РѕРЅ, РїРёСЂС‹) вЂ” РўРћР›Р¬РљРћ РµСЃР»Рё РјС‹ СЂРµР°Р»СЊРЅРѕ РјРµРЅСЏРµРј РєРѕРјРЅР°С‚Сѓ
     if (currentStableChannelId && currentStableChannelId !== channelId) {
       console.log('[useVoice] Changing channel, full cleanup...');
       await cleanupAll();
     }
     
-    // МЯГКИЙ РЕКОННЕКТ: Если это тихий перезапуск того же канала — не убиваем поток и пиры
+    // РњРЇР“РљРР™ Р Р•РљРћРќРќР•РљРў: Р•СЃР»Рё СЌС‚Рѕ С‚РёС…РёР№ РїРµСЂРµР·Р°РїСѓСЃРє С‚РѕРіРѕ Р¶Рµ РєР°РЅР°Р»Р° вЂ” РЅРµ СѓР±РёРІР°РµРј РїРѕС‚РѕРє Рё РїРёСЂС‹
     const isActuallyReconnecting = isSilent && currentStableChannelId === channelId && localStream.current;
     
     if (isActuallyReconnecting && localStream.current) {
       console.log('[useVoice] Reusing existing streams for soft reconnect');
     } else {
       isLeavingRef.current = false;
-      activeChannelIdRef.current = channelId; // УСТАНАВЛИВАЕМ СРАЗУ, чтобы не было "невидимости" в сайдбаре
+      activeChannelIdRef.current = channelId; // РЈРЎРўРђРќРђР’Р›РР’РђР•Рњ РЎР РђР—РЈ, С‡С‚РѕР±С‹ РЅРµ Р±С‹Р»Рѕ "РЅРµРІРёРґРёРјРѕСЃС‚Рё" РІ СЃР°Р№РґР±Р°СЂРµ
       setIsConnecting(true); setVoiceError(null);
       try {
         await initializeLocalVoiceMedia({
@@ -822,6 +894,10 @@ export function useVoice() {
         sessionId: sessionIdRef.current,
         last_seen: Date.now()
       };
+      persistLocalVoiceSessionMarker({
+        sessionId: sessionIdRef.current,
+        channelId,
+      });
 
       await removeChannelsByTopic(`voice:${channelId}`);
       setupLocalVoiceChannel({
@@ -879,10 +955,10 @@ export function useVoice() {
       }
       setIsConnecting(false); 
       setConnectingChannelId(null);
-      // При фатальной ошибке зануляем реконнект, чтобы не спамить
+      // РџСЂРё С„Р°С‚Р°Р»СЊРЅРѕР№ РѕС€РёР±РєРµ Р·Р°РЅСѓР»СЏРµРј СЂРµРєРѕРЅРЅРµРєС‚, С‡С‚РѕР±С‹ РЅРµ СЃРїР°РјРёС‚СЊ
       clearManagedTimeout(reconnectTimerRef);
     }
-  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, persistLocalVoiceSessionMarker, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
@@ -890,7 +966,7 @@ export function useVoice() {
     const next = !isMutedRef.current;
     isMutedRef.current = next; setIsMuted(next);
     
-    // Выключаем звук ВЕЗДЕ: и в AI-потоке, и в сыром микрофоне
+    // Р’С‹РєР»СЋС‡Р°РµРј Р·РІСѓРє Р’Р•Р—Р”Р•: Рё РІ AI-РїРѕС‚РѕРєРµ, Рё РІ СЃС‹СЂРѕРј РјРёРєСЂРѕС„РѕРЅРµ
     if (localStream.current) {
       localStream.current.getAudioTracks().forEach(t => t.enabled = !next);
     }
@@ -906,8 +982,8 @@ export function useVoice() {
     const next = !isDeafenedRef.current;
     isDeafenedRef.current = next; setIsDeafened(next);
     
-    // При выключении звука (Deafen) ставим всем 0. 
-    // При включении - восстанавливаем сохраненную громкость для каждого.
+    // РџСЂРё РІС‹РєР»СЋС‡РµРЅРёРё Р·РІСѓРєР° (Deafen) СЃС‚Р°РІРёРј РІСЃРµРј 0. 
+    // РџСЂРё РІРєР»СЋС‡РµРЅРёРё - РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЃРѕС…СЂР°РЅРµРЅРЅСѓСЋ РіСЂРѕРјРєРѕСЃС‚СЊ РґР»СЏ РєР°Р¶РґРѕРіРѕ.
     Object.keys(gainNodesRef.current).forEach(uid => {
       const g = gainNodesRef.current[uid];
       if (!g) return;
@@ -927,10 +1003,10 @@ export function useVoice() {
     localStorage.setItem(`vol_${userId}`, volumePct);
     const g = gainNodesRef.current[userId];
     if (g) {
-      // Прямое управление громкостью через GainNode
+      // РџСЂСЏРјРѕРµ СѓРїСЂР°РІР»РµРЅРёРµ РіСЂРѕРјРєРѕСЃС‚СЊСЋ С‡РµСЂРµР· GainNode
       g.gain.setTargetAtTime(volumePct / 100, audioContextRef.current.currentTime, 0.05);
     }
-    // Оповещаем другие компоненты об изменении
+    // РћРїРѕРІРµС‰Р°РµРј РґСЂСѓРіРёРµ РєРѕРјРїРѕРЅРµРЅС‚С‹ РѕР± РёР·РјРµРЅРµРЅРёРё
     window.dispatchEvent(new CustomEvent('volumeChanged', { 
       detail: { userId, volumePct } 
     }));
@@ -1034,19 +1110,19 @@ export function useVoice() {
   }, [activeChannelId]);
 
 
-  // ЭФФЕКТ ДЛЯ ГЛОБАЛЬНЫХ ГОРЯЧИХ КЛАВИШ (EXE-ONLY)
+  // Р­Р¤Р¤Р•РљРў Р”Р›РЇ Р“Р›РћР‘РђР›Р¬РќР«РҐ Р“РћР РЇР§РРҐ РљР›РђР’РРЁ (EXE-ONLY)
   useEffect(() => {
     if (window.electronAPI) {
       console.log('[useVoice] Desktop mode: Initializing Global Hotkeys...');
       
-      // 1. Регистрируем текущие клавиши (Электрон) с проверкой
+      // 1. Р РµРіРёСЃС‚СЂРёСЂСѓРµРј С‚РµРєСѓС‰РёРµ РєР»Р°РІРёС€Рё (Р­Р»РµРєС‚СЂРѕРЅ) СЃ РїСЂРѕРІРµСЂРєРѕР№
       if (window.electronAPI && typeof window.electronAPI.registerHotkeys === 'function') {
         const muteKey = localStorage.getItem('vibe_hotkey_mute') || '';
         const deafenKey = localStorage.getItem('vibe_hotkey_deafen') || '';
         window.electronAPI.registerHotkeys({ mute: muteKey, deafen: deafenKey });
       }
 
-      // 2. Слушаем глобальные горячие клавиши (Электрон)
+      // 2. РЎР»СѓС€Р°РµРј РіР»РѕР±Р°Р»СЊРЅС‹Рµ РіРѕСЂСЏС‡РёРµ РєР»Р°РІРёС€Рё (Р­Р»РµРєС‚СЂРѕРЅ)
       if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.onHotkey === 'function') {
         const unsubscribe = window.electronAPI.onHotkey((action) => {
           if (action === 'mute') toggleMute();

@@ -674,3 +674,20 @@ pm run build > 2.5.45.
   - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/globalPresence.js`
+
+### Auto Log — 2026-04-16 00:05
+- Fixed stale voice UI after exiting the Electron app from the system tray while still connected to a voice channel.
+- `electron/main.cjs`: tray exit now asks the renderer to clean up voice state before `app.quit()`, then waits briefly for an `app-quit-ready` ack.
+- `electron/preload.js`: exposed `onAppQuitRequested()` and `notifyAppQuitReady()` so the renderer can participate in a safe shutdown.
+- `src/hooks/useVoice.js`: added a persisted local voice session marker, clears it during normal leave/quit, and removes any orphaned local session on next startup before refreshing `voice_sessions`.
+- `src/hooks/useVoice.js`: on Electron quit request, forces `cleanupAll()` before the process exits so stale `activeChannelId` / sidebar self-marker do not survive a tray exit.
+- Validation: `npm run build` -> `2.5.47`; `node --check electron/main.cjs`; `node --check electron/preload.js`.
+
+### Auto Log — 2026-04-16 10:11
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `electron/main.cjs`
+  - `electron/preload.js`
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`

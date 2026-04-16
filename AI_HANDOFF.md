@@ -29,13 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-15 19:09`
+- Время: `2026-04-16 10:11`
 - Последние staged-файлы перед коммитом:
+  - `electron/main.cjs`
+  - `electron/preload.js`
   - `package.json`
   - `public/version.json`
-  - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/globalPresence.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -290,3 +290,12 @@ pm run build (2.5.45).
 - `src/components/VoiceChannel.jsx` now renders watched screen shares from a merged list of live participants + watched remote streams backed by participant snapshots.
 - The auto-retry watcher in `VoiceChannel` also uses `getParticipantSnapshot(...)`, so a watched stream can continue/retry even if the avatar temporarily disappears from the participant grid.
 - Build verified successfully with `npm run build` (`2.5.46`).
+
+## 2026-04-16 tray-exit-voice-cleanup handoff
+- Fixed the long-standing Electron-only bug where exiting Vibe from the tray while inside voice left the next launch in a fake "still connected" state.
+- Root cause: tray quit could kill or reopen the app before renderer-side voice cleanup fully finished, leaving stale local voice state and a lingering `voice_sessions` row for the same local client.
+- `electron/main.cjs` now sends `app-quit-requested` to the renderer and waits up to ~1.8s for `app-quit-ready` before calling `app.quit()`.
+- `electron/preload.js` exposes `onAppQuitRequested()` / `notifyAppQuitReady()` to the web app.
+- `src/hooks/useVoice.js` now persists a local client session marker (`vibe_local_voice_session`), clears it on normal cleanup, and deletes the orphaned local session on the next launch if the previous exit did not finish cleanly.
+- `src/hooks/useVoice.js` also listens for Electron quit requests and runs `cleanupAll()` before acknowledging the quit, which clears `activeChannelId`, tears down media, and removes the local voice session before shutdown.
+- Validation: `npm run build` passed on `2.5.47`; `node --check electron/main.cjs`; `node --check electron/preload.js`.
