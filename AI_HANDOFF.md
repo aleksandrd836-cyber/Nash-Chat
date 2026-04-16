@@ -29,11 +29,10 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 11:25`
+- Время: `2026-04-16 11:45`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/hooks/useVoice.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
