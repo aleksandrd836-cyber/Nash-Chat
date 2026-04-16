@@ -803,3 +803,20 @@ pm run build passed, version synced to 2.5.56.
   - `public/version.json`
   - `src/components/Sidebar.jsx`
   - `src/components/VoiceChannel.jsx`
+
+### Auto Log - 2026-04-16 01:47
+- Fixed accumulating self-ghosts after repeated page refreshes in voice channels.
+- src/lib/voiceSessions.js: uildVoiceParticipantsMap() now deduplicates by userId inside each channel and keeps only the newest session; added emoveVoiceSessionsForUser() helper.
+- src/hooks/voice/participants.js: global presence map now also deduplicates by userId, preventing repeated self-presence clones in the UI.
+- src/hooks/useVoice.js: on reload with a local voice marker, purge all lingering oice_sessions rows for the current user before refreshing state; also purge older rows for the same user before joining a new voice session.
+- Validation: 
+pm run build passed, version synced to 2.5.57.
+
+### Auto Log — 2026-04-16 16:18
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/participants.js`
+  - `src/lib/voiceSessions.js`

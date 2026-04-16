@@ -59,6 +59,7 @@ import {
   cleanupStaleVoiceSessions,
   fetchActiveVoiceSessions,
   removeVoiceSession,
+  removeVoiceSessionsForUser,
   upsertVoiceSession,
 } from '../lib/voiceSessions';
 
@@ -602,9 +603,17 @@ export function useVoice() {
           return;
         }
 
-        await removeVoiceSession(marker.sessionId).catch(() => {});
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          await removeVoiceSessionsForUser(user.id).catch(() => {});
+        } else {
+          await removeVoiceSession(marker.sessionId).catch(() => {});
+        }
         if (!cancelled) {
           clearLocalVoiceSessionMarker();
+          setLocalVoiceChannelId(null);
+          setActiveChannelId(null);
+          activeChannelIdRef.current = null;
           await refreshVoiceSessions();
         }
       } catch {
@@ -937,6 +946,7 @@ export function useVoice() {
 
     try {
       currentUserRef.current = { id: user.id, username };
+      await removeVoiceSessionsForUser(user.id, sessionIdRef.current).catch(() => {});
       const preservedScreenShareState = getLocalScreenSharingState();
 
       presencePayload.current = { 

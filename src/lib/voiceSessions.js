@@ -26,14 +26,21 @@ export function buildVoiceParticipantsMap(rows = []) {
     if (!participant.channelId) return;
 
     if (!grouped[participant.channelId]) {
-      grouped[participant.channelId] = [];
+      grouped[participant.channelId] = new Map();
     }
 
-    grouped[participant.channelId].push(participant);
+    const existing = grouped[participant.channelId].get(participant.userId);
+    const existingSeenAt = Math.max(existing?.last_seen || 0, existing?.joined_at || 0);
+    const participantSeenAt = Math.max(participant.last_seen || 0, participant.joined_at || 0);
+
+    if (!existing || participantSeenAt >= existingSeenAt) {
+      grouped[participant.channelId].set(participant.userId, participant);
+    }
   });
 
   Object.keys(grouped).forEach((channelId) => {
-    grouped[channelId].sort((left, right) => left.joined_at - right.joined_at);
+    grouped[channelId] = Array.from(grouped[channelId].values())
+      .sort((left, right) => left.joined_at - right.joined_at);
   });
 
   return grouped;
@@ -81,6 +88,25 @@ export async function removeVoiceSession(sessionId) {
     .from('voice_sessions')
     .delete()
     .eq('session_id', sessionId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function removeVoiceSessionsForUser(userId, excludeSessionId = null) {
+  if (!userId) return;
+
+  let query = supabase
+    .from('voice_sessions')
+    .delete()
+    .eq('user_id', userId);
+
+  if (excludeSessionId) {
+    query = query.neq('session_id', excludeSessionId);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw error;

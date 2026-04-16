@@ -72,22 +72,24 @@ export function buildParticipantMapFromPresenceState(state, {
   now = Date.now(),
   staleMs = PARTICIPANT_STALE_MS,
 } = {}) {
-  const latestUserSessions = new Map();
+  const latestUsers = new Map();
 
   Object.values(state).flat().forEach((presence) => {
     if (!presence.userId || !presence.username) return;
     if (isLeaving && presence.userId === currentUserId) return;
     if (presence.last_seen && (now - presence.last_seen > staleMs)) return;
 
-    const sessionKey = presence.sessionId || presence.userId;
-    const existing = latestUserSessions.get(sessionKey);
-    if (!existing || (presence.joined_at > (existing.joined_at || 0))) {
-      latestUserSessions.set(sessionKey, presence);
+    const existing = latestUsers.get(presence.userId);
+    const existingSeenAt = Math.max(existing?.last_seen || 0, existing?.joined_at || 0);
+    const presenceSeenAt = Math.max(presence.last_seen || 0, presence.joined_at || 0);
+
+    if (!existing || presenceSeenAt >= existingSeenAt) {
+      latestUsers.set(presence.userId, presence);
     }
   });
 
   const finalMap = {};
-  latestUserSessions.forEach((presence) => {
+  latestUsers.forEach((presence) => {
     if (!presence.channelId) return;
     if (!finalMap[presence.channelId]) {
       finalMap[presence.channelId] = [];

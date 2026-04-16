@@ -29,12 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 16:02`
+- Время: `2026-04-16 16:18`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/components/Sidebar.jsx`
-  - `src/components/VoiceChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/participants.js`
+  - `src/lib/voiceSessions.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -350,3 +351,16 @@ pm run build succeeded (2.5.55).
 - src/components/Sidebar.jsx: hides the current user's stale voice-channel sub-row unless the local voice session is actually active in that channel.
 - Validation: 
 pm run build succeeded (2.5.56).
+
+## 2026-04-16 voice-self-ghost-dedup-and-purge handoff
+- Symptom: repeated browser refreshes while in voice accumulated multiple copies of the same user in the channel (Test x4), even after the local control buttons were hidden.
+- Root cause had two layers:
+  1) oice_sessions allowed multiple stale rows for the same user_id with different session_ids after interrupted refresh/cleanup.
+  2) UI builders (uildVoiceParticipantsMap, uildParticipantMapFromPresenceState) preserved those duplicates instead of collapsing them to one visible user.
+- Fixes:
+  - src/lib/voiceSessions.js: dedupe participants per channel by userId, keep latest row, add emoveVoiceSessionsForUser(userId, excludeSessionId).
+  - src/hooks/voice/participants.js: dedupe presence by userId instead of sessionId.
+  - src/hooks/useVoice.js: if a local voice marker exists on startup, purge all lingering voice sessions for the current user before refreshing; before joining a voice channel, also delete older rows for that user.
+- Result: repeated refreshes should stop accumulating self-ghost participants, and the user should appear at most once per voice channel.
+- Validation: 
+pm run build succeeded (2.5.57).
