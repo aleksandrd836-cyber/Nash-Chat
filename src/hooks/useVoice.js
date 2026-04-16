@@ -154,6 +154,16 @@ export function useVoice() {
     } catch {}
   }, []);
 
+  const readLocalVoiceSessionMarker = useCallback(() => {
+    try {
+      const rawMarker = localStorage.getItem(LOCAL_VOICE_SESSION_STORAGE_KEY);
+      if (!rawMarker) return null;
+      return JSON.parse(rawMarker);
+    } catch {
+      return null;
+    }
+  }, []);
+
   const getLocalScreenSharingState = useCallback(() => (
     Boolean(
       screenStreamRef.current?.getVideoTracks?.().some((track) => track.readyState === 'live')
@@ -593,31 +603,37 @@ export function useVoice() {
     let cancelled = false;
 
     const cleanupOrphanedLocalVoiceSession = async () => {
-      try {
-        const rawMarker = localStorage.getItem(LOCAL_VOICE_SESSION_STORAGE_KEY);
-        if (!rawMarker) return;
+      let staleMarkerSessionId = null;
 
-        const marker = JSON.parse(rawMarker);
+      try {
+        const marker = readLocalVoiceSessionMarker();
         if (!marker?.sessionId) {
           clearLocalVoiceSessionMarker();
           return;
         }
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) {
-          await removeVoiceSessionsForUser(user.id).catch(() => {});
-        } else {
-          await removeVoiceSession(marker.sessionId).catch(() => {});
-        }
+        staleMarkerSessionId = marker.sessionId;
+        await removeVoiceSession(marker.sessionId).catch(() => {});
+
         if (!cancelled) {
+          const currentMarker = readLocalVoiceSessionMarker();
+          const markerWasReplaced = currentMarker?.sessionId && currentMarker.sessionId !== staleMarkerSessionId;
+
+          if (markerWasReplaced) {
+            console.log('[useVoice] Skipping orphan marker reset because a newer voice session already started');
+            return;
+          }
+
           clearLocalVoiceSessionMarker();
-          setLocalVoiceChannelId(null);
-          setActiveChannelId(null);
-          activeChannelIdRef.current = null;
           await refreshVoiceSessions();
         }
       } catch {
-        clearLocalVoiceSessionMarker();
+        if (cancelled) return;
+
+        const currentMarker = readLocalVoiceSessionMarker();
+        if (!currentMarker?.sessionId || currentMarker.sessionId === staleMarkerSessionId) {
+          clearLocalVoiceSessionMarker();
+        }
       }
     };
 
@@ -626,7 +642,7 @@ export function useVoice() {
     return () => {
       cancelled = true;
     };
-  }, [clearLocalVoiceSessionMarker, refreshVoiceSessions]);
+  }, [clearLocalVoiceSessionMarker, readLocalVoiceSessionMarker, refreshVoiceSessions]);
 
 
   // Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ РєР°РЅР°Р» (РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїРѕСЃР»Рµ РІСЃРµС… С„СѓРЅРєС†РёР№)

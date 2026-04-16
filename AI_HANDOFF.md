@@ -29,13 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 16:18`
+- Время: `2026-04-16 18:10`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/participants.js`
-  - `src/lib/voiceSessions.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -364,3 +362,13 @@ pm run build succeeded (2.5.56).
 - Result: repeated refreshes should stop accumulating self-ghost participants, and the user should appear at most once per voice channel.
 - Validation: 
 pm run build succeeded (2.5.57).
+
+## 2026-04-16 startup-orphan-cleanup-race handoff
+- Symptom: users could join a voice channel, hear each other normally, and then 2-4 seconds later lose all local voice UI (leave/mute/stream buttons, center participant cards, left sub-row) while audio kept working. Re-clicking "join" only caused a brief reconnect sound before the UI vanished again.
+- Root cause in `src/hooks/useVoice.js`: the startup orphan-session cleanup ran asynchronously on mount. If the user rejoined voice before that cleanup finished, it deleted the old marker/session and then cleared the fresh local marker/state from the new session. Result: WebRTC peers stayed alive, but the app believed the local voice session was gone.
+- Fix:
+  - added `readLocalVoiceSessionMarker()` helper;
+  - startup cleanup now deletes only `marker.sessionId` instead of deleting all `voice_sessions` rows for the current user;
+  - startup cleanup now checks whether localStorage already contains a newer marker and skips any reset if a new live session replaced the old one.
+- Validation:
+  - `npm run build` succeeded (`2.5.58`).

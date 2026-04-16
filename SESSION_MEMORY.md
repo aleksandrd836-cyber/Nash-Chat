@@ -817,6 +817,23 @@ pm run build passed, version synced to 2.5.57.
 - Изменённые файлы:
   - `package.json`
   - `public/version.json`
+- `src/hooks/useVoice.js`
+- `src/hooks/voice/participants.js`
+- `src/lib/voiceSessions.js`
+
+### Auto Log - 2026-04-16 16:44
+- Fixed the startup race that could wipe a fresh local voice UI a few seconds after page load / refresh.
+- Root cause in `src/hooks/useVoice.js`: the async orphan-session cleanup on mount could finish after the user already rejoined voice, then clear the new session marker/state while WebRTC audio stayed alive.
+- Fix:
+  - added `readLocalVoiceSessionMarker()` helper;
+  - startup cleanup now deletes only the exact stale `session_id` from the previous run;
+  - startup cleanup now checks whether the marker was already replaced by a newer session and aborts state reset in that case.
+- Validation:
+  - `npm run build` passed, version synced to `2.5.58`.
+
+### Auto Log — 2026-04-16 18:10
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/participants.js`
-  - `src/lib/voiceSessions.js`
