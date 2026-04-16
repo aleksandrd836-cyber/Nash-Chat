@@ -313,6 +313,18 @@ export function useVoice() {
     setRemoteScreens(prev => { const next = {...prev}; delete next[userId]; return next; });
   }, []);
 
+  const mutateRealtimeParticipants = useCallback((updater) => {
+    if (serverVoiceStateRef.current) return;
+    setAllParticipants((prev) => {
+      const next = updater(prev);
+      rememberParticipantSnapshots(next);
+      const resilientNext = buildConnectedPeerFallbackMap(next);
+      rememberParticipantSnapshots(resilientNext);
+      lastKnownParticipantsRef.current = resilientNext;
+      return resilientNext;
+    });
+  }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
+
   const reconcileRemotePeerPresence = useCallback((nextParticipants = {}) => {
     const activeChannelId = activeChannelIdRef.current;
     if (!activeChannelId) return;
@@ -409,18 +421,6 @@ export function useVoice() {
       }
     }
   }, [applyParticipantMap, reconcileRemotePeerPresence]);
-
-  const mutateRealtimeParticipants = useCallback((updater) => {
-    if (serverVoiceStateRef.current) return;
-    setAllParticipants((prev) => {
-      const next = updater(prev);
-      rememberParticipantSnapshots(next);
-      const resilientNext = buildConnectedPeerFallbackMap(next);
-      rememberParticipantSnapshots(resilientNext);
-      lastKnownParticipantsRef.current = resilientNext;
-      return resilientNext;
-    });
-  }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
 
 
   // в”Ђв”Ђ РЎРРќРҐР РћРќРР—РђР¦РРЇ РЈР§РђРЎРўРќРРљРћР’ Р’ Р¦Р•РќРўР Р• (derived state) в”Ђв”Ђ

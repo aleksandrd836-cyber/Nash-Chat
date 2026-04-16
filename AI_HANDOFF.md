@@ -29,10 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 11:45`
+- Время: `2026-04-16 12:32`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
+  - `src/hooks/useVoice.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -318,3 +319,10 @@ pm run build succeeded (2.5.50).
 - Fix: move the primary mutateRealtimeParticipants and closePeer callback declarations above econcileRemotePeerPresence, remove duplicate lower declarations, rebuild.
 - Validation: 
 pm run build succeeded (2.5.51).
+
+## 2026-04-16 startup-crash-second-tdz-fix handoff
+- The first startup-crash fix only moved closePeer; production still crashed with another minified TDZ error (Cannot access 'be' before initialization).
+- Root cause: econcileRemotePeerPresence still referenced mutateRealtimeParticipants before its declaration via dependency array/body.
+- Final fix: order in src/hooks/useVoice.js is now pplyParticipantMap -> closePeer -> mutateRealtimeParticipants -> reconcileRemotePeerPresence -> refreshVoiceSessions.
+- Validation: 
+pm run build succeeded (2.5.53).

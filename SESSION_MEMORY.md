@@ -745,3 +745,16 @@ pm run build passed, version synced to 2.5.51.
 - Изменённые файлы:
   - `package.json`
   - `public/version.json`
+
+### Auto Log - 2026-04-16 01:23
+- Follow-up fix for startup crash after the first TDZ patch was incomplete.
+- src/hooks/useVoice.js: moved mutateRealtimeParticipants above econcileRemotePeerPresence as well; that callback was still referenced before initialization in the dependency array and caused production crash Cannot access 'be' before initialization.
+- Validation: 
+pm run build passed, version synced to 2.5.53.
+
+### Auto Log — 2026-04-16 12:32
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
