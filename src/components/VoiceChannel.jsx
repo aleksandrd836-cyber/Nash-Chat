@@ -92,6 +92,7 @@ const ScreenPlayer = memo(function ScreenPlayer({ participant, stream, onClose }
 export function VoiceChannel({ channel, user, username, userColor, voice, downloadUrl, ownerId }) {
   const {
     activeChannelId,
+    localVoiceChannelId,
     connectingChannelId,
     participants,
     allParticipants,
@@ -123,7 +124,8 @@ export function VoiceChannel({ channel, user, username, userColor, voice, downlo
     () => channelParticipants.some((participant) => participant.userId === user?.id),
     [channelParticipants, user?.id]
   );
-  const isInThisChannel = activeChannelId === channel?.id || hasSelfInThisChannel;
+  const hasLocalVoiceControls = localVoiceChannelId === channel?.id;
+  const isInThisChannel = hasLocalVoiceControls || hasSelfInThisChannel;
   const isJoiningThisChannel = !isInThisChannel && isConnecting && connectingChannelId === channel?.id;
 
   // ── Контекстное меню ──

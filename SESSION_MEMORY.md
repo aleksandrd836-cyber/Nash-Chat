@@ -771,3 +771,20 @@ pm run build passed, version synced to 2.5.54.
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log - 2026-04-16 01:37
+- Fixed stale local voice controls after browser refresh while sitting in a voice channel.
+- src/hooks/useVoice.js: added explicit localVoiceChannelId state that tracks a real local media/session setup instead of relying on ctiveChannelId alone.
+- src/hooks/voice/cleanup.js: cleanup now clears localVoiceChannelId together with ctiveChannelId.
+- src/components/VoiceChannel.jsx: voice controls now render from localVoiceChannelId === channel.id || self actually present in participants, which prevents phantom leave/stream buttons on reload.
+- Validation: 
+pm run build passed, version synced to 2.5.55.
+
+### Auto Log — 2026-04-16 14:36
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/VoiceChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/cleanup.js`

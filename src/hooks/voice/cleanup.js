@@ -6,6 +6,7 @@ export async function cleanupVoiceSessionState({
   removeSessionFromParticipantMap,
   setParticipants,
   setActiveChannelId,
+  setLocalVoiceChannelId,
   activeChannelIdRef,
   lastStableChannelIdRef,
   setConnectingChannelId,
@@ -46,6 +47,7 @@ export async function cleanupVoiceSessionState({
 
   setParticipants([]);
   setActiveChannelId(null);
+  setLocalVoiceChannelId(null);
   activeChannelIdRef.current = null;
   lastStableChannelIdRef.current = null;
   setConnectingChannelId(null);

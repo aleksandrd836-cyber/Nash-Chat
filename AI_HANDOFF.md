@@ -29,11 +29,13 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 13:01`
+- Время: `2026-04-16 14:36`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
+  - `src/components/VoiceChannel.jsx`
   - `src/hooks/useVoice.js`
+  - `src/hooks/voice/cleanup.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -333,3 +335,11 @@ pm run build succeeded (2.5.53).
 - Fix: call native clearTimeout(...) on the stored timer id and then delete the map entry.
 - Validation: 
 pm run build succeeded (2.5.54).
+
+## 2026-04-16 stale-local-voice-controls-after-refresh handoff
+- Symptom: after browser refresh while inside a voice channel, the UI still showed local voice controls (Leave, Stream, mute/deafen) even when the user was no longer truly connected and the participant count dropped to 0.
+- Root issue: VoiceChannel.jsx trusted ctiveChannelId as a UI source of truth, but that can lag behind real local voice teardown/reload state.
+- Fix: introduce localVoiceChannelId in src/hooks/useVoice.js, set it only when a real local session/media setup is established, clear it in src/hooks/voice/cleanup.js, and gate isInThisChannel in src/components/VoiceChannel.jsx by localVoiceChannelId === channel.id || hasSelfInThisChannel.
+- Result: reloads should no longer leave phantom local control buttons when the user is not actually in voice.
+- Validation: 
+pm run build succeeded (2.5.55).

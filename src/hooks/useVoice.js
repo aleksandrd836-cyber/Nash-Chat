@@ -76,6 +76,7 @@ const LOCAL_VOICE_SESSION_STORAGE_KEY = 'vibe_local_voice_session';
 
 export function useVoice() {
   const [activeChannelId, setActiveChannelId]  = useState(null);
+  const [localVoiceChannelId, setLocalVoiceChannelId] = useState(null);
   const [participants, setParticipants]        = useState([]);
   const [allParticipants, setAllParticipants]  = useState({});
   const [isMuted, setIsMuted]                  = useState(false);
@@ -552,6 +553,7 @@ export function useVoice() {
       removeSessionFromParticipantMap,
       setParticipants,
       setActiveChannelId,
+      setLocalVoiceChannelId,
       activeChannelIdRef,
       lastStableChannelIdRef,
       setConnectingChannelId,
@@ -927,6 +929,7 @@ export function useVoice() {
       } catch (err) {
         console.error('[useVoice] Media initialization failed:', err);
         setVoiceError(`Microphone error: ${err.message}`);
+        setLocalVoiceChannelId(null);
         setIsConnecting(false);
         return;
       }
@@ -953,6 +956,7 @@ export function useVoice() {
         sessionId: sessionIdRef.current,
         channelId,
       });
+      setLocalVoiceChannelId(channelId);
 
       await removeChannelsByTopic(`voice:${channelId}`);
       setupLocalVoiceChannel({
@@ -1208,7 +1212,7 @@ export function useVoice() {
   }, [allParticipants]);
 
   return {
-    activeChannelId, connectingChannelId, participants, allParticipants, ping, voiceError, serverStatus,
+    activeChannelId, localVoiceChannelId, connectingChannelId, participants, allParticipants, ping, voiceError, serverStatus,
     isMuted, isDeafened, isConnecting, isSpeaking, isScreenSharing, remoteScreens,
     joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, setParticipantVolume,
     forceParticipantVoiceState,
