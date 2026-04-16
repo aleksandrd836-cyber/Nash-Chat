@@ -129,6 +129,7 @@ export function useVoice() {
   const lastKnownParticipantsRef = useRef({});
   const pendingStreamRequestsRef = useRef(new Set());
   const participantSnapshotsRef = useRef(new Map());
+  const orphanedRemotePeerTimersRef = useRef({});
 
   const persistLocalVoiceSessionMarker = useCallback((marker) => {
     try {
@@ -290,6 +291,56 @@ export function useVoice() {
     setAllParticipants(mergedParticipants);
   }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
 
+  const reconcileRemotePeerPresence = useCallback((nextParticipants = {}) => {
+    const activeChannelId = activeChannelIdRef.current;
+    if (!activeChannelId) return;
+
+    const snapshotUserIds = Array.from(participantSnapshotsRef.current.values())
+      .filter((participant) => participant?.channelId === activeChannelId)
+      .map((participant) => participant.userId)
+      .filter(Boolean);
+    const activeSessionUserIds = new Set(
+      (nextParticipants[activeChannelId] || [])
+        .map((participant) => participant.userId)
+        .filter(Boolean)
+    );
+    const candidateUserIds = new Set([
+      ...Object.keys(peerConns.current || {}),
+      ...Object.keys(audioElements.current || {}),
+      ...Object.keys(remoteScreens || {}),
+      ...snapshotUserIds,
+    ]);
+
+    activeSessionUserIds.forEach((userId) => {
+      clearManagedTimeout(orphanedRemotePeerTimersRef.current[userId]);
+      delete orphanedRemotePeerTimersRef.current[userId];
+    });
+
+    candidateUserIds.forEach((userId) => {
+      if (!userId || userId === currentUserRef.current?.id) return;
+      if (activeSessionUserIds.has(userId)) return;
+      if (orphanedRemotePeerTimersRef.current[userId]) return;
+
+      orphanedRemotePeerTimersRef.current[userId] = setTimeout(() => {
+        delete orphanedRemotePeerTimersRef.current[userId];
+
+        closePeer(userId, true);
+        participantSnapshotsRef.current.forEach((snapshot, sessionKey) => {
+          if (snapshot?.userId === userId) {
+            participantSnapshotsRef.current.delete(sessionKey);
+          }
+        });
+        mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, { userId }));
+      }, 4000);
+    });
+  }, [
+    clearManagedTimeout,
+    closePeer,
+    mutateRealtimeParticipants,
+    remoteScreens,
+    removeSessionFromParticipantMap,
+  ]);
+
   const removeChannelsByTopic = useCallback(async (topic, keepChannel = null) => {
     const existingChannels = typeof supabase.getChannels === 'function'
       ? supabase.getChannels()
@@ -311,6 +362,7 @@ export function useVoice() {
       const nextParticipants = await fetchActiveVoiceSessions();
       serverVoiceStateRef.current = true;
       applyParticipantMap(nextParticipants, { preserveConnectedPeers: true });
+      reconcileRemotePeerPresence(nextParticipants);
     } catch (error) {
       const message = error?.message?.toLowerCase?.() ?? '';
       const isSchemaMissing =
@@ -334,7 +386,7 @@ export function useVoice() {
         console.warn('[useVoice] Voice sessions refresh failed:', error);
       }
     }
-  }, [applyParticipantMap]);
+  }, [applyParticipantMap, reconcileRemotePeerPresence]);
 
   const mutateRealtimeParticipants = useCallback((updater) => {
     if (serverVoiceStateRef.current) return;
@@ -512,6 +564,7 @@ export function useVoice() {
       fakeVADIntervalRef,
       heartbeatIntervalRef,
       ghostPeersRef,
+      orphanedRemotePeerTimersRef,
       clearManagedTimeout,
       clearManagedInterval,
       clearManagedTimeoutMap,

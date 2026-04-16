@@ -711,3 +711,18 @@ pm run build > 2.5.45.
   - `public/version.json`
   - `src/components/DirectMessagePanel.jsx`
   - `src/components/TextChannel.jsx`
+
+### Auto Log - 2026-04-16 01:05
+- Fixed stale remote voice participants after tray exit for other users.
+- src/hooks/voice/cleanup.js: moved user-left broadcast + global untrack before channel removal, added short flush delay, and cleared orphan peer timers during local quit cleanup.
+- src/hooks/useVoice.js: added orphanedRemotePeerTimersRef and econcileRemotePeerPresence() so peers/snapshots/stream buttons are forcibly cleared within a few seconds when oice_sessions no longer contains that user.
+- Validation: 
+pm run build passed, version synced to 2.5.50.
+
+### Auto Log — 2026-04-16 11:08
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/cleanup.js`

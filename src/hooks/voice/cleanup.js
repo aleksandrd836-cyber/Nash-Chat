@@ -20,6 +20,7 @@ export async function cleanupVoiceSessionState({
   fakeVADIntervalRef,
   heartbeatIntervalRef,
   ghostPeersRef,
+  orphanedRemotePeerTimersRef,
   clearManagedTimeout,
   clearManagedInterval,
   clearManagedTimeoutMap,
@@ -60,14 +61,42 @@ export async function cleanupVoiceSessionState({
     })
   );
 
-  await removeVoiceSession(sessionIdRef.current).catch(() => {});
-  await refreshVoiceSessions();
-
   clearManagedTimeout(reconnectTimerRef, '[useVoice] Clearing background reconnect timer');
   clearManagedTimeout(presenceDebounceRef);
   clearManagedInterval(fakeVADIntervalRef);
   clearManagedInterval(heartbeatIntervalRef);
   clearManagedTimeoutMap(ghostPeersRef);
+  clearManagedTimeoutMap(orphanedRemotePeerTimersRef);
+
+  const currentRealtimeChannel = realtimeChannelRef.current;
+  const broadcastPayload = {
+    type: 'broadcast',
+    event: 'user-left',
+    payload: { userId: myId, sessionId: sessionIdRef.current },
+  };
+
+  await Promise.allSettled([
+    globalPresenceRef.current?.state === 'joined'
+      ? globalPresenceRef.current.send(broadcastPayload)
+      : Promise.resolve(),
+    currentRealtimeChannel?.state === 'joined'
+      ? currentRealtimeChannel.send(broadcastPayload)
+      : Promise.resolve(),
+  ]);
+
+  if (globalPresenceRef.current?.state === 'joined') {
+    await globalPresenceRef.current.track({
+      ...presencePayloadRef.current,
+      channelId: null,
+      joined_at: presencePayloadRef.current.joined_at || Date.now(),
+    }).catch(() => {});
+
+    await globalPresenceRef.current.untrack().catch(() => {});
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  await removeVoiceSession(sessionIdRef.current).catch(() => {});
+  await refreshVoiceSessions();
 
   console.log('[useVoice] Closing peer connections...');
   Object.keys(peerConnsRef.current).forEach((id) => closePeer(id, true));
@@ -107,7 +136,6 @@ export async function cleanupVoiceSessionState({
     audioContextRef.current = null;
   }
 
-  const currentRealtimeChannel = realtimeChannelRef.current;
   if (currentRealtimeChannel) {
     realtimeChannelRef.current = null;
     console.log('[useVoice] Removing Realtime channel...');
@@ -116,27 +144,6 @@ export async function cleanupVoiceSessionState({
 
   if (globalPresenceRef.current) {
     console.log('[useVoice] Updating global presence (EXIT)...');
-
-    const broadcastPayload = {
-      type: 'broadcast',
-      event: 'user-left',
-      payload: { userId: myId, sessionId: sessionIdRef.current },
-    };
-
-    if (globalPresenceRef.current?.state === 'joined') {
-      globalPresenceRef.current.send(broadcastPayload).catch(() => {});
-    }
-    if (currentRealtimeChannel?.state === 'joined') {
-      currentRealtimeChannel.send(broadcastPayload).catch(() => {});
-    }
-
-    await globalPresenceRef.current.track({
-      ...presencePayloadRef.current,
-      channelId: null,
-      joined_at: presencePayloadRef.current.joined_at || Date.now(),
-    }).catch(() => {});
-
-    await globalPresenceRef.current.untrack().catch(() => {});
   }
 
   mutateRealtimeParticipants((prev) =>

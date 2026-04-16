@@ -29,12 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 10:38`
+- Время: `2026-04-16 11:08`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/components/DirectMessagePanel.jsx`
-  - `src/components/TextChannel.jsx`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/cleanup.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -305,3 +305,11 @@ pm run build (2.5.45).
 - Both components now track whether the viewport is already near the bottom (`shouldStickToBottomRef`) and only auto-scroll in that case, or when switching to a different channel / DM target.
 - Added `onScroll={updateStickToBottomState}` in both message containers so manual upward reading disables auto-stick until the user returns near the bottom.
 - Validation: `npm run build` passed on `2.5.49`.
+
+## 2026-04-16 remote-tray-exit-stale-participant handoff
+- Root cause: remote clients kept restoring a participant from peer/audio/snapshot fallback even after the user exited through the tray, because WebRTC closed slower than oice_sessions disappeared and snapshot grace kept the UI alive.
+- Cleanup hardening in src/hooks/voice/cleanup.js: send user-left on global/local channels before removing the realtime channel, untrack global presence immediately, wait ~150ms for websocket flush, then remove oice_sessions row.
+- Remote cleanup hardening in src/hooks/useVoice.js: added orphanedRemotePeerTimersRef and econcileRemotePeerPresence(nextParticipants); whenever fresh oice_sessions data says a user is gone, schedule forced closePeer(...), snapshot purge, and participant removal within ~4s.
+- Result: tray-exited users should disappear quickly for everyone else instead of lingering ~1 minute with a stale watch-stream button.
+- Validation: 
+pm run build succeeded (2.5.50).
