@@ -35,15 +35,37 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
   const inputRef                      = useRef(null);
   const fileInputRef                  = useRef(null);
   const pickerRef                     = useRef(null);
+  const shouldStickToBottomRef        = useRef(true);
+  const prevTargetIdRef               = useRef(null);
+
+  const updateStickToBottomState = useCallback(() => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    shouldStickToBottomRef.current = scrollHeight - (scrollTop + clientHeight) < 120;
+  }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!scrollRef.current) return;
+
+    const targetChanged = prevTargetIdRef.current !== targetMember?.id;
+    prevTargetIdRef.current = targetMember?.id;
+
+    if (targetChanged) {
       scrollRef.current.scrollTo({
         top: scrollRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: 'auto'
       });
+      shouldStickToBottomRef.current = true;
+      return;
     }
-  }, [messages]);
+
+    if (!shouldStickToBottomRef.current) return;
+
+    scrollRef.current.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, [messages, targetMember?.id]);
 
   useEffect(() => {
     setDraft('');
@@ -225,6 +247,7 @@ export function DirectMessagePanel({ currentUser, username, userColor, targetMem
       {/* Messages */}
       <div 
         ref={scrollRef} 
+        onScroll={updateStickToBottomState}
         className="flex-1 overflow-y-auto no-scrollbar py-6 flex flex-col min-h-0 scroll-smooth"
       >
         {loading ? (

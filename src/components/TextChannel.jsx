@@ -21,18 +21,40 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
   const inputRef                   = useRef(null);
   const fileInputRef               = useRef(null);
   const pickerRef                  = useRef(null);
+  const shouldStickToBottomRef     = useRef(true);
+  const prevChannelIdRef           = useRef(null);
 
-  // Автоскролл вниз при новых сообщениях
+  const updateStickToBottomState = useCallback(() => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    shouldStickToBottomRef.current = scrollHeight - (scrollTop + clientHeight) < 120;
+  }, []);
+
+  // Auto-scroll only when user is already near the bottom or switched channel
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!scrollRef.current) return;
+
+    const channelChanged = prevChannelIdRef.current !== channel?.id;
+    prevChannelIdRef.current = channel?.id;
+
+    if (channelChanged) {
       scrollRef.current.scrollTo({
         top: scrollRef.current.scrollHeight,
-        behavior: 'smooth'
+        behavior: 'auto'
       });
+      shouldStickToBottomRef.current = true;
+      return;
     }
-  }, [messages]);
 
-  // Фокус на поле при смене канала
+    if (!shouldStickToBottomRef.current) return;
+
+    scrollRef.current.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, [messages, channel?.id]);
+
+  // Focus input when channel changes
   useEffect(() => {
     inputRef.current?.focus();
     setAttachment(null);
@@ -40,7 +62,7 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
     setShowEmojiPicker(false);
   }, [channel?.id]);
 
-  // Закрытие эмодзи по клику вне
+  // Close emoji picker on outside click
   useEffect(() => {
     function handleClickOutside(event) {
       if (pickerRef.current && !pickerRef.current.contains(event.target)) {
@@ -187,6 +209,7 @@ export function TextChannel({ channel, user, ownerId, username, userColor, downl
       {/* Messages */}
       <div 
         ref={scrollRef} 
+        onScroll={updateStickToBottomState}
         className="flex-1 overflow-y-auto py-4 flex flex-col min-h-0 scroll-smooth no-scrollbar"
       >
         {loading ? (

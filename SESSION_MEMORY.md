@@ -691,3 +691,23 @@ pm run build > 2.5.45.
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log — 2026-04-16 10:15
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+
+### Auto Log — 2026-04-16 00:19
+- Fixed forced auto-scroll in chat history: text channels and direct messages no longer yank the viewport back to the bottom while the user is reading older messages.
+- `src/components/TextChannel.jsx`: auto-scroll now runs only if the user was already near the bottom, or when opening a new channel; added `onScroll` tracking.
+- `src/components/DirectMessagePanel.jsx`: same fix for private dialogs; reading old DM history no longer gets interrupted by smooth scroll-to-bottom on every message update.
+- Validation: `npm run build` -> `2.5.49`.
+
+### Auto Log — 2026-04-16 10:38
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/components/DirectMessagePanel.jsx`
+  - `src/components/TextChannel.jsx`

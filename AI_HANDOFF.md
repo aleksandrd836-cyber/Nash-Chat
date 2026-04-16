@@ -29,13 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 10:11`
+- Время: `2026-04-16 10:38`
 - Последние staged-файлы перед коммитом:
-  - `electron/main.cjs`
-  - `electron/preload.js`
   - `package.json`
   - `public/version.json`
-  - `src/hooks/useVoice.js`
+  - `src/components/DirectMessagePanel.jsx`
+  - `src/components/TextChannel.jsx`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -299,3 +298,10 @@ pm run build (2.5.45).
 - `src/hooks/useVoice.js` now persists a local client session marker (`vibe_local_voice_session`), clears it on normal cleanup, and deletes the orphaned local session on the next launch if the previous exit did not finish cleanly.
 - `src/hooks/useVoice.js` also listens for Electron quit requests and runs `cleanupAll()` before acknowledging the quit, which clears `activeChannelId`, tears down media, and removes the local voice session before shutdown.
 - Validation: `npm run build` passed on `2.5.47`; `node --check electron/main.cjs`; `node --check electron/preload.js`.
+
+## 2026-04-16 chat-scroll-lock handoff
+- Fixed the long-standing UX bug where scrolling upward in a text channel or DM would snap back down to the latest message after about a second.
+- Root cause: both `src/components/TextChannel.jsx` and `src/components/DirectMessagePanel.jsx` had an unconditional `scrollTo({ top: scrollHeight, behavior: 'smooth' })` effect tied to every `messages` change.
+- Both components now track whether the viewport is already near the bottom (`shouldStickToBottomRef`) and only auto-scroll in that case, or when switching to a different channel / DM target.
+- Added `onScroll={updateStickToBottomState}` in both message containers so manual upward reading disables auto-stick until the user returns near the bottom.
+- Validation: `npm run build` passed on `2.5.49`.
