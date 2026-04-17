@@ -135,6 +135,10 @@ export function useVoice() {
   const pendingStreamRequestsRef = useRef(new Set());
   const participantSnapshotsRef = useRef(new Map());
   const orphanedRemotePeerTimersRef = useRef({});
+  const refreshVoiceSessionsRef = useRef(null);
+  const mutateRealtimeParticipantsRef = useRef(null);
+  const cleanupAllRef = useRef(null);
+  const updatePresenceStatusRef = useRef(null);
 
   const persistLocalVoiceSessionMarker = useCallback((marker) => {
     try {
@@ -354,7 +358,15 @@ export function useVoice() {
       try { gainNodesRef.current[userId].disconnect(); } catch {}
       delete gainNodesRef.current[userId];
     }
-    setRemoteScreens(prev => { const next = {...prev}; delete next[userId]; return next; });
+    setRemoteScreens((prev) => {
+      if (!(userId in prev)) {
+        return prev;
+      }
+
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
   }, []);
 
   const mutateRealtimeParticipants = useCallback((updater) => {
@@ -367,6 +379,7 @@ export function useVoice() {
       return resilientNext;
     });
   }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
+  mutateRealtimeParticipantsRef.current = mutateRealtimeParticipants;
 
   const reconcileRemotePeerPresence = useCallback((nextParticipants = {}) => {
     const activeChannelId = activeChannelIdRef.current;
@@ -465,6 +478,7 @@ export function useVoice() {
       }
     }
   }, [applyParticipantMap, reconcileRemotePeerPresence]);
+  refreshVoiceSessionsRef.current = refreshVoiceSessions;
 
 
   // в”Ђв”Ђ РЎРРќРҐР РћРќРР—РђР¦РРЇ РЈР§РђРЎРўРќРРљРћР’ Р’ Р¦Р•РќРўР Р• (derived state) в”Ђв”Ђ
@@ -485,7 +499,7 @@ export function useVoice() {
     const tick = async () => {
       if (cancelled) return;
 
-      await refreshVoiceSessions();
+      await refreshVoiceSessionsRef.current?.();
 
       if (Date.now() - lastVoiceSessionCleanupRef.current > 60000) {
         lastVoiceSessionCleanupRef.current = Date.now();
@@ -503,7 +517,7 @@ export function useVoice() {
         voiceSessionsPollRef.current = null;
       }
     };
-  }, [refreshVoiceSessions]);
+  }, []);
 
   // РЎРРќРҐР РћРќРР—РђР¦РРЇ РЎРўР РРњРћР’
   useEffect(() => {
@@ -630,6 +644,7 @@ export function useVoice() {
       supabaseClient: supabase,
     });
   }, [clearLocalVoiceSessionMarker, closePeer, mutateRealtimeParticipants, refreshVoiceSessions, removeSessionFromParticipantMap]);
+  cleanupAllRef.current = cleanupAll;
   useEffect(() => {
     let cancelled = false;
 
@@ -656,7 +671,7 @@ export function useVoice() {
           }
 
           clearLocalVoiceSessionMarker();
-          await refreshVoiceSessions();
+          await refreshVoiceSessionsRef.current?.();
         }
       } catch {
         if (cancelled) return;
@@ -673,12 +688,16 @@ export function useVoice() {
     return () => {
       cancelled = true;
     };
-  }, [clearLocalVoiceSessionMarker, readLocalVoiceSessionMarker, refreshVoiceSessions]);
+  }, [clearLocalVoiceSessionMarker, readLocalVoiceSessionMarker]);
 
 
   // Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ РєР°РЅР°Р» (РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїРѕСЃР»Рµ РІСЃРµС… С„СѓРЅРєС†РёР№)
   useEffect(() => {
     const cancelledRef = { current: false };
+    const mutateParticipants = (updater) => {
+      mutateRealtimeParticipantsRef.current?.(updater);
+    };
+
     const initGlobalChannel = async () => {
       clearManagedTimeout(globalPresenceRecoveryTimerRef);
 
@@ -698,7 +717,7 @@ export function useVoice() {
       globalPresence.current = channel;
 
       channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
-        mutateRealtimeParticipants((prev) => (
+        mutateParticipants((prev) => (
           updateParticipantSpeakingMap(prev, payload.userId, payload.isSpeaking)
         ));
       });
@@ -706,13 +725,13 @@ export function useVoice() {
       const startHeartbeat = () => {
         restartManagedInterval(heartbeatIntervalRef, async () => {
           if (isLeavingRef.current) return;
-          updatePresenceStatus({
+          updatePresenceStatusRef.current?.({
             last_seen: Date.now(),
             channelId: activeChannelIdRef.current,
           });
 
           const now = Date.now();
-          mutateRealtimeParticipants((prev) => pruneStaleParticipantMap(prev, now));
+          mutateParticipants((prev) => pruneStaleParticipantMap(prev, now));
         }, VOICE_HEARTBEAT_MS);
       };
 
@@ -721,19 +740,19 @@ export function useVoice() {
         currentUserRef,
         isLeavingRef,
         buildParticipantMapFromPresenceState,
-        mutateRealtimeParticipants,
+        mutateRealtimeParticipants: mutateParticipants,
       });
 
       channel.on('presence', { event: 'sync' }, updateAllParticipants);
       channel.on('presence', { event: 'join' }, updateAllParticipants);
       channel.on('presence', { event: 'leave' }, createGlobalPresenceLeaveHandler({
-        mutateRealtimeParticipants,
+        mutateRealtimeParticipants: mutateParticipants,
         removeSessionFromParticipantMap,
         updateAllParticipants,
       }));
 
       channel.on('broadcast', { event: 'user-left' }, ({ payload }) => {
-        mutateRealtimeParticipants((prev) => removeSessionFromParticipantMap(prev, payload));
+        mutateParticipants((prev) => removeSessionFromParticipantMap(prev, payload));
       });
 
       channel.subscribe(createGlobalPresenceStatusHandler({
@@ -762,7 +781,7 @@ export function useVoice() {
 
     const handleUnload = () => {
       if (activeChannelIdRef.current) {
-        cleanupAll();
+        cleanupAllRef.current?.();
       }
     };
     window.addEventListener('beforeunload', handleUnload);
@@ -780,7 +799,7 @@ export function useVoice() {
       clearManagedTimeout(globalPresenceRecoveryTimerRef);
       clearManagedInterval(heartbeatIntervalRef);
     };
-  }, [buildParticipantMapFromPresenceState, cleanupAll, mutateRealtimeParticipants, pruneStaleParticipantMap, removeChannelsByTopic, removeSessionFromParticipantMap, updateParticipantSpeakingMap]);
+  }, [removeChannelsByTopic]);
   useEffect(() => {
     const unsubscribe = window.electronAPI?.onAppQuitRequested?.(async () => {
       try {
@@ -851,6 +870,7 @@ export function useVoice() {
       presenceDebounceRef.current = setTimeout(sendUpdate, 400); // 400ms вЂ“ Р·РѕР»РѕС‚Р°СЏ СЃРµСЂРµРґРёРЅР°
     }
   }, [getLocalScreenSharingState]);
+  updatePresenceStatusRef.current = updatePresenceStatus;
 
   const applyForcedVoiceState = useCallback(async ({ isMuted: forcedMuted, isDeafened: forcedDeafened } = {}) => {
     const nextMuted = typeof forcedMuted === 'boolean' ? forcedMuted : isMutedRef.current;

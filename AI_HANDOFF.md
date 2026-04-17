@@ -29,11 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-17 16:20`
+- Время: `2026-04-17 16:36`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+  - `src/lib/supabase.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -440,3 +441,22 @@ pm run build succeeded (2.5.57).
   - apply the same ordering in the effect cleanup path so intentional teardown cannot be mistaken for an unexpected loss.
 - Validation:
   - `npm run build` succeeded (`2.5.63`).
+
+## 2026-04-17 voice-lifecycle-effect-churn handoff
+- Another deeper root cause lived in the hook lifecycle itself, not only in reconnect timers.
+- Problem:
+  - `src/hooks/useVoice.js` had several effects that were conceptually mount-only, but depended on callback identities such as `refreshVoiceSessions`, `mutateRealtimeParticipants`, and `cleanupAll`;
+  - those callbacks could change after peer cleanup because the callback graph was indirectly tied to `remoteScreens` and connected-peer fallback logic;
+  - as a result, after one transient failure the hook could re-run global presence init/cleanup, startup orphan-session cleanup, and polling bootstrap during an active voice session.
+- Impact:
+  - the app could keep amplifying one realtime hiccup into broader voice instability;
+  - startup orphan cleanup was especially dangerous because it could re-enter voice-session marker/session cleanup logic after mount.
+- Fix:
+  - `src/hooks/useVoice.js`: added `refreshVoiceSessionsRef`, `mutateRealtimeParticipantsRef`, `cleanupAllRef`, and `updatePresenceStatusRef` and moved long-lived effects to use refs instead of unstable callback deps;
+  - `src/hooks/useVoice.js`: voice sessions polling now remains mounted and reads the latest refresh callback through a ref;
+  - `src/hooks/useVoice.js`: startup orphan cleanup now runs only on mount;
+  - `src/hooks/useVoice.js`: global presence effect now uses stable refs and no longer re-initializes from callback identity churn;
+  - `src/hooks/useVoice.js`: `closePeer()` no longer forces a new empty `remoteScreens` object when there is no actual screen entry to remove;
+  - `src/lib/supabase.js`: enabled Supabase Realtime `worker` heartbeat support to better survive long-running voice sessions.
+- Validation:
+  - `npm run build` succeeded (`2.5.64`).

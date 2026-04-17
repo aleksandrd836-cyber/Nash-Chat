@@ -45,5 +45,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
+  },
+  realtime: {
+    worker: typeof window !== 'undefined' && typeof window.Worker !== 'undefined',
   }
 });

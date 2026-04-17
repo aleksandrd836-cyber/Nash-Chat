@@ -914,6 +914,28 @@ pm run build passed, version synced to 2.5.57.
 - Validation:
   - `npm run build` passed on `2.5.63`.
 
+### 2026-04-17 voice lifecycle effect churn hardening
+- Found a deeper hook-level root cause that could keep voice unstable even after the earlier reconnect timer fixes.
+- Problem:
+  - several `useVoice` lifecycle effects that should behave like one-shot mount logic were depending on callback identities that changed during peer/screen cleanup;
+  - after a remote peer close or `remoteScreens` mutation, the hook could re-run:
+    - global presence init/cleanup,
+    - startup orphan voice-session cleanup,
+    - voice sessions polling bootstrap.
+- Why this was dangerous:
+  - startup orphan cleanup could run again during an active voice session and touch the current local marker/session flow;
+  - global presence channel lifecycle could be restarted after peer cleanup instead of only on true app lifecycle changes;
+  - repeated state churn amplified transient realtime problems into persistent reconnect loops.
+- Fix:
+  - `src/hooks/useVoice.js`: introduced `refreshVoiceSessionsRef`, `mutateRealtimeParticipantsRef`, `cleanupAllRef`, and `updatePresenceStatusRef` so long-lived effects use latest callbacks without re-running mount logic;
+  - `src/hooks/useVoice.js`: voice sessions poll effect now stays mounted and reads `refreshVoiceSessions` through a ref;
+  - `src/hooks/useVoice.js`: startup orphan voice-session cleanup now runs only on mount instead of re-running after callback identity churn;
+  - `src/hooks/useVoice.js`: global presence effect now uses refs instead of unstable callback deps;
+  - `src/hooks/useVoice.js`: `closePeer()` no longer creates a brand-new empty `remoteScreens` object when nothing actually changed, preventing avoidable hook churn on audio-only peer closes;
+  - `src/lib/supabase.js`: enabled official Supabase Realtime `worker` heartbeat support to reduce socket heartbeat starvation on long-running voice sessions.
+- Validation:
+  - `npm run build` passed on `2.5.64`.
+
 ### Auto Log — 2026-04-17 15:39
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
@@ -937,3 +959,11 @@ pm run build passed, version synced to 2.5.57.
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log — 2026-04-17 16:36
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/lib/supabase.js`
