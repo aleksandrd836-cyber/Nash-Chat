@@ -121,6 +121,7 @@ export function useVoice() {
   const isLeavingRef = useRef(false);
   const rnnoiseNodeRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const globalPresenceRecoveryTimerRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const presenceDebounceRef = useRef(null);
   const isSwitchingRef = useRef(false);
@@ -679,6 +680,8 @@ export function useVoice() {
   useEffect(() => {
     const cancelledRef = { current: false };
     const initGlobalChannel = async () => {
+      clearManagedTimeout(globalPresenceRecoveryTimerRef);
+
       if (globalPresence.current) {
         await supabase.removeChannel(globalPresence.current).catch(() => {});
         globalPresence.current = null;
@@ -743,11 +746,13 @@ export function useVoice() {
         isLeavingRef,
         serverVoiceStateRef,
         RECONNECT_DELAY_MS,
+        clearRecovery: () => clearManagedTimeout(globalPresenceRecoveryTimerRef),
         scheduleRecovery: (delayMs, shouldRecover) => {
-          setTimeout(() => {
+          scheduleManagedTimeout(globalPresenceRecoveryTimerRef, () => {
             if (shouldRecover()) {
-              initGlobalChannel();
+              return initGlobalChannel();
             }
+            return null;
           }, delayMs);
         },
       }));
@@ -769,6 +774,7 @@ export function useVoice() {
       if (globalPresence.current) {
         supabase.removeChannel(globalPresence.current).catch(() => {});
       }
+      clearManagedTimeout(globalPresenceRecoveryTimerRef);
       clearManagedInterval(heartbeatIntervalRef);
       globalPresence.current = null;
     };
@@ -925,6 +931,7 @@ export function useVoice() {
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color, isSilent = false) => {
     if (!channelId || !user) return;
+    clearManagedTimeout(reconnectTimerRef);
     const currentStableChannelId = resolveStableVoiceChannelId(
       lastStableChannelIdRef.current,
       activeChannelIdRef.current,
@@ -1059,6 +1066,7 @@ export function useVoice() {
         appendParticipantToChannel,
         flushPendingStreamRequests,
         scheduleManagedTimeout,
+        clearManagedTimeout,
         resolveStableVoiceChannelId,
         joinVoiceChannel,
         notifications,

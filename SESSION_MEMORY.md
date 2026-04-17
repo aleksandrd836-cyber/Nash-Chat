@@ -883,9 +883,37 @@ pm run build passed, version synced to 2.5.57.
 - Validation: npm run build passed successfully after the fix.
 - Version synced to 2.5.61.
 
+### 2026-04-17 voice reconnect loop root cause
+- Investigated the real source of the CLOSED/SUBSCRIBED reconnect cycles and unstable voice membership.
+- Root cause was self-inflicted Realtime recovery churn, not just UI rendering:
+  - the local voice channel recovery path kept a delayed reconnect alive after transient `CLOSED` / `CHANNEL_ERROR`;
+  - the global `global_voice_presence` recovery path also kept stale delayed re-init callbacks alive;
+  - if Supabase Realtime recovered by itself before the delay expired, those stale callbacks still fired later and destroyed/recreated already healthy channels.
+- Result:
+  - users briefly disappeared/reappeared in voice membership;
+  - the same participant could blink after leaving;
+  - WebRTC audio could stay alive across the channel churn because peer connections outlived the presence/session channel reset.
+- Fix:
+  - `src/hooks/voice/channelStatus.js`: clear pending reconnect on `SUBSCRIBED` and skip delayed reconnect when the same channel is already back in `joined`;
+  - `src/hooks/useVoice.js`: add managed `globalPresenceRecoveryTimerRef`, cancel stale global recovery before re-init / cleanup, and clear pending local reconnect timer at the start of a new join attempt;
+  - `src/hooks/voice/globalPresence.js`: clear pending global recovery on `SUBSCRIBED` and skip delayed re-init if the same global channel already recovered;
+  - `src/hooks/voice/localChannelBootstrap.js`: thread `clearManagedTimeout` into local channel status handling.
+- Validation:
+  - `npm run build` passed on `2.5.62`.
+
 ### Auto Log — 2026-04-17 15:39
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log — 2026-04-17 15:57
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`
+  - `src/hooks/voice/globalPresence.js`
+  - `src/hooks/voice/localChannelBootstrap.js`

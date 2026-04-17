@@ -29,11 +29,14 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-17 15:39`
+- Время: `2026-04-17 15:57`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`
+  - `src/hooks/voice/globalPresence.js`
+  - `src/hooks/voice/localChannelBootstrap.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -407,3 +410,20 @@ pm run build succeeded (2.5.57).
 - Fix: added the missing import for PARTICIPANT_STALE_MS.
 
 - Validation: npm run build succeeded and version synced to 2.5.61.
+
+## 2026-04-17 voice-reconnect-loop-root-cause handoff
+- Investigated the deeper reconnect instability after the missing-import fix.
+- Root cause:
+  - `src/hooks/voice/channelStatus.js` scheduled delayed reconnects on local voice-channel `CLOSED` / `CHANNEL_ERROR`, but did not cancel them when the same channel later recovered and emitted `SUBSCRIBED`.
+  - `src/hooks/voice/globalPresence.js` had the same stale recovery pattern for `global_voice_presence`, except the delayed recovery used raw re-init callbacks with no centralized cancellation.
+  - If Supabase Realtime recovered on its own before the delay expired, those stale callbacks still fired and tore down healthy channels anyway.
+- Why the symptoms looked confusing:
+  - presence membership flickered because healthy Realtime channels were being destroyed/recreated after successful self-recovery;
+  - users could disappear/reappear or blink after exit while WebRTC audio kept living, because peer connections were more resilient than the presence/session channel lifecycle.
+- Fix:
+  - `src/hooks/voice/channelStatus.js`: clear pending reconnect on `SUBSCRIBED` and refuse delayed reconnect when `channel.state` is already `joined`;
+  - `src/hooks/useVoice.js`: add `globalPresenceRecoveryTimerRef`, move global recovery onto managed timeouts, cancel stale global recovery before re-init / cleanup, and clear pending local reconnect timer at the start of `joinVoiceChannel(...)`;
+  - `src/hooks/voice/globalPresence.js`: clear pending global recovery on `SUBSCRIBED` and skip delayed re-init if the same channel already recovered;
+  - `src/hooks/voice/localChannelBootstrap.js`: pass `clearManagedTimeout` into local status handling.
+- Validation:
+  - `npm run build` succeeded (`2.5.62`).

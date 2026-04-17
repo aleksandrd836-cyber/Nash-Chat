@@ -52,6 +52,7 @@ export function createGlobalPresenceStatusHandler({
   sessionIdRef,
   isLeavingRef,
   RECONNECT_DELAY_MS,
+  clearRecovery,
   scheduleRecovery,
 }) {
   return async (status) => {
@@ -59,6 +60,7 @@ export function createGlobalPresenceStatusHandler({
 
     console.log(`[useVoice] Global channel status: ${status}`);
     if (status === 'SUBSCRIBED') {
+      clearRecovery?.();
       if (currentUserRef.current?.id && activeChannelIdRef.current) {
         await channel.track({
           ...presencePayloadRef.current,
@@ -78,7 +80,8 @@ export function createGlobalPresenceStatusHandler({
           if (
             !cancelledRef.current &&
             !isLeavingRef.current &&
-            globalPresenceRef.current === channel
+            globalPresenceRef.current === channel &&
+            channel.state !== 'joined'
           ) {
             return true;
           }

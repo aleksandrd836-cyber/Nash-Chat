@@ -25,6 +25,7 @@ export function createLocalVoiceChannelStatusHandler({
   appendParticipantToChannel,
   flushPendingStreamRequests,
   scheduleManagedTimeout,
+  clearManagedTimeout,
   resolveStableVoiceChannelId,
   joinVoiceChannel,
   notifications,
@@ -51,6 +52,7 @@ export function createLocalVoiceChannelStatusHandler({
 
       isSwitchingRef.current = false;
       reconnectAttemptsRef.current = 0;
+      clearManagedTimeout?.(reconnectTimerRef);
       setServerStatus('online');
       setVoiceError(null);
       lastStableChannelIdRef.current = channelId;
@@ -104,7 +106,12 @@ export function createLocalVoiceChannelStatusHandler({
           presencePayloadRef.current.channelId
         );
 
-        if (reconnectChannelId && !isLeavingRef.current && realtimeChannelRef.current === channel) {
+        if (
+          reconnectChannelId &&
+          !isLeavingRef.current &&
+          realtimeChannelRef.current === channel &&
+          channel.state !== 'joined'
+        ) {
           console.log('[useVoice] Attempting background reconnect...');
           joinVoiceChannel(
             reconnectChannelId,
