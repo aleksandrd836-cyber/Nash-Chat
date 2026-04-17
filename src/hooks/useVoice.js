@@ -5,6 +5,7 @@ import { GHOST_PEER_GRACE_MS, ICE_SERVERS, RECONNECT_DELAY_MS, VOICE_HEARTBEAT_M
 import {
   appendParticipantToChannel,
   buildParticipantMapFromPresenceState,
+  PARTICIPANT_STALE_MS,
   pruneStaleParticipantMap,
   removeSessionFromParticipantMap,
   updateParticipantSpeakingMap,

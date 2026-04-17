@@ -1,7 +1,7 @@
 {
   "name": "vibe",
   "private": true,
-  "version": "2.5.61",
+  "version": "2.5.62",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {

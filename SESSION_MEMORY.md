@@ -86,7 +86,8 @@ pm run build; build is green and synced version moved to 2.5.13.
   - `src/hooks/voice/peerLifecycle.js`
 
 ### 2026-04-10 reconnect runtime helper extraction
-- Added src/hooks/voice/runtime.js for managed timeout/interval helpers (clearManagedTimeout, clearManagedInterval, clearManagedTimeoutMap, estartManagedInterval, scheduleManagedTimeout).
+- Added src/hooks/voice/runtime.js for managed timeout/interval helpers (clearManagedTimeout, clearManagedInterval, clearManagedTimeoutMap, 
+estartManagedInterval, scheduleManagedTimeout).
 - Updated src/hooks/useVoice.js cleanup and reconnect-related code to use the shared runtime helpers instead of open-coded timer cleanup.
 - This reduces repeated timer logic in cleanupAll, heartbeat setup, presence debounce, and reconnect cancellation paths.
 - Verified with 
@@ -715,8 +716,9 @@ pm run build > 2.5.45.
 ### Auto Log - 2026-04-16 01:05
 - Fixed stale remote voice participants after tray exit for other users.
 - src/hooks/voice/cleanup.js: moved user-left broadcast + global untrack before channel removal, added short flush delay, and cleared orphan peer timers during local quit cleanup.
-- src/hooks/useVoice.js: added orphanedRemotePeerTimersRef and econcileRemotePeerPresence() so peers/snapshots/stream buttons are forcibly cleared within a few seconds when oice_sessions no longer contains that user.
-- Validation: 
+- src/hooks/useVoice.js: added orphanedRemotePeerTimersRef and 
+econcileRemotePeerPresence() so peers/snapshots/stream buttons are forcibly cleared within a few seconds when oice_sessions no longer contains that user.
+
 pm run build passed, version synced to 2.5.50.
 
 ### Auto Log — 2026-04-16 11:08
@@ -729,8 +731,9 @@ pm run build passed, version synced to 2.5.50.
 
 ### Auto Log - 2026-04-16 01:17
 - Fixed startup crash ReferenceError: Cannot access 'ke' before initialization caused by hook callback ordering in src/hooks/useVoice.js.
-- Moved mutateRealtimeParticipants and closePeer above econcileRemotePeerPresence() so the callback no longer references TDZ variables during module initialization.
-- Validation: 
+- Moved mutateRealtimeParticipants and closePeer above 
+econcileRemotePeerPresence() so the callback no longer references TDZ variables during module initialization.
+
 pm run build passed, version synced to 2.5.51.
 
 ### Auto Log — 2026-04-16 11:25
@@ -748,8 +751,9 @@ pm run build passed, version synced to 2.5.51.
 
 ### Auto Log - 2026-04-16 01:23
 - Follow-up fix for startup crash after the first TDZ patch was incomplete.
-- src/hooks/useVoice.js: moved mutateRealtimeParticipants above econcileRemotePeerPresence as well; that callback was still referenced before initialization in the dependency array and caused production crash Cannot access 'be' before initialization.
-- Validation: 
+- src/hooks/useVoice.js: moved mutateRealtimeParticipants above 
+econcileRemotePeerPresence as well; that callback was still referenced before initialization in the dependency array and caused production crash Cannot access 'be' before initialization.
+
 pm run build passed, version synced to 2.5.53.
 
 ### Auto Log — 2026-04-16 12:32
@@ -762,7 +766,7 @@ pm run build passed, version synced to 2.5.53.
 ### Auto Log - 2026-04-16 01:29
 - Fixed console spam in voice session refresh after orphan cleanup patch.
 - src/hooks/useVoice.js: replaced incorrect clearManagedTimeout(orphanedRemotePeerTimersRef.current[userId]) call with direct clearTimeout(...) because the helper expects a ref object, not a timer id.
-- Validation: 
+
 pm run build passed, version synced to 2.5.54.
 
 ### Auto Log — 2026-04-16 13:01
@@ -777,7 +781,7 @@ pm run build passed, version synced to 2.5.54.
 - src/hooks/useVoice.js: added explicit localVoiceChannelId state that tracks a real local media/session setup instead of relying on ctiveChannelId alone.
 - src/hooks/voice/cleanup.js: cleanup now clears localVoiceChannelId together with ctiveChannelId.
 - src/components/VoiceChannel.jsx: voice controls now render from localVoiceChannelId === channel.id || self actually present in participants, which prevents phantom leave/stream buttons on reload.
-- Validation: 
+
 pm run build passed, version synced to 2.5.55.
 
 ### Auto Log — 2026-04-16 14:36
@@ -793,7 +797,7 @@ pm run build passed, version synced to 2.5.55.
 - Tightened local ghost-voice UI after refresh/reload.
 - src/components/VoiceChannel.jsx: local control state no longer trusts stale self presence; only localVoiceChannelId can keep leave/stream/mute controls visible.
 - src/components/Sidebar.jsx: the current user's stale voice participant entry is hidden under voice channels unless localVoiceChannelId === channel.id.
-- Validation: 
+
 pm run build passed, version synced to 2.5.56.
 
 ### Auto Log — 2026-04-16 16:02
@@ -806,10 +810,11 @@ pm run build passed, version synced to 2.5.56.
 
 ### Auto Log - 2026-04-16 01:47
 - Fixed accumulating self-ghosts after repeated page refreshes in voice channels.
-- src/lib/voiceSessions.js: uildVoiceParticipantsMap() now deduplicates by userId inside each channel and keeps only the newest session; added emoveVoiceSessionsForUser() helper.
+- src/lib/voiceSessions.js: uildVoiceParticipantsMap() now deduplicates by userId inside each channel and keeps only the newest session; added 
+emoveVoiceSessionsForUser() helper.
 - src/hooks/voice/participants.js: global presence map now also deduplicates by userId, preventing repeated self-presence clones in the UI.
 - src/hooks/useVoice.js: on reload with a local voice marker, purge all lingering oice_sessions rows for the current user before refreshing state; also purge older rows for the same user before joining a new voice session.
-- Validation: 
+
 pm run build passed, version synced to 2.5.57.
 
 ### Auto Log — 2026-04-16 16:18
@@ -869,3 +874,18 @@ pm run build passed, version synced to 2.5.57.
   - `src/hooks/voice/localChannelBootstrap.js`
   - `src/lib/voiceSessions.js`
   - `voice-sessions-hardening.sql`
+
+### Auto Log - 2026-04-17 00:42
+- Root cause of the new voice instability was a client-side runtime crash, not SQL: useVoice.js referenced PARTICIPANT_STALE_MS without importing it from src/hooks/voice/participants.js.
+- This produced repeated Uncaught ReferenceError: PARTICIPANT_STALE_MS is not defined errors in production, which destabilized voice presence refresh and caused temporary disconnect/reconnect behavior.
+- Fixed by importing PARTICIPANT_STALE_MS in src/hooks/useVoice.js.
+
+- Validation: npm run build passed successfully after the fix.
+- Version synced to 2.5.61.
+
+### Auto Log — 2026-04-17 15:39
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`

@@ -29,14 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-17 15:16`
+- Время: `2026-04-17 15:39`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/localChannelBootstrap.js`
-  - `src/lib/voiceSessions.js`
-  - `voice-sessions-hardening.sql`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -77,7 +74,8 @@ pm run build passes.
 
 ## 2026-04-10 major refactor checkpoint
 - The main useVoice.js decomposition pass is effectively complete for now.
-- Extracted modules now include: participants.js, screenShare.js, mediaTracks.js, peerLifecycle.js, untime.js, signaling.js, channelStatus.js, and globalPresence.js, plus mediaInit.js for local media startup.
+- Extracted modules now include: participants.js, screenShare.js, mediaTracks.js, peerLifecycle.js, 
+untime.js, signaling.js, channelStatus.js, and globalPresence.js, plus mediaInit.js for local media startup.
 - Current guidance for future work: prefer testing and targeted bug-fixing before any more structural refactors.
 
 ## 2026-04-10 final voice refactor checkpoint
@@ -311,30 +309,35 @@ pm run build (2.5.45).
 ## 2026-04-16 remote-tray-exit-stale-participant handoff
 - Root cause: remote clients kept restoring a participant from peer/audio/snapshot fallback even after the user exited through the tray, because WebRTC closed slower than oice_sessions disappeared and snapshot grace kept the UI alive.
 - Cleanup hardening in src/hooks/voice/cleanup.js: send user-left on global/local channels before removing the realtime channel, untrack global presence immediately, wait ~150ms for websocket flush, then remove oice_sessions row.
-- Remote cleanup hardening in src/hooks/useVoice.js: added orphanedRemotePeerTimersRef and econcileRemotePeerPresence(nextParticipants); whenever fresh oice_sessions data says a user is gone, schedule forced closePeer(...), snapshot purge, and participant removal within ~4s.
+- Remote cleanup hardening in src/hooks/useVoice.js: added orphanedRemotePeerTimersRef and 
+econcileRemotePeerPresence(nextParticipants); whenever fresh oice_sessions data says a user is gone, schedule forced closePeer(...), snapshot purge, and participant removal within ~4s.
 - Result: tray-exited users should disappear quickly for everyone else instead of lingering ~1 minute with a stale watch-stream button.
-- Validation: 
+
 pm run build succeeded (2.5.50).
 
 ## 2026-04-16 startup-crash-tdz-usevoice handoff
 - After the remote tray-exit cleanup patch, src/hooks/useVoice.js crashed on app load with ReferenceError: Cannot access 'ke' before initialization in production.
-- Root cause: econcileRemotePeerPresence was declared before mutateRealtimeParticipants and closePeer, but referenced both in its dependency array/body. In bundled prod code this became a TDZ access during hook setup.
-- Fix: move the primary mutateRealtimeParticipants and closePeer callback declarations above econcileRemotePeerPresence, remove duplicate lower declarations, rebuild.
-- Validation: 
+- Root cause: 
+econcileRemotePeerPresence was declared before mutateRealtimeParticipants and closePeer, but referenced both in its dependency array/body. In bundled prod code this became a TDZ access during hook setup.
+- Fix: move the primary mutateRealtimeParticipants and closePeer callback declarations above 
+econcileRemotePeerPresence, remove duplicate lower declarations, rebuild.
+
 pm run build succeeded (2.5.51).
 
 ## 2026-04-16 startup-crash-second-tdz-fix handoff
 - The first startup-crash fix only moved closePeer; production still crashed with another minified TDZ error (Cannot access 'be' before initialization).
-- Root cause: econcileRemotePeerPresence still referenced mutateRealtimeParticipants before its declaration via dependency array/body.
+- Root cause: 
+econcileRemotePeerPresence still referenced mutateRealtimeParticipants before its declaration via dependency array/body.
 - Final fix: order in src/hooks/useVoice.js is now pplyParticipantMap -> closePeer -> mutateRealtimeParticipants -> reconcileRemotePeerPresence -> refreshVoiceSessions.
-- Validation: 
+
 pm run build succeeded (2.5.53).
 
 ## 2026-04-16 voice-sessions-console-spam handoff
 - Symptom: repeated console warnings [useVoice] Voice sessions refresh failed: TypeError: Cannot read properties of undefined (reading 'current').
-- Root cause in src/hooks/useVoice.js: econcileRemotePeerPresence() passed orphanedRemotePeerTimersRef.current[userId] into clearManagedTimeout, but clearManagedTimeout expects a ref object with .current, not a raw timeout id.
+- Root cause in src/hooks/useVoice.js: 
+econcileRemotePeerPresence() passed orphanedRemotePeerTimersRef.current[userId] into clearManagedTimeout, but clearManagedTimeout expects a ref object with .current, not a raw timeout id.
 - Fix: call native clearTimeout(...) on the stored timer id and then delete the map entry.
-- Validation: 
+
 pm run build succeeded (2.5.54).
 
 ## 2026-04-16 stale-local-voice-controls-after-refresh handoff
@@ -342,7 +345,7 @@ pm run build succeeded (2.5.54).
 - Root issue: VoiceChannel.jsx trusted ctiveChannelId as a UI source of truth, but that can lag behind real local voice teardown/reload state.
 - Fix: introduce localVoiceChannelId in src/hooks/useVoice.js, set it only when a real local session/media setup is established, clear it in src/hooks/voice/cleanup.js, and gate isInThisChannel in src/components/VoiceChannel.jsx by localVoiceChannelId === channel.id || hasSelfInThisChannel.
 - Result: reloads should no longer leave phantom local control buttons when the user is not actually in voice.
-- Validation: 
+
 pm run build succeeded (2.5.55).
 
 ## 2026-04-16 local-refresh-ghost-ui-hardening handoff
@@ -350,7 +353,7 @@ pm run build succeeded (2.5.55).
 - New rule: local controls are gated strictly by localVoiceChannelId, not by seeing the current user inside llParticipants.
 - src/components/VoiceChannel.jsx: isInThisChannel now depends on localVoiceChannelId === channel.id; stale self participant rows no longer keep local control buttons alive after refresh.
 - src/components/Sidebar.jsx: hides the current user's stale voice-channel sub-row unless the local voice session is actually active in that channel.
-- Validation: 
+
 pm run build succeeded (2.5.56).
 
 ## 2026-04-16 voice-self-ghost-dedup-and-purge handoff
@@ -359,11 +362,12 @@ pm run build succeeded (2.5.56).
   1) oice_sessions allowed multiple stale rows for the same user_id with different session_ids after interrupted refresh/cleanup.
   2) UI builders (uildVoiceParticipantsMap, uildParticipantMapFromPresenceState) preserved those duplicates instead of collapsing them to one visible user.
 - Fixes:
-  - src/lib/voiceSessions.js: dedupe participants per channel by userId, keep latest row, add emoveVoiceSessionsForUser(userId, excludeSessionId).
+  - src/lib/voiceSessions.js: dedupe participants per channel by userId, keep latest row, add 
+emoveVoiceSessionsForUser(userId, excludeSessionId).
   - src/hooks/voice/participants.js: dedupe presence by userId instead of sessionId.
   - src/hooks/useVoice.js: if a local voice marker exists on startup, purge all lingering voice sessions for the current user before refreshing; before joining a voice channel, also delete older rows for that user.
 - Result: repeated refreshes should stop accumulating self-ghost participants, and the user should appear at most once per voice channel.
-- Validation: 
+
 pm run build succeeded (2.5.57).
 
 ## 2026-04-16 startup-orphan-cleanup-race handoff
@@ -395,3 +399,11 @@ pm run build succeeded (2.5.57).
   - the longer stale window reduces accidental disappearance for quiet users who are still connected.
 - Validation:
   - `npm run build` succeeded (`2.5.60`).
+
+## 2026-04-17 participant-stale-ms-runtime-fix handoff
+- Investigated production console spam and intermittent voice reconnects.
+- Root cause: src/hooks/useVoice.js used PARTICIPANT_STALE_MS in syncLocalChannelParticipantsToUi(...) but did not import it from src/hooks/voice/participants.js.
+- Impact: runtime ReferenceError repeatedly broke voice refresh/update flows and caused unstable UI/state in active calls.
+- Fix: added the missing import for PARTICIPANT_STALE_MS.
+
+- Validation: npm run build succeeded and version synced to 2.5.61.
