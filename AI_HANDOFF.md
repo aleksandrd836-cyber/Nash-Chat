@@ -29,14 +29,12 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-17 17:25`
+- Время: `2026-04-17 18:01`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
-  - `src/hooks/useReactions.js`
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/channelStatus.js`
-  - `src/hooks/voice/globalPresence.js`
   - `src/hooks/voice/localChannelBootstrap.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
@@ -514,3 +512,34 @@ pm run build succeeded (2.5.57).
   - this specifically targets the `CHANNEL_ERROR -> manual reconnect -> extra CLOSED/SUBSCRIBED churn` path shown in the user's console.
 - Validation:
   - `npm run build` succeeded (`2.5.66`).
+
+## 2026-04-17 local-voice-presence-removed-from-membership handoff
+- User still saw recurring pure-voice reconnects where the local `realtime:voice:<channelId>` topic hit `CLOSED`, then background reconnect recreated the topic, and membership/audio churned around the same window.
+- New architectural conclusion:
+  - the local `voice:<channelId>` topic was overloaded:
+    - it carried WebRTC signaling broadcasts,
+    - and it also acted as a presence membership source for peer discovery / UI voice membership.
+  - that meant voice membership existed in three places at once:
+    - local voice-topic presence,
+    - `global_voice_presence`,
+    - `voice_sessions`.
+- Fixes:
+  - `src/hooks/voice/localChannelBootstrap.js`:
+    - removed presence config from the local voice topic;
+    - removed local presence `sync/join/leave` listeners;
+    - local `voice:<channelId>` is now a signaling-only channel.
+  - `src/hooks/useVoice.js`:
+    - removed the local-topic membership merge path and stopped using `syncLocalVoiceParticipants(...)`;
+    - replaced peer sync with a new `syncParticipants()` that reads current channel membership from `lastKnownParticipantsRef`, which is fed by `global_voice_presence` and `voice_sessions`;
+    - added a guard so peer creation only happens when the local signaling topic is actually `joined`;
+    - global presence / voice-session updates now resync peers directly instead of waiting on local presence events.
+  - `src/hooks/voice/channelStatus.js`:
+    - removed local `channel.track(...)` on `SUBSCRIBED`;
+    - after subscribe, peer sync is kicked using global membership rather than local-topic presence.
+- Net effect:
+  - signaling and membership responsibilities are now separated:
+    - local topic = signaling only,
+    - global presence + `voice_sessions` = membership/state;
+  - this directly targets the remaining class of loops where the local voice topic itself looked entangled in membership instability.
+- Validation:
+  - `npm run build` succeeded (`2.5.67`).

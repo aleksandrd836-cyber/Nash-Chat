@@ -953,6 +953,36 @@ pm run build passed, version synced to 2.5.57.
   - `src/hooks/voice/globalPresence.js`
   - `src/hooks/voice/localChannelBootstrap.js`
 
+### 2026-04-17 local-voice-presence-removed-from-membership
+- User still reported pure voice reconnect churn after the earlier reconnect-timer and auto-rejoin fixes.
+- Root architectural problem:
+  - local `voice:<channelId>` was simultaneously used for WebRTC signaling and for presence-based voice membership;
+  - voice membership therefore lived in three places at once:
+    - local voice-topic presence,
+    - `global_voice_presence`,
+    - `voice_sessions`.
+- Why this matters:
+  - local channel lifecycle churn could destabilize membership and peer discovery;
+  - signaling and membership were coupled on the same topic, which made `CLOSED` loops harder to dampen.
+- Fix:
+  - `src/hooks/voice/localChannelBootstrap.js`:
+    - removed presence config and local presence listeners from `voice:<channelId>`;
+    - local voice topic is now broadcast/signaling only.
+  - `src/hooks/useVoice.js`:
+    - removed the old local presence membership merge path;
+    - stopped using `syncLocalVoiceParticipants(...)`;
+    - `syncParticipants()` now derives peers from `lastKnownParticipantsRef` membership populated by `global_voice_presence` and `voice_sessions`;
+    - peer sync now runs only when the signaling topic is actually `joined`, so we do not create peers before signaling is ready;
+    - global presence / voice-session updates now proactively resync peers.
+  - `src/hooks/voice/channelStatus.js`:
+    - removed local `channel.track(...)` on `SUBSCRIBED`;
+    - after subscribe, peer sync uses global membership instead of local-topic presence.
+- Expected outcome:
+  - `voice:<channelId>` no longer mixes signaling with membership;
+  - voice membership has one logical source (`global_voice_presence` with `voice_sessions` fallback), which should reduce self-induced local `CLOSED` churn.
+- Validation:
+  - `npm run build` passed on `2.5.67`.
+
 ### Auto Log — 2026-04-17 16:20
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
@@ -1031,4 +1061,13 @@ pm run build passed, version synced to 2.5.57.
   - `src/hooks/useVoice.js`
   - `src/hooks/voice/channelStatus.js`
   - `src/hooks/voice/globalPresence.js`
+  - `src/hooks/voice/localChannelBootstrap.js`
+
+### Auto Log — 2026-04-17 18:01
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`
   - `src/hooks/voice/localChannelBootstrap.js`

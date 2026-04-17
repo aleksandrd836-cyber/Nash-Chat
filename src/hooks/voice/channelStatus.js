@@ -21,6 +21,7 @@ export function createLocalVoiceChannelStatusHandler({
   updatePresenceStatus,
   upsertVoiceSession,
   refreshVoiceSessions,
+  syncParticipants,
   mutateRealtimeParticipants,
   appendParticipantToChannel,
   flushPendingStreamRequests,
@@ -61,6 +62,7 @@ export function createLocalVoiceChannelStatusHandler({
       await updatePresenceStatus({}, true);
       await upsertVoiceSession({ ...presencePayloadRef.current, channelId }).catch(() => {});
       await refreshVoiceSessions();
+      syncParticipants?.();
       await flushPendingStreamRequests?.();
 
       if (!isSilent) {

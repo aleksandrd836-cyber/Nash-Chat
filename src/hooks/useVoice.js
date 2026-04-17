@@ -53,7 +53,6 @@ import {
   createGlobalPresenceLeaveHandler,
   createGlobalPresenceStatusHandler,
 } from './voice/globalPresence';
-import { syncLocalVoiceParticipants } from './voice/sessionSync';
 import { cleanupVoiceSessionState } from './voice/cleanup';
 import { setupLocalVoiceChannel } from './voice/localChannelBootstrap';
 import {
@@ -139,6 +138,7 @@ export function useVoice() {
   const mutateRealtimeParticipantsRef = useRef(null);
   const cleanupAllRef = useRef(null);
   const updatePresenceStatusRef = useRef(null);
+  const syncParticipantsRef = useRef(null);
 
   const persistLocalVoiceSessionMarker = useCallback((marker) => {
     try {
@@ -310,36 +310,6 @@ export function useVoice() {
     setAllParticipants(mergedParticipants);
   }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
 
-  const syncLocalChannelParticipantsToUi = useCallback((channel) => {
-    const channelId = activeChannelIdRef.current || presencePayload.current.channelId;
-    if (!channelId || !channel?.presenceState) return;
-
-    const nextFromLocalPresence = buildParticipantMapFromPresenceState(channel.presenceState(), {
-      currentUserId: currentUserRef.current?.id,
-      isLeaving: isLeavingRef.current,
-      now: Date.now(),
-      staleMs: Math.max(PARTICIPANT_STALE_MS, VOICE_SESSION_STALE_MS),
-    });
-
-    setAllParticipants((prev) => {
-      const next = { ...prev };
-      const localChannelParticipants = nextFromLocalPresence[channelId] || [];
-
-      if (localChannelParticipants.length > 0) {
-        next[channelId] = localChannelParticipants;
-      } else {
-        delete next[channelId];
-      }
-
-      rememberParticipantSnapshots(next);
-      const resilientNext = buildConnectedPeerFallbackMap(next);
-      rememberParticipantSnapshots(resilientNext);
-      lastKnownParticipantsRef.current = resilientNext;
-      return resilientNext;
-    });
-  }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
-
-
   const closePeer = useCallback((userId, force = false) => {
     if (!force && ghostPeersRef.current[userId]) return;
     if (peerConns.current[userId]) {
@@ -454,6 +424,7 @@ export function useVoice() {
       serverVoiceStateRef.current = true;
       applyParticipantMap(nextParticipants, { preserveConnectedPeers: true });
       reconcileRemotePeerPresence(nextParticipants);
+      syncParticipantsRef.current?.();
     } catch (error) {
       const message = error?.message?.toLowerCase?.() ?? '';
       const isSchemaMissing =
@@ -514,6 +485,11 @@ export function useVoice() {
     lastKnownParticipantsRef.current = allParticipants;
     setParticipants(list);
   }, [allParticipants, activeChannelId]);
+
+  useEffect(() => {
+    if (!activeChannelId) return;
+    syncParticipantsRef.current?.();
+  }, [activeChannelId, allParticipants]);
 
   useEffect(() => {
     let cancelled = false;
@@ -876,10 +852,6 @@ export function useVoice() {
         await removeVoiceSession(sessionIdRef.current).catch(() => {});
       }
 
-      if (realtimeChannel.current && realtimeChannel.current.state === 'joined') {
-        await realtimeChannel.current.track(payload).catch(() => {});
-      }
-      
       const chId = payload.channelId;
       if (globalPresence.current && globalPresence.current.state === 'joined' && chId) {
         await globalPresence.current.track({ ...payload, channelId: chId }).catch(() => {});
@@ -960,18 +932,41 @@ export function useVoice() {
     }));
   }, []);
 
-  const syncParticipants = useCallback((channel) => {
-    syncLocalVoiceParticipants({
-      channel,
-      isLeavingRef,
-      currentUserRef,
-      peerConnsRef: peerConns,
-      ghostPeersRef,
-      createPeerConnection,
-      closePeer,
-      GHOST_PEER_GRACE_MS,
+  const syncParticipants = useCallback(() => {
+    const activeChannelId = activeChannelIdRef.current;
+    if (!activeChannelId || isLeavingRef.current) return;
+    if (!realtimeChannel.current || realtimeChannel.current.state !== 'joined') return;
+
+    const seenUids = new Set();
+    const participantsInChannel = lastKnownParticipantsRef.current?.[activeChannelId] || [];
+
+    participantsInChannel.forEach((participant) => {
+      if (!participant?.userId) return;
+      if (participant.userId === currentUserRef.current?.id) return;
+
+      seenUids.add(participant.userId);
+
+      if (!peerConns.current[participant.userId] && !ghostPeersRef.current[participant.userId]) {
+        createPeerConnection(participant.userId, realtimeChannel.current);
+      }
     });
-  }, [createPeerConnection, closePeer]);
+
+    Object.keys(peerConns.current).forEach((uid) => {
+      if (!seenUids.has(uid) && !ghostPeersRef.current[uid]) {
+        ghostPeersRef.current[uid] = setTimeout(() => {
+          closePeer(uid, true);
+          delete ghostPeersRef.current[uid];
+        }, GHOST_PEER_GRACE_MS);
+        return;
+      }
+
+      if (seenUids.has(uid) && ghostPeersRef.current[uid]) {
+        clearTimeout(ghostPeersRef.current[uid]);
+        delete ghostPeersRef.current[uid];
+      }
+    });
+  }, [closePeer, createPeerConnection]);
+  syncParticipantsRef.current = syncParticipants;
 
   const joinVoiceChannel = useCallback(async (channelId, user, username, color, isSilent = false) => {
     if (!channelId || !user) return;
@@ -1072,7 +1067,6 @@ export function useVoice() {
         user,
         realtimeChannelRef: realtimeChannel,
         syncParticipants,
-        syncLocalChannelParticipantsToUi,
         mutateRealtimeParticipants,
         updateParticipantSpeakingMap,
         createOfferBroadcastHandler,
@@ -1127,7 +1121,7 @@ export function useVoice() {
       // РџСЂРё С„Р°С‚Р°Р»СЊРЅРѕР№ РѕС€РёР±РєРµ Р·Р°РЅСѓР»СЏРµРј СЂРµРєРѕРЅРЅРµРєС‚, С‡С‚РѕР±С‹ РЅРµ СЃРїР°РјРёС‚СЊ
       clearManagedTimeout(reconnectTimerRef);
     }
-  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, persistLocalVoiceSessionMarker, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, resolveLocalReconnectDelayMs, syncLocalChannelParticipantsToUi, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, persistLocalVoiceSessionMarker, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, resolveLocalReconnectDelayMs, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 
