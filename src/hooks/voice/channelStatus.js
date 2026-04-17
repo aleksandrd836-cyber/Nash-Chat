@@ -27,6 +27,7 @@ export function createLocalVoiceChannelStatusHandler({
   scheduleManagedTimeout,
   clearManagedTimeout,
   resolveStableVoiceChannelId,
+  resolveReconnectDelayMs,
   joinVoiceChannel,
   notifications,
   RECONNECT_DELAY_MS,
@@ -99,6 +100,17 @@ export function createLocalVoiceChannelStatusHandler({
         return;
       }
 
+      const reconnectDelayMs = resolveReconnectDelayMs?.({
+        channel,
+        channelId,
+        status,
+        globalState: globalPresenceRef.current?.state,
+      }) ?? RECONNECT_DELAY_MS;
+
+      if (status === 'CHANNEL_ERROR') {
+        console.log('[useVoice] Waiting for built-in Realtime auto-rejoin before recreating the voice channel...');
+      }
+
       scheduleManagedTimeout(reconnectTimerRef, () => {
         const reconnectChannelId = resolveStableVoiceChannelId(
           lastStableChannelIdRef.current,
@@ -110,7 +122,8 @@ export function createLocalVoiceChannelStatusHandler({
           reconnectChannelId &&
           !isLeavingRef.current &&
           realtimeChannelRef.current === channel &&
-          channel.state !== 'joined'
+          channel.state !== 'joined' &&
+          !(status === 'CHANNEL_ERROR' && channel.state === 'joining')
         ) {
           console.log('[useVoice] Attempting background reconnect...');
           joinVoiceChannel(
@@ -121,7 +134,7 @@ export function createLocalVoiceChannelStatusHandler({
             true
           );
         }
-      }, RECONNECT_DELAY_MS);
+      }, reconnectDelayMs);
     }
   };
 }

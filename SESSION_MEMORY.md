@@ -989,9 +989,46 @@ pm run build passed, version synced to 2.5.57.
 - Validation:
   - `npm run build` passed on `2.5.65`.
 
+### 2026-04-17 channel-error auto-rejoin race in voice reconnect logic
+- The user provided a more precise console trace from a pure voice session, showing:
+  - local voice channel reaches `SUBSCRIBED`;
+  - later the same `realtime:voice:<id>` channel emits `CLOSED` or `CHANNEL_ERROR`;
+  - our code logs `Realtime lost (...)` and starts manual background reconnect;
+  - global channel may then also flap shortly afterwards.
+- Important Phoenix/Supabase detail confirmed from local library source:
+  - socket disconnects trigger channel `error`, not channel `close`;
+  - `CHANNEL_ERROR` already has built-in Phoenix rejoin scheduling on the same channel instance;
+  - `CLOSED` is the harder signal that represents an explicit leave / server close path.
+- Root cause in app logic:
+  - `src/hooks/voice/channelStatus.js` treated `CHANNEL_ERROR` exactly like `CLOSED`;
+  - after a channel error, the app scheduled `joinVoiceChannel(...)` and recreated the local voice channel while Phoenix was already auto-rejoining the old one;
+  - that created a race between built-in rejoin and manual channel recreation, which could manifest as `CLOSED/SUBSCRIBED` churn and audible reconnection gaps;
+  - `src/hooks/voice/globalPresence.js` had the same conceptual problem for the global presence channel, re-initializing too aggressively after `CHANNEL_ERROR`.
+- Fix:
+  - `src/hooks/voice/channelStatus.js`: keep the fallback timer, but on `CHANNEL_ERROR` explicitly wait for built-in Realtime auto-rejoin before recreating the channel;
+  - `src/hooks/useVoice.js`: `resolveLocalReconnectDelayMs({ status })` now gives `CHANNEL_ERROR` a longer fallback window (`6500ms`) so the existing channel gets a chance to recover on its own;
+  - `src/hooks/voice/channelStatus.js`: fallback recreate is skipped while the errored channel is already back in `joining`;
+  - `src/hooks/voice/globalPresence.js`: same protection added for global presence, with delayed full re-init after `CHANNEL_ERROR` and no forced recovery while the channel is already rejoining.
+- Interpretation:
+  - the remaining reconnect problem was not just "network unstable";
+  - part of it was a client-side race where our manual recovery fought Phoenix/Supabase's own recovery path.
+- Validation:
+  - `npm run build` passed on `2.5.66`.
+
 ### Auto Log — 2026-04-17 17:11
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log — 2026-04-17 17:25
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useReactions.js`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`
+  - `src/hooks/voice/globalPresence.js`
+  - `src/hooks/voice/localChannelBootstrap.js`

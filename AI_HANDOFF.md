@@ -29,11 +29,15 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-17 17:11`
+- Время: `2026-04-17 17:25`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
+  - `src/hooks/useReactions.js`
   - `src/hooks/useVoice.js`
+  - `src/hooks/voice/channelStatus.js`
+  - `src/hooks/voice/globalPresence.js`
+  - `src/hooks/voice/localChannelBootstrap.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -483,3 +487,30 @@ pm run build succeeded (2.5.57).
   - when a transient local close still happens, voice rejoins almost immediately instead of pausing for ~4 seconds.
 - Validation:
   - `npm run build` succeeded (`2.5.65`).
+
+## 2026-04-17 channel-error-auto-rejoin-race handoff
+- User supplied a stricter repro trace from a pure voice session and correctly pushed back on the earlier assumption that text-channel UI churn explained the active issue.
+- New evidence from the console:
+  - local voice channel reached `SUBSCRIBED`,
+  - later emitted `CLOSED` or `CHANNEL_ERROR`,
+  - app immediately started manual background reconnect,
+  - global voice presence sometimes flapped shortly after.
+- Library behavior re-checked in local `@supabase/phoenix` / `@supabase/realtime-js` sources:
+  - socket-level disconnects call `triggerChanError()` and map to `CHANNEL_ERROR`;
+  - `CHANNEL_ERROR` already schedules built-in Phoenix rejoin on the same channel instance;
+  - `CLOSED` is different and represents explicit close/leave semantics.
+- Root cause in app logic:
+  - `src/hooks/voice/channelStatus.js` handled `CHANNEL_ERROR` as if it were a hard `CLOSED`;
+  - after an error, the app recreated the local voice channel via `joinVoiceChannel(...)` while Phoenix was already trying to rejoin the existing one;
+  - this manual recreate vs built-in auto-rejoin race could itself produce the churn the user was seeing;
+  - `src/hooks/voice/globalPresence.js` had the same over-eager full-recovery behavior on `CHANNEL_ERROR`.
+- Fixes:
+  - `src/hooks/voice/channelStatus.js`: on `CHANNEL_ERROR`, log and wait for built-in Realtime auto-rejoin before forcing channel recreation;
+  - `src/hooks/useVoice.js`: `resolveLocalReconnectDelayMs({ status })` now returns `6500ms` for `CHANNEL_ERROR`, giving Phoenix time to recover the same channel instance first;
+  - `src/hooks/voice/channelStatus.js`: fallback recreate is skipped if the current channel is already back in `joining`;
+  - `src/hooks/voice/globalPresence.js`: same protection added for global presence, with a longer delayed fallback after `CHANNEL_ERROR` and no full re-init while the channel is already rejoining.
+- Net effect:
+  - manual voice recovery should no longer fight Supabase/Phoenix channel auto-rejoin;
+  - this specifically targets the `CHANNEL_ERROR -> manual reconnect -> extra CLOSED/SUBSCRIBED churn` path shown in the user's console.
+- Validation:
+  - `npm run build` succeeded (`2.5.66`).

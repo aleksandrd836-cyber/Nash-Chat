@@ -480,7 +480,12 @@ export function useVoice() {
   }, [applyParticipantMap, reconcileRemotePeerPresence]);
   refreshVoiceSessionsRef.current = refreshVoiceSessions;
 
-  const resolveLocalReconnectDelayMs = useCallback(() => {
+  const resolveLocalReconnectDelayMs = useCallback(({ status } = {}) => {
+    if (status === 'CHANNEL_ERROR') {
+      // Let Phoenix/Supabase finish its own channel auto-rejoin first.
+      return 6500;
+    }
+
     const realtimeConnectionState = typeof supabase.realtime?.connectionState === 'function'
       ? supabase.realtime.connectionState()
       : null;

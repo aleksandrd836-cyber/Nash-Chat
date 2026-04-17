@@ -75,13 +75,23 @@ export function createGlobalPresenceStatusHandler({
 
     if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
       if (!cancelledRef.current && !isLeavingRef.current) {
-        console.log('[useVoice] Global channel actually lost, recovering in 4s...');
-        scheduleRecovery(RECONNECT_DELAY_MS, () => {
+        if (status === 'CHANNEL_ERROR') {
+          console.log('[useVoice] Global channel errored, waiting for built-in auto-rejoin before full re-init...');
+        } else {
+          console.log('[useVoice] Global channel actually lost, recovering in 4s...');
+        }
+
+        const recoveryDelayMs = status === 'CHANNEL_ERROR'
+          ? RECONNECT_DELAY_MS + 2500
+          : RECONNECT_DELAY_MS;
+
+        scheduleRecovery(recoveryDelayMs, () => {
           if (
             !cancelledRef.current &&
             !isLeavingRef.current &&
             globalPresenceRef.current === channel &&
-            channel.state !== 'joined'
+            channel.state !== 'joined' &&
+            !(status === 'CHANNEL_ERROR' && channel.state === 'joining')
           ) {
             return true;
           }
