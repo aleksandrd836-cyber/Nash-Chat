@@ -60,6 +60,7 @@ import {
   fetchActiveVoiceSessions,
   removeVoiceSession,
   removeVoiceSessionsForUser,
+  VOICE_SESSION_STALE_MS,
   upsertVoiceSession,
 } from '../lib/voiceSessions';
 
@@ -303,6 +304,35 @@ export function useVoice() {
     setAllParticipants(mergedParticipants);
   }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
 
+  const syncLocalChannelParticipantsToUi = useCallback((channel) => {
+    const channelId = activeChannelIdRef.current || presencePayload.current.channelId;
+    if (!channelId || !channel?.presenceState) return;
+
+    const nextFromLocalPresence = buildParticipantMapFromPresenceState(channel.presenceState(), {
+      currentUserId: currentUserRef.current?.id,
+      isLeaving: isLeavingRef.current,
+      now: Date.now(),
+      staleMs: Math.max(PARTICIPANT_STALE_MS, VOICE_SESSION_STALE_MS),
+    });
+
+    setAllParticipants((prev) => {
+      const next = { ...prev };
+      const localChannelParticipants = nextFromLocalPresence[channelId] || [];
+
+      if (localChannelParticipants.length > 0) {
+        next[channelId] = localChannelParticipants;
+      } else {
+        delete next[channelId];
+      }
+
+      rememberParticipantSnapshots(next);
+      const resilientNext = buildConnectedPeerFallbackMap(next);
+      rememberParticipantSnapshots(resilientNext);
+      lastKnownParticipantsRef.current = resilientNext;
+      return resilientNext;
+    });
+  }, [buildConnectedPeerFallbackMap, rememberParticipantSnapshots]);
+
 
   const closePeer = useCallback((userId, force = false) => {
     if (!force && ghostPeersRef.current[userId]) return;
@@ -326,7 +356,6 @@ export function useVoice() {
   }, []);
 
   const mutateRealtimeParticipants = useCallback((updater) => {
-    if (serverVoiceStateRef.current) return;
     setAllParticipants((prev) => {
       const next = updater(prev);
       rememberParticipantSnapshots(next);
@@ -458,7 +487,7 @@ export function useVoice() {
 
       if (Date.now() - lastVoiceSessionCleanupRef.current > 60000) {
         lastVoiceSessionCleanupRef.current = Date.now();
-        cleanupStaleVoiceSessions(25).catch(() => {});
+        cleanupStaleVoiceSessions(90).catch(() => {});
       }
     };
 
@@ -802,7 +831,7 @@ export function useVoice() {
       }
       
       const chId = payload.channelId;
-      if (!serverVoiceStateRef.current && globalPresence.current && globalPresence.current.state === 'joined' && chId) {
+      if (globalPresence.current && globalPresence.current.state === 'joined' && chId) {
         await globalPresence.current.track({ ...payload, channelId: chId }).catch(() => {});
       }
     };
@@ -991,6 +1020,7 @@ export function useVoice() {
         user,
         realtimeChannelRef: realtimeChannel,
         syncParticipants,
+        syncLocalChannelParticipantsToUi,
         mutateRealtimeParticipants,
         updateParticipantSpeakingMap,
         createOfferBroadcastHandler,
@@ -1043,7 +1073,7 @@ export function useVoice() {
       // РџСЂРё С„Р°С‚Р°Р»СЊРЅРѕР№ РѕС€РёР±РєРµ Р·Р°РЅСѓР»СЏРµРј СЂРµРєРѕРЅРЅРµРєС‚, С‡С‚РѕР±С‹ РЅРµ СЃРїР°РјРёС‚СЊ
       clearManagedTimeout(reconnectTimerRef);
     }
-  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, persistLocalVoiceSessionMarker, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, persistLocalVoiceSessionMarker, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncLocalChannelParticipantsToUi, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 

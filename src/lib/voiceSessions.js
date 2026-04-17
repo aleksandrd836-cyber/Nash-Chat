@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export const VOICE_SESSION_STALE_MS = 25000;
+export const VOICE_SESSION_STALE_MS = 90000;
 
 function mapVoiceSessionRow(row) {
   return {

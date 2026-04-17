@@ -29,11 +29,14 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-16 18:10`
+- Время: `2026-04-17 15:16`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+  - `src/hooks/voice/localChannelBootstrap.js`
+  - `src/lib/voiceSessions.js`
+  - `voice-sessions-hardening.sql`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -372,3 +375,23 @@ pm run build succeeded (2.5.57).
   - startup cleanup now checks whether localStorage already contains a newer marker and skips any reset if a new live session replaced the old one.
 - Validation:
   - `npm run build` succeeded (`2.5.58`).
+
+## 2026-04-17 voice-participants-sourced-from-local-presence handoff
+- Symptom: during long voice sessions, remote users could disappear from the center participant grid and left voice-channel sub-list while audio still worked. The user also noticed participants often came back when they started speaking.
+- Root cause hypothesis confirmed in code:
+  1. UI was sourcing participants primarily from `voice_sessions` polling, not from the live local voice-channel presence stream.
+  2. `voice_sessions` stale threshold/cleanup was too aggressive (`25s`) for real-world timer throttling / missed heartbeats.
+  3. realtime participant updates were partially blocked whenever `serverVoiceStateRef.current === true`, so a healthy SQL poll could still suppress useful live presence repairs.
+- Fixes:
+  - `src/hooks/useVoice.js`: added `syncLocalChannelParticipantsToUi(channel)` which rebuilds the current channel's visible participants from `channel.presenceState()` and merges that through `buildConnectedPeerFallbackMap(...)`.
+  - `src/hooks/voice/localChannelBootstrap.js`: local Realtime voice presence `sync`, `join`, and `leave` now call both `syncParticipants(channel)` and `syncLocalChannelParticipantsToUi(channel)`.
+  - `src/hooks/useVoice.js`: removed the `serverVoiceStateRef.current` early return from `mutateRealtimeParticipants`, so live events can still refresh the UI while SQL polling is active.
+  - `src/hooks/useVoice.js`: global presence heartbeat now always tracks while in channel, not only when server voice state is considered unhealthy.
+  - `src/lib/voiceSessions.js`: raised `VOICE_SESSION_STALE_MS` from `25000` to `90000`.
+  - `src/hooks/useVoice.js`: `cleanupStaleVoiceSessions(...)` call raised from `25` to `90`.
+  - `voice-sessions-hardening.sql`: SQL function default `cleanup_stale_voice_sessions` updated from `25` to `90`.
+- Why this should help:
+  - if SQL rows lag or briefly expire, the active local voice-channel presence can now keep UI participants alive;
+  - the longer stale window reduces accidental disappearance for quiet users who are still connected.
+- Validation:
+  - `npm run build` succeeded (`2.5.60`).

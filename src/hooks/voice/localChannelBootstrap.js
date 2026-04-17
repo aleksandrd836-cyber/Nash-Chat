@@ -4,6 +4,7 @@ export function setupLocalVoiceChannel({
   user,
   realtimeChannelRef,
   syncParticipants,
+  syncLocalChannelParticipantsToUi,
   mutateRealtimeParticipants,
   updateParticipantSpeakingMap,
   createOfferBroadcastHandler,
@@ -49,8 +50,14 @@ export function setupLocalVoiceChannel({
   const channel = supabaseClient.channel(`voice:${channelId}`, { config: { presence: { key: user.id } } });
   realtimeChannelRef.current = channel;
 
-  channel.on('presence', { event: 'sync' }, () => syncParticipants(channel));
-  channel.on('presence', { event: 'join' }, () => syncParticipants(channel));
+  const handleLocalPresenceSync = () => {
+    syncParticipants(channel);
+    syncLocalChannelParticipantsToUi?.(channel);
+  };
+
+  channel.on('presence', { event: 'sync' }, handleLocalPresenceSync);
+  channel.on('presence', { event: 'join' }, handleLocalPresenceSync);
+  channel.on('presence', { event: 'leave' }, handleLocalPresenceSync);
 
   channel.on('broadcast', { event: 'speaking-update' }, ({ payload }) => {
     mutateRealtimeParticipants((prev) => (

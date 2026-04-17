@@ -831,9 +831,41 @@ pm run build passed, version synced to 2.5.57.
 - Validation:
   - `npm run build` passed, version synced to `2.5.58`.
 
+### Auto Log - 2026-04-17 00:18
+- Fixed a deeper voice participant desync where remote users could disappear from the center/left UI while WebRTC audio stayed alive.
+- Root cause:
+  - the UI relied too heavily on `voice_sessions` polling;
+  - `voice_sessions` stale tolerance/cleanup was too aggressive (`25s`);
+  - the app was not feeding the visible participant list from the live local voice-channel presence stream, even though that stream was still alive.
+- Fix:
+  - `src/hooks/useVoice.js`: added `syncLocalChannelParticipantsToUi(channel)` to rebuild the active voice-channel participant list from the local Realtime channel presence state and merge it through the resilient participant pipeline;
+  - `src/hooks/voice/localChannelBootstrap.js`: local voice presence `sync/join/leave` now refresh UI participants as well as peer connections;
+  - `src/hooks/useVoice.js`: realtime/global presence updates are no longer blocked just because `voice_sessions` polling is currently healthy;
+  - `src/lib/voiceSessions.js`: raised stale window from `25s` to `90s`;
+  - `src/hooks/useVoice.js`: client-side stale cleanup RPC now uses `90` seconds instead of `25`;
+  - `voice-sessions-hardening.sql`: SQL default for `cleanup_stale_voice_sessions` updated to `90`.
+- Validation:
+  - `npm run build` passed, version synced to `2.5.60`.
+
 ### Auto Log — 2026-04-16 18:10
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
+
+### Auto Log — 2026-04-16 18:25
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+
+### Auto Log — 2026-04-17 15:16
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
+  - `src/hooks/voice/localChannelBootstrap.js`
+  - `src/lib/voiceSessions.js`
+  - `voice-sessions-hardening.sql`

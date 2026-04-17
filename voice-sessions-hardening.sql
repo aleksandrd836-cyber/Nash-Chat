@@ -42,7 +42,7 @@ CREATE POLICY "Users can delete their own voice sessions"
   TO authenticated
   USING (auth.uid() = user_id);
 
-CREATE OR REPLACE FUNCTION cleanup_stale_voice_sessions(p_max_age_seconds INTEGER DEFAULT 25)
+CREATE OR REPLACE FUNCTION cleanup_stale_voice_sessions(p_max_age_seconds INTEGER DEFAULT 90)
 RETURNS INTEGER AS $$
 DECLARE
   v_deleted_count INTEGER := 0;
