@@ -967,3 +967,31 @@ pm run build passed, version synced to 2.5.57.
   - `public/version.json`
   - `src/hooks/useVoice.js`
   - `src/lib/supabase.js`
+
+### 2026-04-17 shared realtime socket overload and fast local voice recovery
+- Voice was still getting occasional real `CLOSED` events after the reconnect-loop / lifecycle fixes, but the symptom profile changed:
+  - calls were noticeably more stable;
+  - remaining failures looked like short ~3 second audio dropouts with later recovery;
+  - console still showed `[useVoice] Realtime lost (CLOSED). Attempt 1/5`.
+- New root cause found outside the immediate voice hook:
+  - `src/components/Message.jsx` calls `useMessageReactions(msg.id, isDM)` for every rendered message;
+  - the old `src/hooks/useReactions.js` opened a dedicated realtime channel `reactions:<messageId>` per message;
+  - on long message lists, voice shared the same Supabase realtime socket with dozens of unnecessary reaction channels.
+- Why this mattered:
+  - socket/channel fanout from reactions likely created realtime transport churn on the same shared Supabase client used by voice;
+  - once the voice channel did hit a transient `CLOSED`, local recovery still waited the full `RECONNECT_DELAY_MS = 4000`, which amplified a short flap into an audible multi-second interruption.
+- Fix:
+  - `src/hooks/useReactions.js`: replaced per-message realtime subscriptions with a shared table-level cache/subscription (`shared-reactions:message_reactions` and `shared-reactions:direct_message_reactions`);
+  - message hooks now subscribe to local cached reactions for their `messageId` instead of opening new Supabase channels;
+  - `src/hooks/voice/channelStatus.js`: local reconnect delay is now dynamic via `resolveReconnectDelayMs(...)`;
+  - `src/hooks/useVoice.js`: if the shared transport still looks healthy (`global_voice_presence` is joined or Supabase Realtime socket is `open` / `connecting`), local voice recovery retries almost immediately (`250ms`) instead of waiting 4 seconds;
+  - `src/hooks/voice/localChannelBootstrap.js`: threaded the reconnect-delay resolver into local channel status handling.
+- Validation:
+  - `npm run build` passed on `2.5.65`.
+
+### Auto Log — 2026-04-17 17:11
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`

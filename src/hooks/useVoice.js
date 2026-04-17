@@ -480,6 +480,23 @@ export function useVoice() {
   }, [applyParticipantMap, reconcileRemotePeerPresence]);
   refreshVoiceSessionsRef.current = refreshVoiceSessions;
 
+  const resolveLocalReconnectDelayMs = useCallback(() => {
+    const realtimeConnectionState = typeof supabase.realtime?.connectionState === 'function'
+      ? supabase.realtime.connectionState()
+      : null;
+    const globalChannelState = globalPresence.current?.state;
+
+    if (
+      globalChannelState === 'joined' ||
+      realtimeConnectionState === 'open' ||
+      realtimeConnectionState === 'connecting'
+    ) {
+      return 250;
+    }
+
+    return RECONNECT_DELAY_MS;
+  }, []);
+
 
   // в”Ђв”Ђ РЎРРќРҐР РћРќРР—РђР¦РРЇ РЈР§РђРЎРўРќРРљРћР’ Р’ Р¦Р•РќРўР Р• (derived state) в”Ђв”Ђ
   // РњС‹ Р±РѕР»СЊС€Рµ РЅРµ СѓРїСЂР°РІР»СЏРµРј СѓС‡Р°СЃС‚РЅРёРєР°РјРё РєР°РЅР°Р»Р° РѕС‚РґРµР»СЊРЅРѕ, Р±РµСЂРµРј РёС… РёР· РіР»РѕР±Р°Р»СЊРЅРѕРіРѕ СЃРїРёСЃРєР°
@@ -1090,6 +1107,7 @@ export function useVoice() {
         scheduleManagedTimeout,
         clearManagedTimeout,
         resolveStableVoiceChannelId,
+        resolveLocalReconnectDelayMs,
         joinVoiceChannel,
         notifications,
         RECONNECT_DELAY_MS,
@@ -1104,7 +1122,7 @@ export function useVoice() {
       // РџСЂРё С„Р°С‚Р°Р»СЊРЅРѕР№ РѕС€РёР±РєРµ Р·Р°РЅСѓР»СЏРµРј СЂРµРєРѕРЅРЅРµРєС‚, С‡С‚РѕР±С‹ РЅРµ СЃРїР°РјРёС‚СЊ
       clearManagedTimeout(reconnectTimerRef);
     }
-  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, persistLocalVoiceSessionMarker, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, syncLocalChannelParticipantsToUi, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
+  }, [activeChannelId, appendParticipantToChannel, cleanupAll, closePeer, createPeerConnection, flushPendingStreamRequests, getLocalScreenSharingState, handleAdminVoiceStateBroadcast, mutateRealtimeParticipants, persistLocalVoiceSessionMarker, refreshVoiceSessions, removeChannelsByTopic, removeSessionFromParticipantMap, resolveLocalReconnectDelayMs, syncLocalChannelParticipantsToUi, syncParticipants, updateParticipantSpeakingMap, updatePresenceStatus]);
 
   const leaveVoiceChannel = cleanupAll;
 

@@ -29,12 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-17 16:36`
+- Время: `2026-04-17 17:11`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/lib/supabase.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -460,3 +459,27 @@ pm run build succeeded (2.5.57).
   - `src/lib/supabase.js`: enabled Supabase Realtime `worker` heartbeat support to better survive long-running voice sessions.
 - Validation:
   - `npm run build` succeeded (`2.5.64`).
+
+## 2026-04-17 shared-reaction-fanout-root-cause handoff
+- Even after the reconnect-loop / global-presence / lifecycle fixes, voice could still occasionally hit a real local `CLOSED` and recover a few seconds later.
+- New architectural root cause found outside the voice hook itself:
+  - `src/components/Message.jsx` mounts `useMessageReactions(msg.id, isDM)` for every rendered message;
+  - the old `src/hooks/useReactions.js` created a dedicated realtime channel per message (`reactions:<messageId>`);
+  - large message lists therefore pushed dozens of extra Supabase realtime channels onto the exact same shared socket that voice uses.
+- Why this explains the remaining symptom:
+  - shared realtime socket overload / churn from message reactions can destabilize unrelated voice channels;
+  - once voice receives a transient local `CLOSED`, the previous recovery path waited the full `RECONNECT_DELAY_MS = 4000`, which turned a short flap into the audible ~3 second dropout the user was still describing.
+- Fixes:
+  - `src/hooks/useReactions.js`: rewrote reactions realtime into a shared table-level subscription cache:
+    - one shared channel for `message_reactions`,
+    - one shared channel for `direct_message_reactions`,
+    - per-message hooks now subscribe to cached local state instead of opening new realtime channels.
+  - `src/hooks/voice/channelStatus.js`: local reconnect delay now comes from `resolveReconnectDelayMs(...)` instead of always using `RECONNECT_DELAY_MS`.
+  - `src/hooks/useVoice.js`: added `resolveLocalReconnectDelayMs()` that returns `250ms` when the shared transport still looks healthy (`global_voice_presence` joined or realtime socket `open` / `connecting`), falling back to the old 4s delay only for truly unhealthy transport.
+  - `src/hooks/voice/localChannelBootstrap.js`: passed the reconnect-delay resolver into local channel status handling.
+- Expected outcome:
+  - far fewer total realtime channels on the shared Supabase socket;
+  - less chance for voice to receive spurious transport churn from unrelated message UI;
+  - when a transient local close still happens, voice rejoins almost immediately instead of pausing for ~4 seconds.
+- Validation:
+  - `npm run build` succeeded (`2.5.65`).
