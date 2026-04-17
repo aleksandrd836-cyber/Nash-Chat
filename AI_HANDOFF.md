@@ -29,14 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-17 15:57`
+- Время: `2026-04-17 16:20`
 - Последние staged-файлы перед коммитом:
   - `package.json`
   - `public/version.json`
   - `src/hooks/useVoice.js`
-  - `src/hooks/voice/channelStatus.js`
-  - `src/hooks/voice/globalPresence.js`
-  - `src/hooks/voice/localChannelBootstrap.js`
 <!-- AUTO-LAST-UPDATE:END -->
 
 ## Manual note 2026-04-09
@@ -427,3 +424,19 @@ pm run build succeeded (2.5.57).
   - `src/hooks/voice/localChannelBootstrap.js`: pass `clearManagedTimeout` into local status handling.
 - Validation:
   - `npm run build` succeeded (`2.5.62`).
+
+## 2026-04-17 global-presence-self-recovery-loop handoff
+- The previous reconnect-loop fix was necessary but not sufficient.
+- Fresh logs showed repeated `Global channel status: CLOSED` even after stale recovery timers were managed.
+- Root cause:
+  - `src/hooks/useVoice.js` `initGlobalChannel()` intentionally removed the previous `global_voice_presence` channel during recovery;
+  - however `globalPresence.current` still pointed at that old channel while `removeChannel(...)` was in flight;
+  - the old channel's status handler therefore saw its own intentional `CLOSED` as a real disconnect and scheduled yet another recovery.
+- Effect:
+  - global presence could re-enter a self-generated recovery loop;
+  - that churn could destabilize visible voice membership and likely contributed to the downstream local voice reconnects seen in logs.
+- Fix:
+  - in `initGlobalChannel()`, move the current channel into `previousGlobalChannel`, set `globalPresence.current = null` first, then remove the old channel;
+  - apply the same ordering in the effect cleanup path so intentional teardown cannot be mistaken for an unexpected loss.
+- Validation:
+  - `npm run build` succeeded (`2.5.63`).

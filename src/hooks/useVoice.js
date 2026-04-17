@@ -683,8 +683,9 @@ export function useVoice() {
       clearManagedTimeout(globalPresenceRecoveryTimerRef);
 
       if (globalPresence.current) {
-        await supabase.removeChannel(globalPresence.current).catch(() => {});
+        const previousGlobalChannel = globalPresence.current;
         globalPresence.current = null;
+        await supabase.removeChannel(previousGlobalChannel).catch(() => {});
       }
       await removeChannelsByTopic('global_voice_presence');
 
@@ -772,11 +773,12 @@ export function useVoice() {
       cancelledRef.current = true;
       window.removeEventListener('beforeunload', handleUnload);
       if (globalPresence.current) {
-        supabase.removeChannel(globalPresence.current).catch(() => {});
+        const previousGlobalChannel = globalPresence.current;
+        globalPresence.current = null;
+        supabase.removeChannel(previousGlobalChannel).catch(() => {});
       }
       clearManagedTimeout(globalPresenceRecoveryTimerRef);
       clearManagedInterval(heartbeatIntervalRef);
-      globalPresence.current = null;
     };
   }, [buildParticipantMapFromPresenceState, cleanupAll, mutateRealtimeParticipants, pruneStaleParticipantMap, removeChannelsByTopic, removeSessionFromParticipantMap, updateParticipantSpeakingMap]);
   useEffect(() => {

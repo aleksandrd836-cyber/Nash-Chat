@@ -901,6 +901,19 @@ pm run build passed, version synced to 2.5.57.
 - Validation:
   - `npm run build` passed on `2.5.62`.
 
+### 2026-04-17 global presence self-recovery loop
+- Follow-up on the reconnect-loop investigation after logs still showed constant `Global channel status: CLOSED`.
+- Found a second, more specific root cause in `src/hooks/useVoice.js` global presence recovery:
+  - `initGlobalChannel()` intentionally removed the previous `global_voice_presence` channel;
+  - but `globalPresence.current` still pointed to that old channel during `removeChannel(...)`;
+  - therefore the old channel's own status handler treated the intentional `CLOSED` as a real outage and scheduled another recovery.
+- That created a self-perpetuating global presence recovery loop even without a fresh external disconnect.
+- Fix:
+  - before removing the previous global presence channel, store it in `previousGlobalChannel`, set `globalPresence.current = null`, then call `removeChannel(previousGlobalChannel)`;
+  - applied the same ordering in the global presence effect cleanup path.
+- Validation:
+  - `npm run build` passed on `2.5.63`.
+
 ### Auto Log — 2026-04-17 15:39
 - Автоматически записано git hook перед коммитом.
 - Изменённые файлы:
@@ -917,3 +930,10 @@ pm run build passed, version synced to 2.5.57.
   - `src/hooks/voice/channelStatus.js`
   - `src/hooks/voice/globalPresence.js`
   - `src/hooks/voice/localChannelBootstrap.js`
+
+### Auto Log — 2026-04-17 16:20
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `package.json`
+  - `public/version.json`
+  - `src/hooks/useVoice.js`
