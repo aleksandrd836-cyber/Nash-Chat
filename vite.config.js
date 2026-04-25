@@ -4,10 +4,10 @@ import pkg from './package.json';
 
 function normalizeProxyPath(path) {
   const trimmed = String(path || '').trim();
-  if (!trimmed) return '/proxy/supabase';
+  if (!trimmed) return null;
 
   const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return withLeadingSlash.replace(/\/+$/, '') || '/proxy/supabase';
+  return withLeadingSlash.replace(/\/+$/, '') || null;
 }
 
 function escapeRegex(value) {
@@ -17,8 +17,10 @@ function escapeRegex(value) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const supabaseTarget = env.VITE_SUPABASE_URL;
-  const supabaseProxyPath = normalizeProxyPath(env.VITE_SUPABASE_PROXY_PATH || '/proxy/supabase');
-  const supabaseProxyMatcher = new RegExp(`^${escapeRegex(supabaseProxyPath)}`);
+  const supabaseProxyPath = normalizeProxyPath(env.VITE_SUPABASE_PROXY_PATH);
+  const supabaseProxyMatcher = supabaseProxyPath
+    ? new RegExp(`^${escapeRegex(supabaseProxyPath)}`)
+    : null;
 
   return {
     plugins: [react()],
@@ -54,7 +56,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 5173,
-      proxy: supabaseTarget
+      proxy: supabaseTarget && supabaseProxyPath
         ? {
             [supabaseProxyPath]: {
               target: supabaseTarget,

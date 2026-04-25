@@ -51,14 +51,24 @@ export function buildVoiceParticipantsMap(rows = []) {
 
 function normalizeProxyPath(path) {
   const trimmed = String(path || '').trim();
-  if (!trimmed) return '/proxy/supabase';
+  if (!trimmed) return null;
 
   const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return withLeadingSlash.replace(/\/+$/, '') || '/proxy/supabase';
+  return withLeadingSlash.replace(/\/+$/, '') || null;
 }
 
 function resolveVoiceProxyBaseUrl() {
   if (typeof window === 'undefined') return null;
+
+  const override = import.meta.env.VITE_SUPABASE_PROXY_URL;
+  if (override) {
+    return override.replace(/\/+$/, '');
+  }
+
+  const configuredProxyPath = import.meta.env.VITE_SUPABASE_PROXY_PATH;
+  if (!configuredProxyPath) {
+    return null;
+  }
 
   const protocol = window.location?.protocol;
   const origin = window.location?.origin;
@@ -66,12 +76,9 @@ function resolveVoiceProxyBaseUrl() {
     return null;
   }
 
-  const override = import.meta.env.VITE_SUPABASE_PROXY_URL;
-  if (override) {
-    return override.replace(/\/+$/, '');
-  }
+  const proxyPath = normalizeProxyPath(configuredProxyPath);
+  if (!proxyPath) return null;
 
-  const proxyPath = normalizeProxyPath(import.meta.env.VITE_SUPABASE_PROXY_PATH || '/proxy/supabase');
   return `${origin}${proxyPath}`;
 }
 

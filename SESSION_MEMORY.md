@@ -1092,3 +1092,13 @@ pm run build passed, version synced to 2.5.57.
   - `src/lib/voiceSessions.js`
   - `vercel.json`
   - `vite.config.js`
+
+### Auto Log — 2026-04-25 16:59
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `.env.example`
+  - `package.json`
+  - `public/version.json`
+  - `src/lib/voiceSessions.js`
+  - `vercel.json`
+  - `vite.config.js`

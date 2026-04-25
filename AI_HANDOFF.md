@@ -29,12 +29,11 @@
 
 <!-- AUTO-LAST-UPDATE:START -->
 ## Last Auto Update
-- Время: `2026-04-25 16:53`
+- Время: `2026-04-25 16:59`
 - Последние staged-файлы перед коммитом:
   - `.env.example`
   - `package.json`
   - `public/version.json`
-  - `src/lib/supabase.js`
   - `src/lib/voiceSessions.js`
   - `vercel.json`
   - `vite.config.js`
