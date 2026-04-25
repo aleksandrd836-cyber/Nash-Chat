@@ -1,16 +1,52 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const directSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const browserSupabaseUrlOverride = import.meta.env.VITE_SUPABASE_BROWSER_URL;
+const supabaseProxyPath = normalizeSupabasePath(import.meta.env.VITE_SUPABASE_PROXY_PATH || '/_supabase');
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!directSupabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    'Не найдены переменные окружения VITE_SUPABASE_URL или VITE_SUPABASE_ANON_KEY.\n' +
-    'Скопируй .env.example в .env и заполни данными из Supabase Dashboard.'
+    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.\n' +
+    'Copy .env.example to .env and fill the values from Supabase Dashboard.'
   );
 }
 
-// Устанавливаем значение по умолчанию при первой загрузке
+function normalizeSupabasePath(path) {
+  const trimmed = String(path || '').trim();
+  if (!trimmed) return '/_supabase';
+
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, '') || '/_supabase';
+}
+
+function isBrowserProxyAvailable() {
+  if (typeof window === 'undefined') return false;
+
+  const protocol = window.location?.protocol;
+  const origin = window.location?.origin;
+
+  return Boolean(
+    origin &&
+    origin !== 'null' &&
+    (protocol === 'http:' || protocol === 'https:')
+  );
+}
+
+function resolveSupabaseUrl() {
+  if (browserSupabaseUrlOverride && isBrowserProxyAvailable()) {
+    return browserSupabaseUrlOverride.replace(/\/+$/, '');
+  }
+
+  if (isBrowserProxyAvailable()) {
+    return `${window.location.origin}${supabaseProxyPath}`;
+  }
+
+  return directSupabaseUrl;
+}
+
+const supabaseUrl = resolveSupabaseUrl();
+
 if (localStorage.getItem('vibe_remember_me') === null) {
   localStorage.setItem('vibe_remember_me', 'true');
 }
@@ -18,25 +54,24 @@ if (localStorage.getItem('vibe_remember_me') === null) {
 const customStorage = {
   getItem: (key) => {
     const useLocal = localStorage.getItem('vibe_remember_me') !== 'false';
-    // Сначала ищем в localStorage (основное хранилище), потом fallback в sessionStorage
     if (useLocal) {
       return localStorage.getItem(key);
     }
+
     return sessionStorage.getItem(key) ?? localStorage.getItem(key);
   },
   setItem: (key, value) => {
     const useLocal = localStorage.getItem('vibe_remember_me') !== 'false';
     if (useLocal) {
-       localStorage.setItem(key, value);
+      localStorage.setItem(key, value);
     } else {
-       sessionStorage.setItem(key, value);
-       // НЕ удаляем из localStorage — это убивало Realtime
+      sessionStorage.setItem(key, value);
     }
   },
   removeItem: (key) => {
     localStorage.removeItem(key);
     sessionStorage.removeItem(key);
-  }
+  },
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -44,9 +79,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: customStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
   },
   realtime: {
     worker: typeof window !== 'undefined' && typeof window.Worker !== 'undefined',
-  }
+  },
 });
