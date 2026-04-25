@@ -1081,3 +1081,14 @@ pm run build passed, version synced to 2.5.57.
   - `src/lib/supabase.js`
   - `vercel.json`
   - `vite.config.js`
+
+### Auto Log — 2026-04-25 16:53
+- Автоматически записано git hook перед коммитом.
+- Изменённые файлы:
+  - `.env.example`
+  - `package.json`
+  - `public/version.json`
+  - `src/lib/supabase.js`
+  - `src/lib/voiceSessions.js`
+  - `vercel.json`
+  - `vite.config.js`

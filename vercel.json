@@ -4,7 +4,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/_supabase/:match*",
+      "source": "/proxy/supabase/:match*",
       "destination": "https://ncucchryioclbzvxzbcj.supabase.co/:match*"
     },
     {

@@ -2,6 +2,9 @@ import { supabase } from './supabase';
 
 export const VOICE_SESSION_STALE_MS = 90000;
 
+const VOICE_SESSIONS_SELECT =
+  'session_id, user_id, channel_id, username, color, is_muted, is_deafened, is_speaking, is_screen_sharing, last_seen, created_at';
+
 function mapVoiceSessionRow(row) {
   return {
     userId: row.user_id,
@@ -46,17 +49,116 @@ export function buildVoiceParticipantsMap(rows = []) {
   return grouped;
 }
 
-export async function fetchActiveVoiceSessions() {
-  const staleCutoffIso = new Date(Date.now() - VOICE_SESSION_STALE_MS).toISOString();
-  const { data, error } = await supabase
-    .from('voice_sessions')
-    .select('session_id, user_id, channel_id, username, color, is_muted, is_deafened, is_speaking, is_screen_sharing, last_seen, created_at')
-    .gte('last_seen', staleCutoffIso);
+function normalizeProxyPath(path) {
+  const trimmed = String(path || '').trim();
+  if (!trimmed) return '/proxy/supabase';
 
-  if (error) {
-    throw error;
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, '') || '/proxy/supabase';
+}
+
+function resolveVoiceProxyBaseUrl() {
+  if (typeof window === 'undefined') return null;
+
+  const protocol = window.location?.protocol;
+  const origin = window.location?.origin;
+  if (!origin || origin === 'null' || (protocol !== 'http:' && protocol !== 'https:')) {
+    return null;
   }
 
+  const override = import.meta.env.VITE_SUPABASE_PROXY_URL;
+  if (override) {
+    return override.replace(/\/+$/, '');
+  }
+
+  const proxyPath = normalizeProxyPath(import.meta.env.VITE_SUPABASE_PROXY_PATH || '/proxy/supabase');
+  return `${origin}${proxyPath}`;
+}
+
+async function getProxyAuthHeaders(extraHeaders = {}) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const headers = {
+    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    ...extraHeaders,
+  };
+
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
+  return headers;
+}
+
+async function parseProxyResponse(response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (response.ok) {
+    if (response.status === 204) return null;
+    if (!contentType.includes('application/json')) return null;
+    return response.json();
+  }
+
+  const rawBody = await response.text();
+  let message = rawBody;
+
+  if (contentType.includes('application/json')) {
+    try {
+      const parsed = JSON.parse(rawBody);
+      message =
+        parsed?.message ||
+        parsed?.error_description ||
+        parsed?.hint ||
+        parsed?.error ||
+        rawBody;
+    } catch {}
+  }
+
+  const error = new Error(message || `Supabase proxy request failed (${response.status})`);
+  error.status = response.status;
+  error.responseBody = rawBody;
+  throw error;
+}
+
+async function proxyVoiceRequest(path, { method = 'GET', headers = {}, body } = {}) {
+  const proxyBaseUrl = resolveVoiceProxyBaseUrl();
+  if (!proxyBaseUrl) {
+    return null;
+  }
+
+  const response = await fetch(`${proxyBaseUrl}${path}`, {
+    method,
+    headers: await getProxyAuthHeaders(headers),
+    body,
+  });
+
+  return parseProxyResponse(response);
+}
+
+export async function fetchActiveVoiceSessions() {
+  const proxyBaseUrl = resolveVoiceProxyBaseUrl();
+  if (!proxyBaseUrl) {
+    const staleCutoffIso = new Date(Date.now() - VOICE_SESSION_STALE_MS).toISOString();
+    const { data, error } = await supabase
+      .from('voice_sessions')
+      .select(VOICE_SESSIONS_SELECT)
+      .gte('last_seen', staleCutoffIso);
+
+    if (error) {
+      throw error;
+    }
+
+    return buildVoiceParticipantsMap(data || []);
+  }
+
+  const staleCutoffIso = new Date(Date.now() - VOICE_SESSION_STALE_MS).toISOString();
+  const query = new URLSearchParams({
+    select: VOICE_SESSIONS_SELECT,
+    last_seen: `gte.${staleCutoffIso}`,
+  });
+
+  const data = await proxyVoiceRequest(`/rest/v1/voice_sessions?${query.toString()}`);
   return buildVoiceParticipantsMap(data || []);
 }
 
@@ -74,51 +176,112 @@ export async function upsertVoiceSession(session) {
     last_seen: new Date().toISOString(),
   };
 
-  const { error } = await supabase
-    .from('voice_sessions')
-    .upsert(payload, { onConflict: 'session_id' });
+  const proxyBaseUrl = resolveVoiceProxyBaseUrl();
+  if (!proxyBaseUrl) {
+    const { error } = await supabase
+      .from('voice_sessions')
+      .upsert(payload, { onConflict: 'session_id' });
 
-  if (error) {
-    throw error;
+    if (error) {
+      throw error;
+    }
+    return;
   }
+
+  await proxyVoiceRequest('/rest/v1/voice_sessions?on_conflict=session_id', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function removeVoiceSession(sessionId) {
-  const { error } = await supabase
-    .from('voice_sessions')
-    .delete()
-    .eq('session_id', sessionId);
+  const proxyBaseUrl = resolveVoiceProxyBaseUrl();
+  if (!proxyBaseUrl) {
+    const { error } = await supabase
+      .from('voice_sessions')
+      .delete()
+      .eq('session_id', sessionId);
 
-  if (error) {
-    throw error;
+    if (error) {
+      throw error;
+    }
+    return;
   }
+
+  const query = new URLSearchParams({
+    session_id: `eq.${sessionId}`,
+  });
+
+  await proxyVoiceRequest(`/rest/v1/voice_sessions?${query.toString()}`, {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  });
 }
 
 export async function removeVoiceSessionsForUser(userId, excludeSessionId = null) {
   if (!userId) return;
 
-  let query = supabase
-    .from('voice_sessions')
-    .delete()
-    .eq('user_id', userId);
+  const proxyBaseUrl = resolveVoiceProxyBaseUrl();
+  if (!proxyBaseUrl) {
+    let query = supabase
+      .from('voice_sessions')
+      .delete()
+      .eq('user_id', userId);
+
+    if (excludeSessionId) {
+      query = query.neq('session_id', excludeSessionId);
+    }
+
+    const { error } = await query;
+
+    if (error) {
+      throw error;
+    }
+    return;
+  }
+
+  const query = new URLSearchParams({
+    user_id: `eq.${userId}`,
+  });
 
   if (excludeSessionId) {
-    query = query.neq('session_id', excludeSessionId);
+    query.set('session_id', `neq.${excludeSessionId}`);
   }
 
-  const { error } = await query;
-
-  if (error) {
-    throw error;
-  }
+  await proxyVoiceRequest(`/rest/v1/voice_sessions?${query.toString()}`, {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  });
 }
 
 export async function cleanupStaleVoiceSessions(maxAgeSeconds = 25) {
-  const { error } = await supabase.rpc('cleanup_stale_voice_sessions', {
-    p_max_age_seconds: maxAgeSeconds,
-  });
+  const proxyBaseUrl = resolveVoiceProxyBaseUrl();
+  if (!proxyBaseUrl) {
+    const { error } = await supabase.rpc('cleanup_stale_voice_sessions', {
+      p_max_age_seconds: maxAgeSeconds,
+    });
 
-  if (error) {
-    throw error;
+    if (error) {
+      throw error;
+    }
+    return;
   }
+
+  await proxyVoiceRequest('/rest/v1/rpc/cleanup_stale_voice_sessions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      p_max_age_seconds: maxAgeSeconds,
+    }),
+  });
 }
