@@ -7,6 +7,34 @@ import {
   reserveInviteCode,
 } from '../lib/inviteCodes';
 
+const AUTH_NETWORK_ERROR = 'Не удалось подключиться к серверу Vibe. Проверь интернет/VPN и попробуй ещё раз.';
+
+function isNetworkAuthError(err) {
+  const message = err?.message?.toLowerCase?.() ?? '';
+  const name = err?.name?.toLowerCase?.() ?? '';
+
+  return (
+    name.includes('fetch') ||
+    message.includes('failed to fetch') ||
+    message.includes('network') ||
+    message.includes('connection') ||
+    message.includes('timeout')
+  );
+}
+
+function clearCachedAuthSession() {
+  try {
+    const clearStorage = (storage) => {
+      Object.keys(storage)
+        .filter((key) => key.startsWith('sb-') && key.endsWith('-auth-token'))
+        .forEach((key) => storage.removeItem(key));
+    };
+
+    clearStorage(localStorage);
+    clearStorage(sessionStorage);
+  } catch {}
+}
+
 /**
  * Хук авторизации.
  * Регистрация: email + username (отображаемое имя) + password.
@@ -18,18 +46,41 @@ export function useAuth() {
   const [error, setError]     = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        finalizeInviteReservation(session.user.user_metadata?.username).catch((err) => {
-          console.warn('[useAuth] Не удалось завершить отложенный invite-код:', err?.message ?? err);
-        });
+    let mounted = true;
+
+    const loadInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          finalizeInviteReservation(session.user.user_metadata?.username).catch((err) => {
+            console.warn('[useAuth] Не удалось завершить отложенный invite-код:', err?.message ?? err);
+          });
+        }
+      } catch (err) {
+        console.warn('[useAuth] Не удалось восстановить сессию:', err?.message ?? err);
+        clearCachedAuthSession();
+
+        if (mounted) {
+          setUser(null);
+          setError(isNetworkAuthError(err) ? AUTH_NETWORK_ERROR : 'Сессия истекла. Войди заново.');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    };
+
+    loadInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session) {
+        setError(null);
+      }
       if (session?.user) {
         finalizeInviteReservation(session.user.user_metadata?.username).catch((err) => {
           console.warn('[useAuth] Не удалось завершить invite-код после входа:', err?.message ?? err);
@@ -37,20 +88,30 @@ export function useAuth() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   /** Принудительно обновить данные пользователя (например, после смены user_metadata) */
   const refreshUser = useCallback(async () => {
-    const { data: refreshData } = await supabase.auth.refreshSession();
-    if (refreshData?.session?.user) {
-      setUser({ ...refreshData.session.user });
-      return;
-    }
+    try {
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      if (refreshData?.session?.user) {
+        setUser({ ...refreshData.session.user });
+        return;
+      }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      setUser({ ...session.user });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser({ ...session.user });
+      }
+    } catch (err) {
+      console.warn('[useAuth] Не удалось обновить пользователя:', err?.message ?? err);
+      if (isNetworkAuthError(err)) {
+        setError(AUTH_NETWORK_ERROR);
+      }
     }
   }, []);
 
@@ -151,9 +212,10 @@ export function useAuth() {
     const { error: err } = await supabase.auth.signInWithPassword({
       email: fakeEmail,
       password,
-    });
+    }).catch((err) => ({ error: err }));
+
     if (err) {
-      setError('Неверный логин или пароль');
+      setError(isNetworkAuthError(err) ? AUTH_NETWORK_ERROR : 'Неверный логин или пароль');
       return { error: true };
     }
     return { error: null };
@@ -161,7 +223,9 @@ export function useAuth() {
 
   /** Выход */
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut().catch(() => {});
+    clearCachedAuthSession();
+    setUser(null);
   }, []);
 
   return {
